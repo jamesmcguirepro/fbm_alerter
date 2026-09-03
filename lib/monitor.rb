@@ -1,0 +1,60 @@
+# frozen_string_literal: true
+
+module MarketplaceMonitor
+  # Main monitor orchestration
+  class Monitor
+    def initialize
+      Config.validate!
+    end
+
+    # Run a complete search cycle
+    def run_search
+      puts "\n🔍 Starting marketplace search at #{Time.now}..."
+
+      Config.search_config.each do |search|
+        monitor_search(search)
+      end
+
+      # Send alerts for unseen listings
+      send_alerts
+    end
+
+    private
+
+    # Monitor a single search query
+    def monitor_search(search)
+      puts "\n  Searching: #{search[:query]} (#{search[:lat]}, #{search[:lng]})"
+
+      begin
+        result = APIClient.search(**search)
+
+        if result['data'] && result['data']['listings']
+          listings = result['data']['listings'].values
+          puts "  Found #{listings.length} listing(s)"
+
+          listings.each do |listing|
+            Database.add_listing(listing, search[:query])
+          end
+        else
+          puts '  No listings found or unexpected response format'
+        end
+
+      rescue => e
+        puts "  ✗ Error: #{e.message}"
+      end
+    end
+
+    # Send alerts for new listings
+    def send_alerts
+      unseen = Database.get_unseen_listings
+
+      if unseen.any?
+        puts "\n📧 Sending alerts for #{unseen.length} new listing(s)..."
+        EmailService.send_alerts(unseen)
+        unseen.each { |listing| Database.mark_alert_sent(listing['id']) }
+      else
+        puts "\n✓ No new listings to alert"
+      end
+    end
+  end
+end
