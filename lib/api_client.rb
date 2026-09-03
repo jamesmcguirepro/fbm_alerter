@@ -16,7 +16,7 @@ module MarketplaceMonitor
       # @param count [Integer] Number of results to return
       # @return [Hash] API response containing listings
       def search(query:, lat:, lng:, min_price: nil, max_price: nil,
-                      radius_km: 65, condition: nil, delivery_method: nil, count: 24)
+                 radius_km: 65, condition: nil, delivery_method: nil, count: 24)
         params = build_params(
           query:,
           lat:,
@@ -41,7 +41,7 @@ module MarketplaceMonitor
 
       # Build request parameters
       def build_params(query:, lat:, lng:, min_price: nil, max_price: nil,
-                            radius_km: 65, condition: nil, delivery_method: nil, count: 24)
+                       radius_km: 65, condition: nil, delivery_method: nil, count: 24)
         params = {
           query:,
           lat:,

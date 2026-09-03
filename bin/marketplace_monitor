@@ -6,20 +6,20 @@ require_relative '../lib/marketplace_monitor'
 # Parse command line arguments and run appropriate action
 case ARGV[0]
 when 'init'
-  puts "Initializing database..."
+  puts 'Initializing database...'
   MarketplaceMonitor::Database.initialize_db
   puts "✓ Database initialized at #{MarketplaceMonitor::Config.db_path}"
 
 when 'run'
-  puts "Running marketplace monitor once..."
+  puts 'Running marketplace monitor once...'
   MarketplaceMonitor::Database.initialize_db
   MarketplaceMonitor::Monitor.new.run_search
 
 when 'schedule'
-  puts "Setting up cron schedule..."
+  puts 'Setting up cron schedule...'
   schedule_interval = ENV['SCHEDULE_INTERVAL'] || '30m'
   puts "Monitor will run every #{schedule_interval}"
-  puts "Configure SCHEDULE_INTERVAL in .env to change frequency"
+  puts 'Configure SCHEDULE_INTERVAL in .env to change frequency'
 
 when 'daemon'
   # Run continuously with interval
@@ -28,12 +28,15 @@ when 'daemon'
   interval = MarketplaceMonitor::Config.parse_interval(ENV['SCHEDULE_INTERVAL'] || '30m')
 
   puts "Starting marketplace monitor daemon (interval: #{interval}s)..."
-  trap('INT') { puts "\nShutting down gracefully..."; exit(0) }
+  trap('INT') do
+    puts "\nShutting down gracefully..."
+    exit(0)
+  end
 
   loop do
     begin
       monitor.run_search
-    rescue => e
+    rescue StandardError => e
       puts "✗ Daemon error: #{e.message}"
       puts e.backtrace.first(5)
     end

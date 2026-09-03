@@ -38,8 +38,7 @@ module MarketplaceMonitor
         else
           puts '  No listings found or unexpected response format'
         end
-
-      rescue => e
+      rescue StandardError => e
         puts "  ✗ Error: #{e.message}"
       end
     end

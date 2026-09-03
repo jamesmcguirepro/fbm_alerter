@@ -45,7 +45,7 @@ describe MarketplaceMonitor::Database do
 
       db = described_class.connect
       db.results_as_hash = true
-      result = db.execute("SELECT * FROM listings WHERE id = ?", ['123456'])
+      result = db.execute('SELECT * FROM listings WHERE id = ?', ['123456'])
       db.close
 
       expect(result).to have_length(1)
@@ -58,7 +58,7 @@ describe MarketplaceMonitor::Database do
 
       db = described_class.connect
       db.results_as_hash = true
-      result = db.execute("SELECT search_query FROM listings WHERE id = ?", ['123456'])
+      result = db.execute('SELECT search_query FROM listings WHERE id = ?', ['123456'])
       db.close
 
       expect(result.first['search_query']).to eq('mountain bike')
@@ -69,7 +69,7 @@ describe MarketplaceMonitor::Database do
       described_class.add_listing(listing_data, 'bike')
 
       db = described_class.connect
-      count = db.execute("SELECT COUNT(*) as count FROM listings").first['count']
+      count = db.execute('SELECT COUNT(*) as count FROM listings').first['count']
       db.close
 
       expect(count).to eq(1)
@@ -79,14 +79,14 @@ describe MarketplaceMonitor::Database do
       described_class.add_listing(listing_data, 'bike')
 
       db = described_class.connect
-      first_seen = db.execute("SELECT first_seen_at FROM listings WHERE id = ?", ['123456']).first['first_seen_at']
+      first_seen = db.execute('SELECT first_seen_at FROM listings WHERE id = ?', ['123456']).first['first_seen_at']
       db.close
 
       sleep(0.1)
       described_class.add_listing(listing_data, 'bike')
 
       db = described_class.connect
-      last_seen = db.execute("SELECT last_seen_at FROM listings WHERE id = ?", ['123456']).first['last_seen_at']
+      last_seen = db.execute('SELECT last_seen_at FROM listings WHERE id = ?', ['123456']).first['last_seen_at']
       db.close
 
       expect(last_seen).not_to eq(first_seen)
@@ -98,7 +98,7 @@ describe MarketplaceMonitor::Database do
 
       db = described_class.connect
       db.results_as_hash = true
-      result = db.execute("SELECT image_url FROM listings WHERE id = ?", ['123456'])
+      result = db.execute('SELECT image_url FROM listings WHERE id = ?', ['123456'])
       db.close
 
       expect(result.first['image_url']).to be_nil
@@ -171,7 +171,7 @@ describe MarketplaceMonitor::Database do
       described_class.mark_alert_sent('123')
 
       db = described_class.connect
-      result = db.execute("SELECT COUNT(*) as count FROM alerts_sent WHERE listing_id = ?", ['123'])
+      result = db.execute('SELECT COUNT(*) as count FROM alerts_sent WHERE listing_id = ?', ['123'])
       db.close
 
       expect(result.first['count']).to eq(1)
@@ -204,7 +204,7 @@ describe MarketplaceMonitor::Database do
 
       db = described_class.connect
       db.results_as_hash = true
-      result = db.execute("SELECT is_sold FROM listings WHERE id = ?", ['123'])
+      result = db.execute('SELECT is_sold FROM listings WHERE id = ?', ['123'])
       db.close
 
       expect(result.first['is_sold']).to eq(1)

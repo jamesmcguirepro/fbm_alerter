@@ -49,7 +49,7 @@ module MarketplaceMonitor
 
         mail.deliver!
         puts "✓ Email sent to #{recipient}"
-      rescue => e
+      rescue StandardError => e
         puts "✗ Failed to send email to #{recipient}: #{e.message}"
       end
 

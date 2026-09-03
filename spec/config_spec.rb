@@ -148,7 +148,7 @@ describe MarketplaceMonitor::Config do
     end
 
     it 'parses days' do
-      expect(described_class.parse_interval('1d')).to eq(86400)
+      expect(described_class.parse_interval('1d')).to eq(86_400)
     end
 
     it 'returns default for invalid format' do
@@ -158,7 +158,7 @@ describe MarketplaceMonitor::Config do
     it 'handles single digit times' do
       expect(described_class.parse_interval('1m')).to eq(60)
       expect(described_class.parse_interval('1h')).to eq(3600)
-      expect(described_class.parse_interval('1d')).to eq(86400)
+      expect(described_class.parse_interval('1d')).to eq(86_400)
     end
   end
 
