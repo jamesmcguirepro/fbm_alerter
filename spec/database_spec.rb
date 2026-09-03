@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe MarketplaceMonitor::Database do
+describe Database do
   before(:each) do
     described_class.initialize_db
   end

@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe MarketplaceMonitor::EmailService do
+describe EmailService do
   describe '.configure_smtp' do
     it 'configures Mail gem with SMTP settings' do
       expect(Mail).to receive(:defaults).and_yield
@@ -45,14 +45,14 @@ describe MarketplaceMonitor::EmailService do
 
     it 'sends email to each recipient' do
       recipients = ['user1@example.com', 'user2@example.com']
-      allow(MarketplaceMonitor::Config).to receive(:email_to).and_return(recipients)
+      allow(Config).to receive(:email_to).and_return(recipients)
 
       expect_any_instance_of(Mail::Message).to receive(:deliver!).twice
       described_class.send_alerts(listings)
     end
 
     it 'includes correct sender' do
-      allow(MarketplaceMonitor::Config).to receive(:email_from).and_return('alerts@example.com')
+      allow(Config).to receive(:email_from).and_return('alerts@example.com')
 
       expect(Mail).to receive(:new) do |&block|
         mail = Mail.new
@@ -65,7 +65,7 @@ describe MarketplaceMonitor::EmailService do
     end
 
     it 'includes recipient' do
-      allow(MarketplaceMonitor::Config).to receive(:email_to).and_return(['recipient@example.com'])
+      allow(Config).to receive(:email_to).and_return(['recipient@example.com'])
 
       expect(Mail).to receive(:new) do |&block|
         mail = Mail.new
@@ -211,7 +211,7 @@ describe MarketplaceMonitor::EmailService do
 
     it 'sends to multiple recipients independently' do
       recipients = ['user1@example.com', 'user2@example.com', 'user3@example.com']
-      allow(MarketplaceMonitor::Config).to receive(:email_to).and_return(recipients)
+      allow(Config).to receive(:email_to).and_return(recipients)
 
       delivery_count = 0
       allow_any_instance_of(Mail::Message).to receive(:deliver!) { delivery_count += 1 }

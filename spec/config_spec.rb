@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe MarketplaceMonitor::Config do
+describe Config do
   describe '.api_key' do
     it 'returns API key from environment' do
       expect(described_class.api_key).to eq('sk_test_key')

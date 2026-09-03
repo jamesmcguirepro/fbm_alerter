@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe MarketplaceMonitor::APIClient do
+describe APIClient do
   describe '.search' do
     let(:search_params) do
       {
