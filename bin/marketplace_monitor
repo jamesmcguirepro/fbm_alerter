@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'bundler/setup' if File.exist?('Gemfile.lock')
-require_relative '../lib/marketplace_monitor'
+require_relative '../lib/etplace_monitor'
 
 # Parse command line arguments and run appropriate action
 case ARGV[0]

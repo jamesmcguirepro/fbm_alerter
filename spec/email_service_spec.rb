@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../lib/email_service'
 
-describe EmailService do
+RSpec.describe EmailService do
   describe '.configure_smtp' do
     it 'configures Mail gem with SMTP settings' do
       expect(Mail).to receive(:defaults).and_yield

@@ -2,29 +2,31 @@
 
 require 'spec_helper'
 
-describe Database do
-  before(:each) do
-    described_class.initialize_db
-  end
+RSpec.describe Database do
+  subject(:database) { described_class }
 
-  describe '.initialize_db' do
+  let(:database_client) { database.send(:database) }
+
+  describe '.initialize_database' do
+    let(:call) { database.initialize_database }
+
     it 'creates listings table' do
-      db = described_class.connect
-      tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='listings'")
+      call
+
+      tables = database_client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='listings'")
       expect(tables).not_to be_empty
-      db.close
+      database.close
     end
 
     it 'creates alerts_sent table' do
-      db = described_class.connect
-      tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='alerts_sent'")
+      tables = database.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='alerts_sent'")
       expect(tables).not_to be_empty
-      db.close
+      database.close
     end
 
     it 'is idempotent' do
-      expect { described_class.initialize_db }.not_to raise_error
-      expect { described_class.initialize_db }.not_to raise_error
+      expect { described_class.initialize_database }.not_to raise_error
+      expect { described_class.initialize_database }.not_to raise_error
     end
   end
 
@@ -43,12 +45,11 @@ describe Database do
     it 'inserts a new listing' do
       described_class.add_listing(listing_data, 'bike')
 
-      db = described_class.connect
-      db.results_as_hash = true
-      result = db.execute('SELECT * FROM listings WHERE id = ?', ['123456'])
-      db.close
+      database.results_as_hash = true
+      result = database.execute('SELECT * FROM listings WHERE id = ?', ['123456'])
+      database.close
 
-      expect(result).to have_length(1)
+      expect(result.count).to eq(1)
       expect(result.first['title']).to eq('Mountain Bike')
       expect(result.first['price']).to eq(250)
     end
@@ -56,10 +57,9 @@ describe Database do
     it 'stores search query' do
       described_class.add_listing(listing_data, 'mountain bike')
 
-      db = described_class.connect
-      db.results_as_hash = true
-      result = db.execute('SELECT search_query FROM listings WHERE id = ?', ['123456'])
-      db.close
+      database.results_as_hash = true
+      result = database.execute('SELECT search_query FROM listings WHERE id = ?', ['123456'])
+      database.close
 
       expect(result.first['search_query']).to eq('mountain bike')
     end
@@ -68,9 +68,8 @@ describe Database do
       described_class.add_listing(listing_data, 'bike')
       described_class.add_listing(listing_data, 'bike')
 
-      db = described_class.connect
-      count = db.execute('SELECT COUNT(*) as count FROM listings').first['count']
-      db.close
+      count = database.execute('SELECT COUNT(*) as count FROM listings').first['count']
+      database.close
 
       expect(count).to eq(1)
     end
@@ -78,16 +77,14 @@ describe Database do
     it 'updates last_seen_at on re-insert' do
       described_class.add_listing(listing_data, 'bike')
 
-      db = described_class.connect
-      first_seen = db.execute('SELECT first_seen_at FROM listings WHERE id = ?', ['123456']).first['first_seen_at']
-      db.close
+      first_seen = database.execute('SELECT first_seen_at FROM listings WHERE id = ?', ['123456']).first['first_seen_at']
+      database.close
 
       sleep(0.1)
       described_class.add_listing(listing_data, 'bike')
 
-      db = described_class.connect
-      last_seen = db.execute('SELECT last_seen_at FROM listings WHERE id = ?', ['123456']).first['last_seen_at']
-      db.close
+      last_seen = database.execute('SELECT last_seen_at FROM listings WHERE id = ?', ['123456']).first['last_seen_at']
+      database.close
 
       expect(last_seen).not_to eq(first_seen)
     end
@@ -96,10 +93,9 @@ describe Database do
       listing_data['primary_photo'] = nil
       described_class.add_listing(listing_data, 'bike')
 
-      db = described_class.connect
-      db.results_as_hash = true
-      result = db.execute('SELECT image_url FROM listings WHERE id = ?', ['123456'])
-      db.close
+      database.results_as_hash = true
+      result = database.execute('SELECT image_url FROM listings WHERE id = ?', ['123456'])
+      database.close
 
       expect(result.first['image_url']).to be_nil
     end
@@ -170,9 +166,8 @@ describe Database do
       described_class.add_listing(listing_data, 'test')
       described_class.mark_alert_sent('123')
 
-      db = described_class.connect
-      result = db.execute('SELECT COUNT(*) as count FROM alerts_sent WHERE listing_id = ?', ['123'])
-      db.close
+      result = database.execute('SELECT COUNT(*) as count FROM alerts_sent WHERE listing_id = ?', ['123'])
+      database.close
 
       expect(result.first['count']).to eq(1)
     end
@@ -202,10 +197,9 @@ describe Database do
       described_class.add_listing(listing_data, 'test')
       described_class.mark_sold('123')
 
-      db = described_class.connect
-      db.results_as_hash = true
-      result = db.execute('SELECT is_sold FROM listings WHERE id = ?', ['123'])
-      db.close
+      database.results_as_hash = true
+      result = database.execute('SELECT is_sold FROM listings WHERE id = ?', ['123'])
+      database.close
 
       expect(result.first['is_sold']).to eq(1)
     end
@@ -284,13 +278,12 @@ describe Database do
     it 'deletes old listings' do
       described_class.add_listing(listing_data, 'test')
 
-      db = described_class.connect
       # Update created date to 31 days ago
-      db.execute(
+      database.execute(
         "UPDATE listings SET first_seen_at = datetime('now', '-31 days') WHERE id = ?",
         ['123']
       )
-      db.close
+      database.close
 
       deleted = described_class.cleanup_old_listings(30)
       expect(deleted).to eq(1)

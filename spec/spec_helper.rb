@@ -2,7 +2,7 @@
 
 require 'rspec'
 require 'dotenv/load'
-require_relative '../lib/marketplace_monitor'
+require_relative '../marketplace_monitor'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

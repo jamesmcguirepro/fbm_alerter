@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'httparty'
+require_relative '../lib/api_client'
 
-describe APIClient do
+RSpec.describe APIClient do
   describe '.search' do
     let(:search_params) do
       {

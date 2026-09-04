@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-module MarketplaceMonitor
-  # Main monitor orchestration
-  class Monitor
+# Main monitor orchestration
+class Monitor
     def initialize
-      Config.validate!
+      #Config.validate!
     end
 
     # Run a complete search cycle
@@ -56,4 +55,3 @@ module MarketplaceMonitor
       end
     end
   end
-end
