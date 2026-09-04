@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 require 'httparty'
-require_relative '../../lib/api_client'
+require_relative '../../lib/socia_vault_client'
 
-RSpec.describe ApiClient do
+RSpec.describe SociaVaultClient do
   describe '.search' do
     let(:search_params) do
       {
