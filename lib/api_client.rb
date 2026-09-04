@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # SociaVault API client for Facebook Marketplace searches
-class APIClient
+class ApiClient
   class << self
     # Search Facebook Marketplace
     # @param query [String] Search keyword

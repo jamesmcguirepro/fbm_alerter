@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require_relative '../lib/email_service'
+require_relative '../lib/ib/email_service'
 
 RSpec.describe EmailService do
   describe '.configure_smtp' do

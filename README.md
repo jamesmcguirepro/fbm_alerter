@@ -72,7 +72,7 @@ SCHEDULE_INTERVAL=30m
 ### 4. Initialize the Database
 
 ```bash
-ruby marketplace_monitor.rb init
+ruby main.rb init
 ```
 
 This creates `marketplace_monitor.db` to track listings and alert history.
@@ -163,7 +163,7 @@ Or find coordinates online:
 Execute a single search cycle:
 
 ```bash
-ruby marketplace_monitor.rb run
+ruby main.rb run
 ```
 
 This will:
@@ -177,7 +177,7 @@ This will:
 Start a long-running process that searches at regular intervals:
 
 ```bash
-ruby marketplace_monitor.rb daemon
+ruby main.rb daemon
 ```
 
 The interval is controlled by `SCHEDULE_INTERVAL` in `.env` (default: 30m).
@@ -196,19 +196,19 @@ crontab -e
 Add a line to run every 30 minutes:
 
 ```bash
-*/30 * * * * cd /path/to/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+*/30 * * * * cd /path/to/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 Or every hour:
 
 ```bash
-0 * * * * cd /path/to/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 * * * * cd /path/to/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 ### Initialize Database
 
 ```bash
-ruby marketplace_monitor.rb init
+ruby main.rb init
 ```
 
 Creates the SQLite database and tables.
@@ -287,7 +287,7 @@ nano .env
 Redirect output to a log file:
 
 ```bash
-ruby marketplace_monitor.rb run >> marketplace_monitor.log 2>&1
+ruby main.rb run >> marketplace_monitor.log 2>&1
 ```
 
 ### System Log (Linux/Mac)
@@ -295,7 +295,7 @@ ruby marketplace_monitor.rb run >> marketplace_monitor.log 2>&1
 With cron logging:
 
 ```bash
-0 */2 * * * cd /path/to/app && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 */2 * * * cd /path/to/app && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 View logs:
@@ -308,10 +308,10 @@ tail -f /var/log/marketplace_monitor.log
 
 ```bash
 # Run as daemon in background
-nohup ruby marketplace_monitor.rb daemon > marketplace_monitor.log 2>&1 &
+nohup ruby main.rb daemon > marketplace_monitor.log 2>&1 &
 
 # Get process ID
-ps aux | grep marketplace_monitor.rb
+ps aux | grep main.rb
 
 # Stop the daemon
 kill <process_id>

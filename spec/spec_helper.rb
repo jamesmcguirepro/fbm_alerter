@@ -2,7 +2,11 @@
 
 require 'rspec'
 require 'dotenv/load'
-require_relative '../marketplace_monitor'
+require_relative '../main'
+
+ENV['RUBY_ENV'] = 'test'
+
+ActiveRecord::Base.connection_pool.migration_context.migrate
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -11,12 +15,6 @@ RSpec.configure do |config|
 
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
-  end
-
-  # Clean up test database after each test
-  config.after(:each) do
-    test_db = 'test_marketplace_monitor.db'
-    File.delete(test_db) if File.exist?(test_db)
   end
 end
 

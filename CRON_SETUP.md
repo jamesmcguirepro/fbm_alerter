@@ -36,43 +36,43 @@ Here are common scheduling patterns. Pick one and add it to your crontab:
 #### Every 30 Minutes
 
 ```bash
-*/30 * * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+*/30 * * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Every Hour
 
 ```bash
-0 * * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 * * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Every 2 Hours
 
 ```bash
-0 */2 * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 */2 * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Every 6 Hours
 
 ```bash
-0 */6 * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 */6 * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Every Day at 9 AM
 
 ```bash
-0 9 * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 9 * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Multiple Times Daily (6 AM, 12 PM, 6 PM, 12 AM)
 
 ```bash
-0 6,12,18,0 * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 6,12,18,0 * * * cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 #### Every Weekday at 8 AM and 5 PM (Mon-Fri)
 
 ```bash
-0 8,17 * * 1-5 cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+0 8,17 * * 1-5 cd /home/username/marketplace_monitor && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 ### 4. Save and Exit
@@ -191,15 +191,15 @@ tail -50 /var/log/marketplace_monitor.log
 
 4. **Check permissions:**
    ```bash
-   ls -la marketplace_monitor.rb
-   chmod +x marketplace_monitor.rb
+   ls -la main.rb
+   chmod +x main.rb
    ```
 
 ### Command Not Found Error
 
 - Specify full path to ruby:
   ```bash
-  /usr/bin/ruby /home/username/marketplace_monitor/marketplace_monitor.rb run
+  /usr/bin/ruby /home/username/marketplace_monitor/main.rb run
   ```
 
 - Find ruby path:
@@ -212,7 +212,7 @@ tail -50 /var/log/marketplace_monitor.log
 Make sure the script is executable:
 
 ```bash
-chmod +x marketplace_monitor.rb
+chmod +x main.rb
 ```
 
 ### Environment Variables Not Loaded
@@ -220,7 +220,7 @@ chmod +x marketplace_monitor.rb
 If your `.env` isn't being read, explicitly source it:
 
 ```bash
-*/30 * * * * cd /home/username/marketplace_monitor && export $(cat .env | xargs) && ruby marketplace_monitor.rb run >> /var/log/marketplace_monitor.log 2>&1
+*/30 * * * * cd /home/username/marketplace_monitor && export $(cat .env | xargs) && ruby main.rb run >> /var/log/marketplace_monitor.log 2>&1
 ```
 
 Or use a wrapper script:
@@ -230,7 +230,7 @@ Create `run.sh`:
 #!/bin/bash
 cd /home/username/marketplace_monitor
 source .env
-ruby marketplace_monitor.rb run
+ruby main.rb run
 ```
 
 Then in crontab:
@@ -278,7 +278,7 @@ Create separate cron jobs for different searches by creating wrapper scripts:
 #!/bin/bash
 cd /path/to/app
 export $(cat .env | xargs)
-ruby marketplace_monitor.rb run  # This uses SEARCHES from .env
+ruby main.rb run  # This uses SEARCHES from .env
 ```
 
 Then:
@@ -288,7 +288,7 @@ Then:
 
 Or modify the app to support different .env files:
 ```bash
-SEARCHES_FILE=.env.cars ruby marketplace_monitor.rb run
+SEARCHES_FILE=.env.cars ruby main.rb run
 ```
 
 ## Testing Your Cron Setup
@@ -298,7 +298,7 @@ SEARCHES_FILE=.env.cars ruby marketplace_monitor.rb run
 Run the command manually to verify it works:
 
 ```bash
-cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run
+cd /home/username/marketplace_monitor && ruby main.rb run
 ```
 
 ### Run with Cron Environment
@@ -306,7 +306,7 @@ cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run
 Simulate cron's minimal environment:
 
 ```bash
-env -i HOME=$HOME /bin/sh -c 'cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run'
+env -i HOME=$HOME /bin/sh -c 'cd /home/username/marketplace_monitor && ruby main.rb run'
 ```
 
 ### Check Cron Daemon
@@ -329,7 +329,7 @@ Edit crontab and comment out or delete the line:
 ```bash
 crontab -e
 # Comment out:
-# */30 * * * * cd /home/username/marketplace_monitor && ruby marketplace_monitor.rb run
+# */30 * * * * cd /home/username/marketplace_monitor && ruby main.rb run
 ```
 
 Save and exit.
