@@ -1,3 +1,18 @@
+# == Schema Information
+#
+# Table name: listings
+#
+#  id            :integer          not null, primary key
+#  title         :string           not null
+#  price         :float
+#  location      :string
+#  url           :string
+#  image_url     :string
+#  search_query  :string
+#  first_seen_at :datetime
+#  last_seen_at  :datetime
+#  is_sold       :boolean
+#
 class Listing < ActiveRecord::Base
   validates :title, presence: true
 
