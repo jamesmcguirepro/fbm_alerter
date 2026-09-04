@@ -8,4 +8,8 @@
 #
 class Alert < ActiveRecord::Base
   has_one :listing
+
+  def self.record_alert(listing_id:)
+    self.create!(listing_id:, sent_at: Time.now)
+  end
 end

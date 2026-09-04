@@ -1,3 +1,11 @@
+# == Schema Information
+#
+# Table name: alerts
+#
+#  id         :integer          not null, primary key
+#  listing_id :integer
+#  sent_at    :datetime
+#
 require 'spec_helper'
 require_relative '../../models/alert'
 
@@ -27,6 +35,26 @@ RSpec.describe Alert do
     it 'only has one' do
       call
       expect(Listing.count).to eq 1
+    end
+  end
+
+  describe '.record_alert' do
+    let(:listing) { Listing.create(title: 'test') }
+
+    before do
+      freeze_time
+    end
+
+    after { Listing.last.destroy }
+
+    let(:call) { model.record_alert(listing_id: listing.id) }
+
+    it 'records the alert' do
+      expect(call).to change { Alert.count }.by(1)
+    end
+
+    it 'uses the current timestamp' do
+      expect(call.sent_at).to eq Time.now
     end
   end
 end

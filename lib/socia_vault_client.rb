@@ -14,12 +14,12 @@ class SociaVaultClient
     # @param delivery_method [String] Delivery method (all, local_pickup, shipping)
     # @param count [Integer] Number of results to return
     # @return [Hash] API response containing listings
-    def search(query:, lat:, lng:, min_price: nil, max_price: nil,
+    def search(query:, lat:, long:, min_price: nil, max_price: nil,
                radius_km: 65, condition: nil, delivery_method: nil, count: 24)
       params = build_params(
         query:,
         lat:,
-        lng:,
+        long:,
         min_price:,
         max_price:,
         radius_km:,
@@ -38,13 +38,15 @@ class SociaVaultClient
       handle_response(response)
     end
 
+    private
+
     # Build request parameters
-    def build_params(query:, lat:, lng:, min_price: nil, max_price: nil,
+    def build_params(query:, lat:, long:, min_price: nil, max_price: nil,
                      radius_km: 65, condition: nil, delivery_method: nil, count: 24)
       params = {
         query:,
         lat:,
-        lng:,
+        lng: long,
         radius_km:,
         count:,
         sort_by: 'creation_time_descend'

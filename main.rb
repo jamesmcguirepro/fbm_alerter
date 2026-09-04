@@ -19,3 +19,7 @@ ENV['RUBY_ENV'] ||= 'development'
 VERSION = '1.0.0'
 
 Database.connect
+
+monitor = Monitor.new
+
+monitor.run_search

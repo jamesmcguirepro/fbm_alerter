@@ -13,6 +13,8 @@ gem 'whenever', '~> 1.0.0'        # Cron scheduling helper (optional)
 gem 'zeitwerk', '~> 2.6.0'
 
 group :development, :test do
+  # Gemfile
+  #gem 'annotate', '~> 3.2'
   gem 'rspec', '~> 3.13.0'        # Testing framework
 end
 
