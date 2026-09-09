@@ -5,20 +5,6 @@ require 'mail'
 # Email service for sending alert notifications
 class EmailService
   class << self
-    # Configure SMTP settings
-    def configure_smtp
-      Mail.defaults do
-        delivery_method :smtp, {
-          address: Config.smtp_address,
-          port: Config.smtp_port,
-          user_name: Config.smtp_username,
-          password: Config.smtp_password,
-          authentication: 'plain',
-          enable_starttls_auto: true
-        }
-      end
-    end
-
     # Send alert emails for new listings
     # @param listings [Array<Hash>] Array of listing hashes from database
     def send_alerts(listings)
@@ -35,6 +21,20 @@ class EmailService
     end
 
     private
+
+    # Configure SMTP settings
+    def configure_smtp
+      Mail.defaults do
+        delivery_method :smtp, {
+          address: Config.smtp_address,
+          port: Config.smtp_port,
+          user_name: Config.smtp_username,
+          password: Config.smtp_password,
+          authentication: 'plain',
+          enable_starttls_auto: true
+        }
+      end
+    end
 
     # Send email to a single recipient
     def send_to_recipient(recipient, subject, html_body)
