@@ -1,27 +1,14 @@
-# == Schema Information
-#
-# Table name: listings
-#
-#  id            :integer          not null, primary key
-#  title         :string           not null
-#  price         :float
-#  location      :string
-#  url           :string
-#  image_url     :string
-#  search_query  :string
-#  first_seen_at :datetime
-#  last_seen_at  :datetime
-#  is_sold       :boolean
-#
+# frozen_string_literal: true
+
 require 'spec_helper'
 require_relative '../../models/listing'
 
 RSpec.describe Listing do
   subject(:model) { Listing }
 
-  before do
-    Listing.delete_all
-  end
+  # before do
+  #   Listing.delete_all
+  # end
 
   describe '.create' do
     let(:call) do
@@ -30,7 +17,6 @@ RSpec.describe Listing do
       )
     end
     it 'creates a listing' do
-
       expect(call.title).to eq 'test'
     end
 

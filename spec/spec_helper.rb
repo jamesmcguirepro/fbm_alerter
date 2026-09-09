@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
-require 'rspec'
+require 'database_cleaner/active_record'
 require 'dotenv/load'
+require 'rspec'
+require 'timecop'
 require_relative '../main'
 
 ENV['RUBY_ENV'] = 'test'
@@ -15,6 +17,19 @@ RSpec.configure do |config|
 
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
+  end
+
+  config.before(:suite) do
+    DatabaseCleaner.strategy = :transaction
+    DatabaseCleaner.clean_with(:truncation)
+  end
+
+  config.before(:each) do
+    DatabaseCleaner.start
+  end
+
+  config.after(:each) do
+    DatabaseCleaner.clean
   end
 end
 

@@ -13,6 +13,7 @@ require_relative 'lib/database'
 require_relative 'lib/socia_vault_client'
 require_relative 'lib/email_service'
 require_relative 'lib/monitor'
+require_relative 'models/alert'
 require_relative 'models/listing'
 
 ENV['RUBY_ENV'] ||= 'development'

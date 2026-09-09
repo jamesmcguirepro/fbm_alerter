@@ -1,30 +1,19 @@
-# == Schema Information
-#
-# Table name: alerts
-#
-#  id         :integer          not null, primary key
-#  listing_id :integer
-#  sent_at    :datetime
-#
+# frozen_string_literal: true
+
 require 'spec_helper'
 require_relative '../../models/alert'
 
 RSpec.describe Alert do
   subject(:model) { Alert }
 
-  before do
-    Alert.delete_all
-  end
-
   describe '.create' do
-    let(:now) { Time.now}
+    let(:now) { Time.now }
     let(:call) do
       model.create(
         sent_at: now
       )
     end
     it 'creates an alert record' do
-
       expect(call.sent_at).to eq now
     end
 
@@ -34,7 +23,7 @@ RSpec.describe Alert do
 
     it 'only has one' do
       call
-      expect(Listing.count).to eq 1
+      expect(Alert.count).to eq 1
     end
   end
 
@@ -42,15 +31,17 @@ RSpec.describe Alert do
     let(:listing) { Listing.create(title: 'test') }
 
     before do
-      freeze_time
+      Timecop.freeze(Time.local(2026))
     end
 
-    after { Listing.last.destroy }
+    after do
+      Timecop.return
+    end
 
     let(:call) { model.record_alert(listing_id: listing.id) }
 
     it 'records the alert' do
-      expect(call).to change { Alert.count }.by(1)
+      expect { call }.to change { Alert.count }.by(1)
     end
 
     it 'uses the current timestamp' do
