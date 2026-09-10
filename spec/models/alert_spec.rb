@@ -3,7 +3,7 @@
 require 'spec_helper'
 require_relative '../../models/alert'
 
-RSpec.describe Alert do
+RSpec.describe Alert, type: :model do
   subject(:model) { Alert }
 
   describe '.create' do
@@ -28,7 +28,7 @@ RSpec.describe Alert do
   end
 
   describe '.record_alert' do
-    let(:listing) { Listing.create(title: 'test') }
+    let(:listing) { Listing.create(title: 'test', listing_id: '123') }
 
     before do
       Timecop.freeze(Time.local(2026))

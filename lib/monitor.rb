@@ -32,7 +32,7 @@ class Monitor
         puts "  Found #{listings.length} listing(s)"
 
         listings.each do |listing|
-          Database.add_listing(listing, search[:query])
+          Listing.add_listing(listing, search[:query])
         end
       else
         puts '  No listings found or unexpected response format'

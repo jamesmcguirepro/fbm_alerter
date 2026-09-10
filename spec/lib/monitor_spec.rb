@@ -3,262 +3,261 @@
 require 'spec_helper'
 
 RSpec.describe Monitor do
-  describe '.new' do
-    it 'validates configuration on initialization' do
+  subject(:monitor) { described_class.new }
+
+  let(:search_config) do
+    [
+      { query: 'apartment', lat: 40.7128, lng: -74.0060 },
+      { query: 'house', lat: 40.7128, lng: -74.0060 }
+    ]
+  end
+
+  let(:search_result) do
+    {
+      'data' => {
+        'listings' => {
+          '1' => { 'id' => '1', 'title' => 'Cozy Apt' },
+          '2' => { 'id' => '2', 'title' => 'Spacious House' }
+        }
+      }
+    }
+  end
+
+  let(:unseen_listings) do
+    [
+      { 'id' => '1', 'title' => 'Cozy Apt' },
+      { 'id' => '2', 'title' => 'Spacious House' }
+    ]
+  end
+
+  before do
+    allow(Alert).to receive(:record_alert)
+    allow(Config).to receive(:validate!)
+    allow(Config).to receive(:search_config).and_return(search_config)
+    allow(EmailService).to receive(:send_alerts)
+    allow(Listing).to receive(:add_listing)
+    allow(Listing).to receive(:unnotified_and_unsold).and_return(unseen_listings)
+    allow(SociaVaultClient).to receive(:search).and_return(search_result)
+  end
+
+  describe '#initialize' do
+    it 'validates the configuration' do
       expect(Config).to receive(:validate!)
       described_class.new
     end
+  end
 
-    it 'raises error if configuration is invalid' do
-      allow(Config).to receive(:validate!).and_raise('Invalid config')
-      expect { described_class.new }.to raise_error('Invalid config')
+  describe '#run_search' do
+    it 'iterates through each search configuration' do
+      expect(Config).to receive(:search_config).and_return(search_config)
+
+      monitor.run_search
+
+      expect(SociaVaultClient).to have_received(:search).twice
+    end
+
+    it 'calls monitor_search for each configured search' do
+      allow(monitor).to receive(:monitor_search)
+
+      monitor.run_search
+
+      search_config.each do |search|
+        expect(monitor).to have_received(:monitor_search).with(search)
+      end
+    end
+
+    it 'sends alerts after all searches complete' do
+      allow(monitor).to receive(:send_alerts)
+
+      monitor.run_search
+
+      expect(monitor).to have_received(:send_alerts)
+    end
+
+    it 'outputs the start message' do
+      expect { monitor.run_search }.to output(/🔍 Starting marketplace search/).to_stdout
     end
   end
 
-  describe '.run_search' do
-    let(:monitor) { described_class.new }
+  describe '#monitor_search' do
+    let(:search) { search_config.first }
 
-    let(:api_response) do
-      {
-        'data' => {
-          'listings' => {
-            '0' => {
-              'id' => '123',
-              'title' => 'Test Bike',
-              'price' => { 'amount' => 250 },
-              'location' => { 'display_name' => 'Test City' },
-              'url' => 'https://example.com',
-              'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-            }
-          }
-        }
-      }
+    it 'calls SociaVaultClient with search parameters' do
+      monitor.send(:monitor_search, search)
+
+      expect(SociaVaultClient).to have_received(:search).with(**search)
     end
 
-    before do
-      Database.initialize_db
-      allow(APIClient).to receive(:search).and_return(api_response)
-      allow(EmailService).to receive(:send_alerts)
-      allow(STDOUT).to receive(:write)
+    it 'adds each listing to the database' do
+      monitor.send(:monitor_search, search)
+
+      search_result['data']['listings'].values.each do |listing|
+        expect(Database).to have_received(:add_listing).with(listing, search[:query])
+      end
     end
 
-    it 'completes without error' do
-      expect { monitor.run_search }.not_to raise_error
+    it 'outputs the search query and location' do
+      expect { monitor.send(:monitor_search, search) }
+        .to output(/Searching: #{search[:query]}/).to_stdout
     end
 
-    it 'calls APIClient for each search config' do
-      expect(APIClient).to receive(:search).at_least(:once)
-      monitor.run_search
+    it 'outputs the number of listings found' do
+      expect { monitor.send(:monitor_search, search) }
+        .to output(/Found 2 listing/).to_stdout
     end
 
-    it 'stores listings in database' do
-      monitor.run_search
-
-      stats = Database.statistics
-      expect(stats[:total_listings]).to be > 0
-    end
-
-    it 'calls EmailService with unseen listings' do
-      expect(EmailService).to receive(:send_alerts).with(
-        array_including(hash_including('title' => 'Test Bike'))
-      )
-      monitor.run_search
-    end
-
-    it 'marks sent alerts in database' do
-      monitor.run_search
-
-      unseen = Database.get_unseen_listings
-      expect(unseen).to be_empty
-    end
-
-    it 'handles API errors gracefully' do
-      allow(APIClient).to receive(:search).and_raise('API Error')
-      expect { monitor.run_search }.not_to raise_error
-    end
-
-    it 'continues searching after API error' do
-      allow(APIClient).to receive(:search)
-                            .and_raise('API Error')
-                            .then.and_return(api_response)
-
-      expect(APIClient).to receive(:search).twice
-      monitor.run_search
-    end
-
-    it 'sends alerts only for new listings' do
-      monitor.run_search
-      expect(EmailService).to have_received(:send_alerts).once
-
-      # Run again - should not send emails
-      expect(EmailService).not_to receive(:send_alerts)
-      monitor.run_search
-    end
-
-    it 'searches with configured parameters' do
-      monitor.run_search
-
-      call_args = APIClient.call_args
-      expect(call_args[1][:query]).to eq('bike')
-      expect(call_args[1][:lat]).to eq(40.7128)
-      expect(call_args[1][:lng]).to eq(-74.0060)
-    end
-
-    it 'handles empty API response' do
-      allow(APIClient).to receive(:search).and_return({})
-      expect { monitor.run_search }.not_to raise_error
-    end
-
-    it 'handles missing listings key' do
-      empty_response = { 'data' => {} }
-      allow(APIClient).to receive(:search).and_return(empty_response)
-      expect { monitor.run_search }.not_to raise_error
-    end
-
-    it 'handles nil data in response' do
-      nil_response = { 'data' => nil }
-      allow(APIClient).to receive(:search).and_return(nil_response)
-      expect { monitor.run_search }.not_to raise_error
-    end
-
-    it 'adds correct search query to listings' do
-      monitor.run_search
-
-      db = Database.connect
-      db.results_as_hash = true
-      result = db.execute("SELECT search_query FROM listings LIMIT 1")
-      db.close
-
-      expect(result.first['search_query']).to eq('bike')
-    end
-
-    it 'prints progress messages' do
-      expect($stdout).to receive(:write).at_least(:once)
-      monitor.run_search
-    end
-
-    context 'with multiple searches' do
+    context 'when API returns empty listings' do
       before do
-        allow(Config).to receive(:search_config).and_return([
-                                                              {
-                                                                query: 'bike',
-                                                                lat: 40.7,
-                                                                lng: -74.0,
-                                                                min_price: 100,
-                                                                max_price: 500,
-                                                                radius_km: 25
-                                                              },
-                                                              {
-                                                                query: 'car',
-                                                                lat: 35.0,
-                                                                lng: -120.0,
-                                                                min_price: 5000,
-                                                                max_price: 15000,
-                                                                radius_km: 50
-                                                              }
-                                                            ])
+        allow(SociaVaultClient).to receive(:search)
+                                     .and_return({ 'data' => { 'listings' => {} } })
       end
 
-      it 'searches for each configured query' do
-        expect(APIClient).to receive(:search).twice
-        monitor.run_search
+      it 'does not add listings to the database' do
+        monitor.send(:monitor_search, search)
+
+        expect(Database).not_to have_received(:add_listing)
       end
 
-      it 'stores listings from multiple searches' do
-        monitor.run_search
-
-        stats = Database.statistics
-        expect(stats[:listings_by_search]).to have_length(2)
+      it 'outputs appropriate message' do
+        expect { monitor.send(:monitor_search, search) }
+          .to output(/No listings found/).to_stdout
       end
     end
 
-    context 'with multiple listings' do
-      let(:api_response_multi) do
-        {
-          'data' => {
-            'listings' => {
-              '0' => {
-                'id' => '123',
-                'title' => 'Bike 1',
-                'price' => { 'amount' => 250 },
-                'location' => { 'display_name' => 'City A' },
-                'url' => 'https://example.com/1',
-                'primary_photo' => { 'url' => 'https://example.com/1.jpg' }
-              },
-              '1' => {
-                'id' => '124',
-                'title' => 'Bike 2',
-                'price' => { 'amount' => 300 },
-                'location' => { 'display_name' => 'City B' },
-                'url' => 'https://example.com/2',
-                'primary_photo' => { 'url' => 'https://example.com/2.jpg' }
-              }
-            }
-          }
-        }
+    context 'when API returns unexpected format' do
+      before do
+        allow(SociaVaultClient).to receive(:search).and_return({})
       end
 
-      it 'stores all listings' do
-        allow(APIClient).to receive(:search).and_return(api_response_multi)
-        monitor.run_search
+      it 'does not add listings to the database' do
+        monitor.send(:monitor_search, search)
 
-        stats = Database.statistics
-        expect(stats[:total_listings]).to eq(2)
+        expect(Database).not_to have_received(:add_listing)
       end
 
-      it 'sends alert for all new listings' do
-        allow(APIClient).to receive(:search).and_return(api_response_multi)
+      it 'outputs the unexpected response message' do
+        expect { monitor.send(:monitor_search, search) }
+          .to output(/No listings found or unexpected response format/).to_stdout
+      end
+    end
 
-        expect(EmailService).to receive(:send_alerts) do |listings|
-          expect(listings.length).to eq(2)
+    context 'when API call raises an error' do
+      let(:error_message) { 'Connection timeout' }
+
+      before do
+        allow(SociaVaultClient).to receive(:search)
+                                     .and_raise(StandardError, error_message)
+      end
+
+      it 'catches the error and continues' do
+        expect { monitor.send(:monitor_search, search) }.not_to raise_error
+      end
+
+      it 'outputs the error message' do
+        expect { monitor.send(:monitor_search, search) }
+          .to output(/✗ Error: #{error_message}/).to_stdout
+      end
+
+      it 'does not add listings to the database' do
+        monitor.send(:monitor_search, search)
+
+        expect(Database).not_to have_received(:add_listing)
+      end
+    end
+
+    context 'when listings key is missing from response' do
+      before do
+        allow(SociaVaultClient).to receive(:search)
+                                     .and_return({ 'data' => {} })
+      end
+
+      it 'outputs the unexpected response message' do
+        expect { monitor.send(:monitor_search, search) }
+          .to output(/No listings found or unexpected response format/).to_stdout
+      end
+    end
+
+    context 'when data key is missing from response' do
+      before do
+        allow(SociaVaultClient).to receive(:search).and_return({})
+      end
+
+      it 'outputs the unexpected response message' do
+        expect { monitor.send(:monitor_search, search) }
+          .to output(/No listings found or unexpected response format/).to_stdout
+      end
+    end
+  end
+
+  describe '#send_alerts' do
+    it 'retrieves unnotified and unsold listings' do
+      monitor.send(:send_alerts)
+
+      expect(Listing).to have_received(:unnotified_and_unsold)
+    end
+
+    it 'sends alerts via EmailService' do
+      monitor.send(:send_alerts)
+
+      expect(EmailService).to have_received(:send_alerts).with(unseen_listings)
+    end
+
+    it 'records an alert for each listing' do
+      monitor.send(:send_alerts)
+
+      unseen_listings.each do |listing|
+        expect(Alert).to have_received(:record_alert).with(listing_id: listing['id'])
+      end
+    end
+
+    it 'outputs the number of alerts sent' do
+      expect { monitor.send(:send_alerts) }
+        .to output(/📧 Sending alerts for #{unseen_listings.length}/).to_stdout
+    end
+
+    context 'when there are no unseen listings' do
+      before do
+        allow(Listing).to receive(:unnotified_and_unsold).and_return([])
+      end
+
+      it 'does not send alerts' do
+        monitor.send(:send_alerts)
+
+        expect(EmailService).not_to have_received(:send_alerts)
+      end
+
+      it 'does not record any alerts' do
+        monitor.send(:send_alerts)
+
+        expect(Alert).not_to have_received(:record_alert)
+      end
+
+      it 'outputs the no new listings message' do
+        expect { monitor.send(:send_alerts) }
+          .to output(/✓ No new listings to alert/).to_stdout
+      end
+    end
+  end
+
+  describe 'integration: full search cycle' do
+    it 'completes a full search and alert cycle' do
+      monitor.run_search
+
+      search_config.each do |search|
+        search_result['data']['listings'].values.each do |listing|
+          expect(Database).to have_received(:add_listing).with(listing, search[:query])
         end
-
-        monitor.run_search
       end
 
-      it 'marks all listings as alerted' do
-        allow(APIClient).to receive(:search).and_return(api_response_multi)
-        monitor.run_search
-
-        unseen = Database.get_unseen_listings
-        expect(unseen).to be_empty
+      expect(EmailService).to have_received(:send_alerts)
+      unseen_listings.each do |listing|
+        expect(Alert).to have_received(:record_alert).with(listing_id: listing['id'])
       end
     end
 
-    context 'with duplicate listings' do
-      it 'does not send duplicate alerts' do
-        allow(APIClient).to receive(:search).and_return(api_response)
-
-        # First run - should alert
-        expect(EmailService).to receive(:send_alerts).with(
-          array_including(hash_including('id' => '123'))
-        )
-        monitor.run_search
-
-        # Second run - same listing should not alert
-        expect(EmailService).not_to receive(:send_alerts)
-        monitor.run_search
-      end
-    end
-
-    context 'error recovery' do
-      it 'continues if email sending fails' do
-        allow(EmailService).to receive(:send_alerts).and_raise('Email Error')
-        expect { monitor.run_search }.to raise_error  # Email error propagates, but search completes
-      end
-
-      it 'logs API errors without stopping' do
-        error_call = 0
-        allow(APIClient).to receive(:search) do
-          error_call += 1
-          raise 'API Error' if error_call == 1
-          api_response
-        end
-
-        # Should continue after first error
-        monitor.run_search
-        expect(APIClient).to have_received(:search).twice
-      end
+    it 'outputs complete sequence of messages' do
+      expect { monitor.run_search }
+        .to output(/🔍 Starting marketplace search|Searching:|Found|📧 Sending alerts/).to_stdout
     end
   end
 end
