@@ -10,7 +10,7 @@ RSpec.describe SociaVaultClient do
       {
         query: 'bike',
         lat: 40.7128,
-        lng: -74.0060,
+        long: -74.0060,
         min_price: 100,
         max_price: 500
       }
@@ -188,7 +188,7 @@ RSpec.describe SociaVaultClient do
   end
 
   describe 'error handling' do
-    let(:search_params) { { query: 'test', lat: 40.0, lng: -74.0 } }
+    let(:search_params) { { query: 'test', lat: 40.0, long: -74.0 } }
 
     it 'raises error for unknown status code' do
       unknown_response = double(code: 999, parsed_response: { 'error' => 'Unknown error' }, success?: false)

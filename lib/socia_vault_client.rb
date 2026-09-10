@@ -6,7 +6,7 @@ class SociaVaultClient
     # Search Facebook Marketplace
     # @param query [String] Search keyword
     # @param lat [Float] Latitude
-    # @param lng [Float] Longitude
+    # @param long [Float] Longitude
     # @param min_price [Integer] Minimum price
     # @param max_price [Integer] Maximum price
     # @param radius_km [Integer] Search radius in kilometers
@@ -73,7 +73,7 @@ class SociaVaultClient
         raise "Insufficient Credits: Required #{response.parsed_response['required']}, " \
               "Available #{response.parsed_response['available']}"
       when 500
-        raise "Server Error: #{response.parsed_response['error']}"
+        raise "500 Server Error: #{response.parsed_response['error']}"
       else
         raise "API Error (#{response.code}): #{response.parsed_response['error'] || response.body}"
       end
