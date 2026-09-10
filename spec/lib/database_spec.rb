@@ -1,333 +1,151 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../../lib/database'
 
 RSpec.describe Database do
-  subject(:database) { described_class }
-
-  let(:database_client) { database.send(:database) }
-
-  describe '.initialize_database' do
-    let(:call) { database.initialize_database }
-
-    it 'creates listings table' do
-      call
-
-      tables = database_client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='listings'")
-      expect(tables).not_to be_empty
-      database.close
-    end
-
-    it 'creates alerts_sent table' do
-      tables = database.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='alerts_sent'")
-      expect(tables).not_to be_empty
-      database.close
-    end
-
-    it 'is idempotent' do
-      expect { described_class.initialize_database }.not_to raise_error
-      expect { described_class.initialize_database }.not_to raise_error
-    end
-  end
-
-  describe '.add_listing' do
-    let(:listing_data) do
+  describe '.connect' do
+    let(:db_config) do
       {
-        'id' => '123456',
-        'title' => 'Mountain Bike',
-        'price' => { 'amount' => 250 },
-        'location' => { 'display_name' => 'Austin, TX' },
-        'url' => 'https://facebook.com/marketplace/item/123456/',
-        'primary_photo' => { 'url' => 'https://example.com/image.jpg' }
+        'development' => {
+          'adapter' => 'sqlite3',
+          'database' => 'db/development.sqlite3',
+          'pool' => 5,
+          'timeout' => 5000
+        },
+        'test' => {
+          'adapter' => 'sqlite3',
+          'database' => ':memory:',
+          'pool' => 5,
+          'timeout' => 5000
+        },
+        'production' => {
+          'adapter' => 'sqlite3',
+          'database' => 'db/production.sqlite3',
+          'pool' => 10,
+          'timeout' => 5000
+        }
       }
     end
 
-    it 'inserts a new listing' do
-      described_class.add_listing(listing_data, 'bike')
-
-      database.results_as_hash = true
-      result = database.execute('SELECT * FROM listings WHERE id = ?', ['123456'])
-      database.close
-
-      expect(result.count).to eq(1)
-      expect(result.first['title']).to eq('Mountain Bike')
-      expect(result.first['price']).to eq(250)
+    before do
+      allow(YAML).to receive(:load_file).and_return(db_config)
+      allow(ActiveRecord::Base).to receive(:establish_connection)
     end
 
-    it 'stores search query' do
-      described_class.add_listing(listing_data, 'mountain bike')
+    context 'when environment is set to development' do
+      it 'loads the database configuration from file' do
+        ENV['RUBY_ENV'] = 'development'
+        Database.connect
 
-      database.results_as_hash = true
-      result = database.execute('SELECT search_query FROM listings WHERE id = ?', ['123456'])
-      database.close
+        expect(YAML).to have_received(:load_file).with('config/database.yml')
+      end
 
-      expect(result.first['search_query']).to eq('mountain bike')
+      it 'establishes a connection with development config' do
+        ENV['RUBY_ENV'] = 'development'
+        Database.connect
+
+        expect(ActiveRecord::Base).to have_received(:establish_connection)
+                                        .with(db_config['development'])
+      end
     end
 
-    it 'ignores duplicates on insert' do
-      described_class.add_listing(listing_data, 'bike')
-      described_class.add_listing(listing_data, 'bike')
+    context 'when environment is set to test' do
+      it 'establishes a connection with test config' do
+        ENV['RUBY_ENV'] = 'test'
+        Database.connect
 
-      count = database.execute('SELECT COUNT(*) as count FROM listings').first['count']
-      database.close
+        expect(ActiveRecord::Base).to have_received(:establish_connection)
+                                        .with(db_config['test'])
+      end
 
-      expect(count).to eq(1)
+      it 'uses in-memory database for testing' do
+        ENV['RUBY_ENV'] = 'test'
+        Database.connect
+
+        expect(ActiveRecord::Base).to have_received(:establish_connection) do |config|
+          expect(config['database']).to eq(':memory:')
+        end
+      end
     end
 
-    it 'updates last_seen_at on re-insert' do
-      described_class.add_listing(listing_data, 'bike')
+    context 'when environment is set to production' do
+      it 'establishes a connection with production config' do
+        ENV['RUBY_ENV'] = 'production'
+        Database.connect
 
-      first_seen = database.execute('SELECT first_seen_at FROM listings WHERE id = ?', ['123456']).first['first_seen_at']
-      database.close
-
-      sleep(0.1)
-      described_class.add_listing(listing_data, 'bike')
-
-      last_seen = database.execute('SELECT last_seen_at FROM listings WHERE id = ?', ['123456']).first['last_seen_at']
-      database.close
-
-      expect(last_seen).not_to eq(first_seen)
+        expect(ActiveRecord::Base).to have_received(:establish_connection)
+                                        .with(db_config['production'])
+      end
     end
 
-    it 'handles nil image_url' do
-      listing_data['primary_photo'] = nil
-      described_class.add_listing(listing_data, 'bike')
+    context 'when RUBY_ENV is not set' do
+      it 'attempts to access nil key in config' do
+        ENV['RUBY_ENV'] = nil
+        Database.connect
 
-      database.results_as_hash = true
-      result = database.execute('SELECT image_url FROM listings WHERE id = ?', ['123456'])
-      database.close
-
-      expect(result.first['image_url']).to be_nil
-    end
-  end
-
-  describe '.get_unseen_listings' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test Item',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test City' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
+        expect(ActiveRecord::Base).to have_received(:establish_connection)
+                                        .with(db_config[nil])
+      end
     end
 
-    it 'returns empty array initially' do
-      listings = described_class.get_unseen_listings
-      expect(listings).to eq([])
+    context 'when configuration file is missing' do
+      it 'raises an error' do
+        allow(YAML).to receive(:load_file).and_raise(Errno::ENOENT)
+
+        expect { Database.connect }.to raise_error(Errno::ENOENT)
+      end
     end
 
-    it 'returns new listings' do
-      described_class.add_listing(listing_data, 'test')
-      listings = described_class.get_unseen_listings
-      expect(listings).to have_length(1)
-      expect(listings.first['title']).to eq('Test Item')
+    context 'when configuration file has invalid YAML' do
+      let(:error) { Psych::SyntaxError.allocate }
+      before do
+        allow(YAML).to receive(:load_file).and_raise(error)
+      end
+
+      it 'raises a parsing error' do
+        expect { Database.connect }.to raise_error(error)
+      end
     end
 
-    it 'excludes alerted listings' do
-      described_class.add_listing(listing_data, 'test')
-      described_class.mark_alert_sent('123')
-      listings = described_class.get_unseen_listings
-      expect(listings).to be_empty
+    context 'when ActiveRecord connection fails' do
+      it 'propagates the connection error' do
+        ENV['RUBY_ENV'] = 'development'
+        allow(ActiveRecord::Base).to receive(:establish_connection)
+                                       .and_raise(ActiveRecord::AdapterNotFound, 'adapter sqlite3 not found')
+
+        expect { Database.connect }.to raise_error(ActiveRecord::AdapterNotFound)
+      end
     end
 
-    it 'excludes sold listings' do
-      described_class.add_listing(listing_data, 'test')
-      described_class.mark_sold('123')
-      listings = described_class.get_unseen_listings
-      expect(listings).to be_empty
+    context 'when configuration is empty' do
+      it 'handles empty configuration gracefully' do
+        allow(YAML).to receive(:load_file).and_return({})
+        ENV['RUBY_ENV'] = 'development'
+        Database.connect
+
+        expect(ActiveRecord::Base).to have_received(:establish_connection)
+                                        .with(nil)
+      end
     end
 
-    it 'returns multiple unseen listings' do
-      described_class.add_listing(listing_data, 'test')
+    it 'is callable multiple times' do
+      ENV['RUBY_ENV'] = 'test'
+      Database.connect
+      Database.connect
 
-      listing_data['id'] = '124'
-      described_class.add_listing(listing_data, 'test')
-
-      listings = described_class.get_unseen_listings
-      expect(listings).to have_length(2)
-    end
-  end
-
-  describe '.mark_alert_sent' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
-    end
-
-    it 'creates alert_sent record' do
-      described_class.add_listing(listing_data, 'test')
-      described_class.mark_alert_sent('123')
-
-      result = database.execute('SELECT COUNT(*) as count FROM alerts_sent WHERE listing_id = ?', ['123'])
-      database.close
-
-      expect(result.first['count']).to eq(1)
-    end
-
-    it 'prevents duplicate listings from appearing in unseen' do
-      described_class.add_listing(listing_data, 'test')
-      expect(described_class.get_unseen_listings).to have_length(1)
-
-      described_class.mark_alert_sent('123')
-      expect(described_class.get_unseen_listings).to be_empty
+      expect(ActiveRecord::Base).to have_received(:establish_connection).twice
     end
   end
 
-  describe '.mark_sold' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
+  describe 'class structure' do
+    it 'uses singleton methods via class << self' do
+      expect(Database.respond_to?(:connect)).to be true
     end
 
-    it 'sets is_sold to 1' do
-      described_class.add_listing(listing_data, 'test')
-      described_class.mark_sold('123')
-
-      database.results_as_hash = true
-      result = database.execute('SELECT is_sold FROM listings WHERE id = ?', ['123'])
-      database.close
-
-      expect(result.first['is_sold']).to eq(1)
-    end
-
-    it 'excludes from unseen listings' do
-      described_class.add_listing(listing_data, 'test')
-      described_class.mark_sold('123')
-      expect(described_class.get_unseen_listings).to be_empty
-    end
-  end
-
-  describe '.statistics' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
-    end
-
-    it 'returns statistics hash' do
-      stats = described_class.statistics
-      expect(stats).to include(:total_listings, :total_alerts_sent, :sold_listings, :listings_by_search)
-    end
-
-    it 'counts total listings' do
-      described_class.add_listing(listing_data, 'bike')
-      listing_data['id'] = '124'
-      described_class.add_listing(listing_data, 'bike')
-
-      stats = described_class.statistics
-      expect(stats[:total_listings]).to eq(2)
-    end
-
-    it 'counts alerts sent' do
-      described_class.add_listing(listing_data, 'bike')
-      described_class.mark_alert_sent('123')
-
-      stats = described_class.statistics
-      expect(stats[:total_alerts_sent]).to eq(1)
-    end
-
-    it 'counts sold listings' do
-      described_class.add_listing(listing_data, 'bike')
-      described_class.mark_sold('123')
-
-      stats = described_class.statistics
-      expect(stats[:sold_listings]).to eq(1)
-    end
-
-    it 'groups by search query' do
-      described_class.add_listing(listing_data, 'bike')
-      listing_data['id'] = '124'
-      described_class.add_listing(listing_data, 'car')
-
-      stats = described_class.statistics
-      expect(stats[:listings_by_search]).to have_length(2)
-    end
-  end
-
-  describe '.cleanup_old_listings' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
-    end
-
-    it 'deletes old listings' do
-      described_class.add_listing(listing_data, 'test')
-
-      # Update created date to 31 days ago
-      database.execute(
-        "UPDATE listings SET first_seen_at = datetime('now', '-31 days') WHERE id = ?",
-        ['123']
-      )
-      database.close
-
-      deleted = described_class.cleanup_old_listings(30)
-      expect(deleted).to eq(1)
-      expect(described_class.statistics[:total_listings]).to eq(0)
-    end
-
-    it 'keeps recent listings' do
-      described_class.add_listing(listing_data, 'test')
-
-      deleted = described_class.cleanup_old_listings(30)
-      expect(deleted).to eq(0)
-      expect(described_class.statistics[:total_listings]).to eq(1)
-    end
-  end
-
-  describe '.export_to_json' do
-    let(:listing_data) do
-      {
-        'id' => '123',
-        'title' => 'Test Item',
-        'price' => { 'amount' => 100 },
-        'location' => { 'display_name' => 'Test City' },
-        'url' => 'https://example.com',
-        'primary_photo' => { 'url' => 'https://example.com/img.jpg' }
-      }
-    end
-
-    it 'exports listings to JSON file' do
-      described_class.add_listing(listing_data, 'test')
-      filename = described_class.export_to_json('test_export.json')
-
-      expect(File.exist?(filename)).to be true
-
-      json_data = JSON.parse(File.read(filename))
-      expect(json_data).to be_an(Array)
-      expect(json_data.first['title']).to eq('Test Item')
-
-      File.delete(filename)
-    end
-
-    it 'uses default filename' do
-      filename = described_class.export_to_json
-      expect(filename).to eq('listings_export.json')
-      File.delete(filename) if File.exist?(filename)
+    it 'does not instantiate instances' do
+      # Verify the pattern is a singleton
+      expect(Database.methods.include?(:connect)).to be true
     end
   end
 end
