@@ -45,7 +45,7 @@ class Config
         {
           query: parts[0].strip,
           lat: parts[1].to_f,
-          lng: parts[2].to_f,
+          long: parts[2].to_f,
           min_price: parts[3].to_i,
           max_price: parts[4].to_i,
           radius_km: (parts[5] || 65).to_i,

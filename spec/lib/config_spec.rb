@@ -99,7 +99,7 @@ RSpec.describe Config do
       expect(config.length).to eq(1)
       expect(config.first[:query]).to eq('bike')
       expect(config.first[:lat]).to eq(40.7128)
-      expect(config.first[:lng]).to eq(-74.0060)
+      expect(config.first[:long]).to eq(-74.0060)
       expect(config.first[:min_price]).to eq(100)
       expect(config.first[:max_price]).to eq(500)
       expect(config.first[:radius_km]).to eq(25)
