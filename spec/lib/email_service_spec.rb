@@ -36,18 +36,14 @@ RSpec.describe EmailService do
         allow(Config).to receive(:email_to).and_return(['user1@example.com', 'user2@example.com', 'user3@example.com'])
       end
 
-      xit 'sends to each recipient' do
-        mail_count = 0
-        allow(Mail).to receive(:new).and_wrap_original do |&block|
-          mail = method.call(&block)
-          mail_count += 1
-          allow(mail).to receive(:deliver!)
-          block.call(mail) if block
-          mail
-        end
+      it 'sends to each recipient' do
+        mail_double = instance_double(Mail::Message)
+        allow(mail_double).to receive(:deliver!)
+        allow(Mail).to receive(:new).and_return(mail_double)
 
         described_class.send_alerts(listings)
-        expect(mail_count).to eq(3)
+
+        expect(Mail).to have_received(:new).exactly(3).times
       end
     end
 
