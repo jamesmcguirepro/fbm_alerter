@@ -7,8 +7,8 @@ RSpec.describe Monitor do
 
   let(:search_config) do
     [
-      { query: 'apartment', lat: 40.7128, lng: -74.0060 },
-      { query: 'house', lat: 40.7128, lng: -74.0060 }
+      { query: 'apartment', lat: 40.7128, long: -74.0060 },
+      { query: 'house', lat: 40.7128, long: -74.0060 }
     ]
   end
 
@@ -88,11 +88,11 @@ RSpec.describe Monitor do
       expect(SociaVaultClient).to have_received(:search).with(**search)
     end
 
-    it 'adds each listing to the database' do
+    it 'adds each listing' do
       monitor.send(:monitor_search, search)
 
-      search_result['data']['listings'].values.each do |listing|
-        expect(Database).to have_received(:add_listing).with(listing, search[:query])
+      search_result['data']['listings'].each_value do |listing|
+        expect(Listing).to have_received(:add_listing).with(listing, search[:query])
       end
     end
 
@@ -109,13 +109,13 @@ RSpec.describe Monitor do
     context 'when API returns empty listings' do
       before do
         allow(SociaVaultClient).to receive(:search)
-                                     .and_return({ 'data' => { 'listings' => {} } })
+          .and_return({ 'data' => { 'listings' => {} } })
       end
 
-      it 'does not add listings to the database' do
+      it 'does not add listings' do
         monitor.send(:monitor_search, search)
 
-        expect(Database).not_to have_received(:add_listing)
+        expect(Listing).not_to have_received(:add_listing)
       end
 
       it 'outputs appropriate message' do
@@ -129,10 +129,10 @@ RSpec.describe Monitor do
         allow(SociaVaultClient).to receive(:search).and_return({})
       end
 
-      it 'does not add listings to the database' do
+      it 'does not add listings' do
         monitor.send(:monitor_search, search)
 
-        expect(Database).not_to have_received(:add_listing)
+        expect(Listing).not_to have_received(:add_listing)
       end
 
       it 'outputs the unexpected response message' do
@@ -146,7 +146,7 @@ RSpec.describe Monitor do
 
       before do
         allow(SociaVaultClient).to receive(:search)
-                                     .and_raise(StandardError, error_message)
+          .and_raise(StandardError, error_message)
       end
 
       it 'catches the error and continues' do
@@ -158,17 +158,17 @@ RSpec.describe Monitor do
           .to output(/✗ Error: #{error_message}/).to_stdout
       end
 
-      it 'does not add listings to the database' do
+      it 'does not add listings' do
         monitor.send(:monitor_search, search)
 
-        expect(Database).not_to have_received(:add_listing)
+        expect(Listing).not_to have_received(:add_listing)
       end
     end
 
     context 'when listings key is missing from response' do
       before do
         allow(SociaVaultClient).to receive(:search)
-                                     .and_return({ 'data' => {} })
+          .and_return({ 'data' => {} })
       end
 
       it 'outputs the unexpected response message' do
@@ -244,8 +244,8 @@ RSpec.describe Monitor do
       monitor.run_search
 
       search_config.each do |search|
-        search_result['data']['listings'].values.each do |listing|
-          expect(Database).to have_received(:add_listing).with(listing, search[:query])
+        search_result['data']['listings'].each_value do |listing|
+          expect(Listing).to have_received(:add_listing).with(listing, search[:query])
         end
       end
 

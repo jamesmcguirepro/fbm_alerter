@@ -22,12 +22,12 @@ class Monitor
 
   # Monitor a single search query
   def monitor_search(search)
-    puts "\n  Searching: #{search[:query]} (#{search[:lat]}, #{search[:lng]})"
+    puts "\n  Searching: #{search[:query]} (#{search[:lat]}, #{search[:long]})"
 
     begin
       result = SociaVaultClient.search(**search)
 
-      if result['data'] && result['data']['listings']
+      if result['data'] && result['data']['listings'] && result['data']['listings'].any?
         listings = result['data']['listings'].values
         puts "  Found #{listings.length} listing(s)"
 
