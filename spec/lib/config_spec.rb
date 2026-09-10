@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Config do
+RSpec.describe Config do
   describe '.api_key' do
     it 'returns API key from environment' do
       expect(described_class.api_key).to eq('sk_test_key')
@@ -99,7 +99,7 @@ describe Config do
       expect(config.length).to eq(1)
       expect(config.first[:query]).to eq('bike')
       expect(config.first[:lat]).to eq(40.7128)
-      expect(config.first[:lng]).to eq(-74.0060)
+      expect(config.first[:long]).to eq(-74.0060)
       expect(config.first[:min_price]).to eq(100)
       expect(config.first[:max_price]).to eq(500)
       expect(config.first[:radius_km]).to eq(25)

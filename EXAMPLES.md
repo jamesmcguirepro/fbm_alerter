@@ -289,7 +289,7 @@ Before deploying, test with a manual run:
 cat .env
 
 # Run once
-ruby marketplace_monitor.rb run
+ruby main.rb run
 
 # Check logs
 tail -50 marketplace_monitor.log

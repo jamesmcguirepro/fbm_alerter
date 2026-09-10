@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'httparty'
+require_relative '../../lib/socia_vault_client'
 
-describe APIClient do
+RSpec.describe SociaVaultClient do
   describe '.search' do
     let(:search_params) do
       {
         query: 'bike',
         lat: 40.7128,
-        lng: -74.0060,
+        long: -74.0060,
         min_price: 100,
         max_price: 500
       }
@@ -47,40 +49,37 @@ describe APIClient do
     it 'includes required parameters' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      query_params = call_args[1][:query]
-
-      expect(query_params[:query]).to eq('bike')
-      expect(query_params[:lat]).to eq(40.7128)
-      expect(query_params[:lng]).to eq(-74.0060)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(query: 'bike', lat: 40.7128, lng: -74.0060))
+      )
     end
 
     it 'includes optional price filters' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      query_params = call_args[1][:query]
-
-      expect(query_params[:min_price]).to eq(100)
-      expect(query_params[:max_price]).to eq(500)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(min_price: 100, max_price: 500))
+      )
     end
 
     it 'sets default sort order' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      query_params = call_args[1][:query]
-
-      expect(query_params[:sort_by]).to eq('creation_time_descend')
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(sort_by: 'creation_time_descend'))
+      )
     end
 
     it 'includes API key in headers' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      headers = call_args[1][:headers]
-
-      expect(headers['X-API-Key']).to eq('sk_test_key')
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(headers: hash_including('X-API-Key' => 'sk_test_key'))
+      )
     end
 
     it 'returns API response' do
@@ -123,58 +122,73 @@ describe APIClient do
     it 'includes radius_km in request' do
       described_class.search(**search_params, radius_km: 50)
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:query][:radius_km]).to eq(50)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(radius_km: 50))
+      )
     end
 
     it 'includes condition filter when provided' do
       described_class.search(**search_params, condition: 'used_good')
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:query][:condition]).to eq('used_good')
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(condition: 'used_good'))
+      )
     end
 
     it 'includes delivery_method filter when provided' do
       described_class.search(**search_params, delivery_method: 'shipping')
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:query][:delivery_method]).to eq('shipping')
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(delivery_method: 'shipping'))
+      )
     end
 
     it 'excludes optional params when not provided' do
+      passed_opts = nil
+      allow(HTTParty).to receive(:get) do |_url, opts|
+        passed_opts = opts
+        double(code: 200, parsed_response: success_response, success?: true)
+      end
+
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      query_params = call_args[1][:query]
-
-      expect(query_params.key?(:condition)).to be false
-      expect(query_params.key?(:delivery_method)).to be false
+      expect(passed_opts[:query]).not_to have_key(:condition)
+      expect(passed_opts[:query]).not_to have_key(:delivery_method)
     end
 
     it 'uses default count when not provided' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:query][:count]).to eq(24)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(count: 24))
+      )
     end
 
     it 'allows custom count' do
       described_class.search(**search_params, count: 50)
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:query][:count]).to eq(50)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(count: 50))
+      )
     end
 
     it 'sets timeout' do
       described_class.search(**search_params)
 
-      call_args = HTTParty.call_args
-      expect(call_args[1][:timeout]).to eq(30)
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(timeout: 30)
+      )
     end
   end
 
   describe 'error handling' do
-    let(:search_params) { { query: 'test', lat: 40.0, lng: -74.0 } }
+    let(:search_params) { { query: 'test', lat: 40.0, long: -74.0 } }
 
     it 'raises error for unknown status code' do
       unknown_response = double(code: 999, parsed_response: { 'error' => 'Unknown error' }, success?: false)

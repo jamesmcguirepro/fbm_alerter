@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 
-require 'rspec'
+require 'database_cleaner/active_record'
 require 'dotenv/load'
-require_relative '../lib/marketplace_monitor'
+require 'rspec'
+require 'timecop'
+require_relative '../main'
+
+ENV['RUBY_ENV'] = 'test'
+
+ActiveRecord::Base.connection_pool.migration_context.migrate
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -13,10 +19,17 @@ RSpec.configure do |config|
     mocks.verify_partial_doubles = true
   end
 
-  # Clean up test database after each test
+  config.before(:suite) do
+    DatabaseCleaner.strategy = :transaction
+    DatabaseCleaner.clean_with(:truncation)
+  end
+
+  config.before(:each) do
+    DatabaseCleaner.start
+  end
+
   config.after(:each) do
-    test_db = 'test_marketplace_monitor.db'
-    File.delete(test_db) if File.exist?(test_db)
+    DatabaseCleaner.clean
   end
 end
 

@@ -58,3 +58,5 @@ build-iPhoneSimulator/
 
 # IntelliJ/RubyMine
 /.idea/
+/db/*.sqlite3
+/.env
