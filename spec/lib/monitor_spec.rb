@@ -51,7 +51,7 @@ RSpec.describe Monitor do
     it 'iterates through each search configuration' do
       expect(Config).to receive(:search_config).and_return(search_config)
 
-      monitor.run_search
+      monitor.execute_saved_searches
 
       expect(SociaVaultClient).to have_received(:search).twice
     end
@@ -59,7 +59,7 @@ RSpec.describe Monitor do
     it 'calls monitor_search for each configured search' do
       allow(monitor).to receive(:monitor_search)
 
-      monitor.run_search
+      monitor.execute_saved_searches
 
       search_config.each do |search|
         expect(monitor).to have_received(:monitor_search).with(search)
@@ -69,13 +69,13 @@ RSpec.describe Monitor do
     it 'sends alerts after all searches complete' do
       allow(monitor).to receive(:send_alerts)
 
-      monitor.run_search
+      monitor.execute_saved_searches
 
       expect(monitor).to have_received(:send_alerts)
     end
 
     it 'outputs the start message' do
-      expect { monitor.run_search }.to output(/🔍 Starting marketplace search/).to_stdout
+      expect { monitor.execute_saved_searches }.to output(/🔍 Starting marketplace search/).to_stdout
     end
   end
 
@@ -241,7 +241,7 @@ RSpec.describe Monitor do
 
   describe 'integration: full search cycle' do
     it 'completes a full search and alert cycle' do
-      monitor.run_search
+      monitor.execute_saved_searches
 
       search_config.each do |search|
         search_result['data']['listings'].each_value do |listing|
@@ -256,7 +256,7 @@ RSpec.describe Monitor do
     end
 
     it 'outputs complete sequence of messages' do
-      expect { monitor.run_search }
+      expect { monitor.execute_saved_searches }
         .to output(/🔍 Starting marketplace search|Searching:|Found|📧 Sending alerts/).to_stdout
     end
   end

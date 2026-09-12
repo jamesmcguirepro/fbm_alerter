@@ -6,8 +6,12 @@ class Monitor
     Config.validate!
   end
 
+  def add_saved_search(search)
+
+  end
+
   # Run a complete search cycle
-  def run_search
+  def execute_saved_searches
     puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
     Config.search_config.each do |search|
@@ -16,6 +20,16 @@ class Monitor
 
     # Send alerts for unseen listings
     send_alerts
+  end
+
+  def list_saved_searches
+  end
+
+  def remove_saved_search(id)
+  end
+
+  def search(query)
+    monitor_search(query)
   end
 
   private

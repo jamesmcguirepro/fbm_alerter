@@ -2,6 +2,7 @@ class CreateListings < ActiveRecord::Migration[8.1]
   def change
     create_table :listings do |t|
       t.string :title, null: false
+      t.string :listing_id, null: false
       t.float    :price
       t.string   :location
       t.string   :url
@@ -11,5 +12,7 @@ class CreateListings < ActiveRecord::Migration[8.1]
       t.datetime :last_seen_at,  default: -> { 'CURRENT_TIMESTAMP' }
       t.boolean  :is_sold,       default: false
     end
+
+    add_index :listings, :listing_id, unique: true
   end
 end
