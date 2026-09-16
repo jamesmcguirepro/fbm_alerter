@@ -2,7 +2,6 @@
 
 require 'active_record'
 require 'dotenv/load'
-require 'gli'
 require 'httparty'
 require 'json'
 require 'mail'
