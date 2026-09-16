@@ -57,12 +57,12 @@ RSpec.describe Monitor do
     end
 
     it 'calls monitor_search for each configured search' do
-      allow(monitor).to receive(:monitor_search)
+      allow(monitor).to receive(:execute_search)
 
       monitor.execute_saved_searches
 
       search_config.each do |search|
-        expect(monitor).to have_received(:monitor_search).with(search)
+        expect(monitor).to have_received(:execute_search).with(search)
       end
     end
 
@@ -83,13 +83,13 @@ RSpec.describe Monitor do
     let(:search) { search_config.first }
 
     it 'calls SociaVaultClient with search parameters' do
-      monitor.send(:monitor_search, search)
+      monitor.send(:execute_search, search)
 
       expect(SociaVaultClient).to have_received(:search).with(**search)
     end
 
     it 'adds each listing' do
-      monitor.send(:monitor_search, search)
+      monitor.send(:execute_search, search)
 
       search_result['data']['listings'].each_value do |listing|
         expect(Listing).to have_received(:add_listing).with(listing, search[:query])
@@ -97,12 +97,12 @@ RSpec.describe Monitor do
     end
 
     it 'outputs the search query and location' do
-      expect { monitor.send(:monitor_search, search) }
+      expect { monitor.send(:execute_search, search) }
         .to output(/Searching: #{search[:query]}/).to_stdout
     end
 
     it 'outputs the number of listings found' do
-      expect { monitor.send(:monitor_search, search) }
+      expect { monitor.send(:execute_search, search) }
         .to output(/Found 2 listing/).to_stdout
     end
 
@@ -113,13 +113,13 @@ RSpec.describe Monitor do
       end
 
       it 'does not add listings' do
-        monitor.send(:monitor_search, search)
+        monitor.send(:execute_search, search)
 
         expect(Listing).not_to have_received(:add_listing)
       end
 
       it 'outputs appropriate message' do
-        expect { monitor.send(:monitor_search, search) }
+        expect { monitor.send(:execute_search, search) }
           .to output(/No listings found/).to_stdout
       end
     end
@@ -130,13 +130,13 @@ RSpec.describe Monitor do
       end
 
       it 'does not add listings' do
-        monitor.send(:monitor_search, search)
+        monitor.send(:execute_search, search)
 
         expect(Listing).not_to have_received(:add_listing)
       end
 
       it 'outputs the unexpected response message' do
-        expect { monitor.send(:monitor_search, search) }
+        expect { monitor.send(:execute_search, search) }
           .to output(/No listings found or unexpected response format/).to_stdout
       end
     end
@@ -150,16 +150,16 @@ RSpec.describe Monitor do
       end
 
       it 'catches the error and continues' do
-        expect { monitor.send(:monitor_search, search) }.not_to raise_error
+        expect { monitor.send(:execute_search, search) }.not_to raise_error
       end
 
       it 'outputs the error message' do
-        expect { monitor.send(:monitor_search, search) }
+        expect { monitor.send(:execute_search, search) }
           .to output(/✗ Error: #{error_message}/).to_stdout
       end
 
       it 'does not add listings' do
-        monitor.send(:monitor_search, search)
+        monitor.send(:execute_search, search)
 
         expect(Listing).not_to have_received(:add_listing)
       end
@@ -172,7 +172,7 @@ RSpec.describe Monitor do
       end
 
       it 'outputs the unexpected response message' do
-        expect { monitor.send(:monitor_search, search) }
+        expect { monitor.send(:execute_search, search) }
           .to output(/No listings found or unexpected response format/).to_stdout
       end
     end
@@ -183,7 +183,7 @@ RSpec.describe Monitor do
       end
 
       it 'outputs the unexpected response message' do
-        expect { monitor.send(:monitor_search, search) }
+        expect { monitor.send(:execute_search, search) }
           .to output(/No listings found or unexpected response format/).to_stdout
       end
     end

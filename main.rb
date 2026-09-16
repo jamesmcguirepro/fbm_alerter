@@ -11,10 +11,12 @@ require 'sqlite3'
 require_relative 'lib/config'
 require_relative 'lib/database'
 require_relative 'lib/email_service'
+require_relative 'lib/search_object'
 require_relative 'lib/socia_vault_client'
 require_relative 'lib/monitor'
 
 require_relative 'models/alert'
+require_relative 'models/saved_search'
 require_relative 'models/listing'
 
 ENV['RUBY_ENV'] ||= 'development'
@@ -32,7 +34,11 @@ def main
 
   case
   when options[:add]
-    app.add_saved_search(query: options[:add])
+    # TODO: wire up
+    search = options[:add].except(:email)
+    email = options[:add][:email]
+
+    app.add_saved_search(search:, email:)
 
   when options[:search]
     app.search(query: options[:search])
@@ -42,9 +48,6 @@ def main
 
   when options[:list]
     app.list_saved_searches
-
-  when options[:search]
-    app.search(query: options[:search])
   end
 
 rescue OptionParser::InvalidOption => e

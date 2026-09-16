@@ -6,16 +6,19 @@ class Monitor
     Config.validate!
   end
 
-  def add_saved_search(search)
-
+  # @param [SearchObject] search_object
+  # @param [String] email
+  def add_saved_search(search_object:, email:)
+    SavedSearch.add_search(search_object:, email:)
   end
 
   # Run a complete search cycle
   def execute_saved_searches
     puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
-    Config.search_config.each do |search|
-      monitor_search(search)
+    SavedSearch.all.each do |saved_search|
+
+      execute_search(search)
     end
 
     # Send alerts for unseen listings
@@ -23,30 +26,40 @@ class Monitor
   end
 
   def list_saved_searches
+    SavedSearch.all.each(&:print_search)
   end
 
-  def remove_saved_search(id)
+  def remove_saved_search(id:)
+    search = SavedSearch.find(id)
+
+    search.print_search
+
+    SavedSearch.delete(id)
+
+    puts "Deleted search ID #{search.id}"
   end
 
   def search(query)
-    monitor_search(query)
+    execute_search(query)
   end
 
   private
 
   # Monitor a single search query
-  def monitor_search(search)
-    puts "\n  Searching: #{search[:query]} (#{search[:lat]}, #{search[:long]})"
+  # @param [SearchObject] search_object
+  # @param [String] email
+  def execute_search(search_object:, email:)
+    puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
 
     begin
-      result = SociaVaultClient.search(**search)
+      result = SociaVaultClient.search(**search_object.search_hash)
 
       if result['data'] && result['data']['listings'] && result['data']['listings'].any?
         listings = result['data']['listings'].values
         puts "  Found #{listings.length} listing(s)"
 
         listings.each do |listing|
-          Listing.add_listing(listing, search[:query])
+          Listing.add_listing(listing, search_object.query)
         end
       else
         puts '  No listings found or unexpected response format'

@@ -8,6 +8,7 @@ class CreateSavedSearches < ActiveRecord::Migration[8.1]
       t.decimal :max_price
       t.integer :condition
       t.string :delivery_method
+      t.string :email
     end
   end
 end
