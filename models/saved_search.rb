@@ -16,6 +16,6 @@ class SavedSearch < ActiveRecord::Base
   end
 
   def print_search
-    puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price}-#{max_price}"
+    puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
   end
 end

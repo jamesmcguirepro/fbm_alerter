@@ -17,8 +17,9 @@ class Monitor
     puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
     SavedSearch.all.each do |saved_search|
+      search_object = SearchObject.from_saved_search(saved_search:)
 
-      execute_search(search)
+      execute_search(search_object:, email: saved_search.email)
     end
 
     # Send alerts for unseen listings
@@ -39,8 +40,9 @@ class Monitor
     puts "Deleted search ID #{search.id}"
   end
 
-  def search(query)
-    execute_search(query)
+  # @param [SearchObject] search_object
+  def search(search_object:)
+    execute_search(search_object:)
   end
 
   private
@@ -48,7 +50,7 @@ class Monitor
   # Monitor a single search query
   # @param [SearchObject] search_object
   # @param [String] email
-  def execute_search(search_object:, email:)
+  def execute_search(search_object:, email: nil)
     puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
 
     begin
