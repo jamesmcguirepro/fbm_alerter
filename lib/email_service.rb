@@ -6,68 +6,44 @@ require 'mail'
 class EmailService
   class << self
     # Send alert emails for new listings
-    # @param listings [Array<Hash>] Array of listing hashes from database
-    def send_alerts(listings)
+    # @param listings [Array<ListingObject>] Array of listing objects
+    # @param emails [Array<String>] List of email addresses to send to
+    def send_alerts(listings:, emails:)
       return if listings.empty?
 
-      configure_smtp
-
       subject = "🔔 #{listings.length} New Marketplace Listing(s)"
-      html_body = build_html_email(listings)
+      html_body = build_html_email(listings:)
 
-      Config.email_to.each do |recipient|
-        send_to_recipient(recipient, subject, html_body)
+      emails.each do |recipient|
+        send_to_recipient(recipient:, subject:, html_body:)
       end
     end
 
     private
 
-    # Configure SMTP settings
-    def configure_smtp
-      Mail.defaults do
-        delivery_method :smtp, {
-          address: Config.smtp_address,
-          port: Config.smtp_port,
-          user_name: Config.smtp_username,
-          password: Config.smtp_password,
-          authentication: 'plain',
-          enable_starttls_auto: true
-        }
-      end
-    end
-
     # Send email to a single recipient
-    def send_to_recipient(recipient, subject, html_body)
-      mail = Mail.new do
-        from Config.email_from
-        to recipient
-        subject subject
-        html_part do
-          content_type 'text/html; charset=UTF-8'
-          body html_body
-        end
-      end
+    def send_to_recipient(recipient:, subject:, html_body:)
+      Mailer.send_email(to: recipient, from: Config.email_from, subject:, html_body:)
 
-      mail.deliver!
       puts "✓ Email sent to #{recipient}"
     rescue StandardError => e
       puts "✗ Failed to send email to #{recipient}: #{e.message}"
     end
 
     # Build HTML email body
-    def build_html_email(listings)
-      html = build_email_header(listings.length)
+    # param [Array<ListingObject>] listings
+    def build_html_email(listings:)
+      html = build_email_header(count: listings.length)
 
       listings.each do |listing|
-        html += build_listing_section(listing)
+        html += build_listing_section(listing:)
       end
 
-      html += build_email_footer
-      html
+      html + build_email_footer
     end
 
     # Email header HTML
-    def build_email_header(count)
+    def build_email_header(count:)
       <<~HTML
         <html>
           <head>
@@ -96,20 +72,21 @@ class EmailService
     end
 
     # Build HTML for a single listing
-    def build_listing_section(listing)
-      image_html = listing['image_url'] ? %(<img src="#{listing['image_url']}" class="image" />) : ''
-      price_display = listing['price'] ? "$#{listing['price'].round(2)}" : 'N/A'
+    # @param [ListingObject] listing
+    def build_listing_section(listing:)
+      image_html = listing.image_url ? %(<img src="#{listing.image_url}" class="image" />) : ''
+      price_display = listing.price ? "$#{listing.price.round(2)}" : 'N/A'
 
       <<~HTML
         <div class="listing">
-          <span class="query">#{listing['search_query']}</span>
+          <span class="query">#{listing.search_query}</span>
           #{image_html}
-          <div class="title">#{listing['title']}</div>
+          <div class="title">#{listing.title}</div>
           <div class="price">#{price_display}</div>
-          <div class="location">📍 #{listing['location']}</div>
-          <a href="#{listing['url']}" class="link" target="_blank">View Listing</a>
+          <div class="location">📍 #{listing.location}</div>
+          <a href="#{listing.url}" class="link" target="_blank">View Listing</a>
           <div style="font-size: 12px; color: #999; margin-top: 10px;">
-            Listed: #{listing['first_seen_at']}
+            Listed: #{listing.first_seen_at}
           </div>
         </div>
       HTML

@@ -8,6 +8,7 @@ require 'mail'
 require 'sqlite3'
 # require 'zeitwerk'
 # require_relative '../config/zeitwerk'
+require_relative 'dtos/listing_object'
 require_relative 'dtos/search_object'
 
 require_relative 'lib/cli'

@@ -4,235 +4,163 @@ require 'spec_helper'
 require_relative '../../lib/email_service'
 
 RSpec.describe EmailService do
+  let(:mailer) do
+    class_double("Mailer", send_email: nil)
+  end
+
   before do
-    allow(described_class).to receive(:configure_smtp)
+    stub_const("Mailer", mailer)
   end
 
   describe '.send_alerts' do
+    let(:call) { described_class.send_alerts(listings:, emails:) }
     let(:listings) do
       [
-        {
-          'title' => 'Mountain Bike',
-          'price' => 250,
-          'location' => 'Austin, TX',
-          'url' => 'https://facebook.com/marketplace/item/123/',
-          'image_url' => 'https://example.com/photo.jpg',
-          'search_query' => 'bike',
-          'first_seen_at' => Time.now
-        }
+        instance_double(
+          ListingObject,
+          title: 'Mountain Bike',
+          price: 250,
+          location: 'Austin, TX',
+          url: 'https://facebook.com/marketplace/item/123/',
+          image_url: 'https://example.com/photo.jpg',
+          search_query: 'bike',
+          first_seen_at: Time.now
+        )
       ]
     end
+    let(:emails) {[ 'test@test.com' ]}
 
-    before { allow(Config).to receive(:email_to).and_return(['user@example.com']) }
 
     context 'when listings are empty' do
+      let(:listings) { [] }
+
       it 'sends nothing' do
-        described_class.send_alerts([])
+        call
+
+        expect(mailer).to have_received(:send_email).exactly(0).times
       end
     end
 
     context 'with multiple recipients' do
-      before do
-        allow(Config).to receive(:email_to).and_return(['user1@example.com', 'user2@example.com', 'user3@example.com'])
-      end
+      let(:emails) { %w[test@test.com test2@test.com test3@test.com] }
 
       it 'sends to each recipient' do
-        mail_double = instance_double(Mail::Message)
-        allow(mail_double).to receive(:deliver!)
-        allow(Mail).to receive(:new).and_return(mail_double)
+        call
 
-        described_class.send_alerts(listings)
-
-        expect(Mail).to have_received(:new).exactly(3).times
+        expect(mailer).to have_received(:send_email).with(hash_including(to: emails[0])).once
+        expect(mailer).to have_received(:send_email).with(hash_including(to: emails[1])).once
+        expect(mailer).to have_received(:send_email).with(hash_including(to: emails[2])).once
       end
     end
 
-    context 'email content' do
-      before do
-        allow(Mail).to receive(:new).and_call_original
-        allow_any_instance_of(Mail::Message).to receive(:deliver!)
-      end
+    it 'subject includes count' do
+      call
 
-      it 'subject includes count for single listing' do
-        subject_line = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          subject_line = mail.subject
-          mail
-        end
+      expect(mailer).to have_received(:send_email).with(hash_including(subject: '🔔 1 New Marketplace Listing(s)')).once
+    end
 
-        described_class.send_alerts(listings)
-        expect(subject_line).to include('1 New Marketplace Listing')
+    context 'with multiple listings returned' do
+      let(:listings) do
+        [
+          instance_double(
+            ListingObject,
+            title: 'Mountain Bike',
+            price: 250,
+            location: 'Austin, TX',
+            url: 'https://facebook.com/marketplace/item/123/',
+            image_url: 'https://example.com/photo.jpg',
+            search_query: 'bike',
+            first_seen_at: Time.now
+          ),
+          instance_double(
+            ListingObject,
+            title: 'Mountain Bike 2',
+            price: 250,
+            location: 'Austin, TX',
+            url: 'https://facebook.com/marketplace/item/123/',
+            image_url: 'https://example.com/photo.jpg',
+            search_query: 'bike',
+            first_seen_at: Time.now
+          )
+        ]
       end
 
       it 'subject includes count for multiple listings' do
-        subject_line = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          subject_line = mail.subject
-          mail
-        end
+        call
 
-        described_class.send_alerts(listings + [listings[0].dup])
-        expect(subject_line).to include('2 New Marketplace Listing')
+        expect(mailer).to have_received(:send_email).with(hash_including(subject: '🔔 2 New Marketplace Listing(s)')).once
       end
+    end
 
-      it 'sets content type to HTML' do
-        content_type = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          content_type = mail.html_part.content_type
-          mail
-        end
+    it 'includes responsive design classes' do
+      call
+      expect(mailer).
+        to have_received(:send_email).
+        with(hash_including(html_body: a_string_including("class=", "container"))).
+        once
+    end
 
-        described_class.send_alerts(listings)
-        expect(content_type).to include('text/html')
+    it 'wraps content in HTML tags' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        html_body = args[:html_body]
+        expect(html_body).to include("class=", "container")
+        expect(html_body).to start_with('<html>')
+        expect(html_body.strip).to end_with('</html>')
       end
+    end
 
-      it 'includes responsive design classes' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
+    it 'includes footer with branding' do
+      call
 
-        described_class.send_alerts(listings)
-        expect(body).to include('class=')
-        expect(body).to include('container')
+      expect(mailer).
+        to have_received(:send_email).
+        with(hash_including(html_body: a_string_including("Marketplace Monitor • Automated Email Alert"))).
+        once
+    end
+
+    it 'includes all listing details in HTML body' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        html_body = args[:html_body]
+        expect(html_body).to include(
+                               'Mountain Bike',
+                               '250',
+                               'Austin, TX',
+                               'https://facebook.com/marketplace/item/123/',
+                               'https://example.com/photo.jpg',
+                               'bike'
+                             )
       end
+    end
 
-      it 'wraps content in HTML tags' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
+    context 'when image URL is nil' do
+      before { allow(listings.first).to receive(:image_url).and_return(nil) }
 
-        described_class.send_alerts(listings)
-        expect(body).to start_with('<html>')
-        expect(body.strip).to end_with('</html>')
-      end
+      it 'does not include img tag' do
+        call
 
-      it 'includes footer with branding' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('Marketplace Monitor')
-      end
-
-      it 'includes listing title' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('Mountain Bike')
-      end
-
-      it 'includes listing price' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('250')
-      end
-
-      it 'includes listing location' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('Austin, TX')
-      end
-
-      it 'includes listing URL' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('https://facebook.com/marketplace/item/123/')
-      end
-
-      it 'includes listing image' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('https://example.com/photo.jpg')
-      end
-
-      it 'includes search query' do
-        body = nil
-        allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-          mail = method.call(&block)
-          body = mail.html_part.body.encoded
-          mail
-        end
-
-        described_class.send_alerts(listings)
-        expect(body).to include('bike')
-      end
-
-      context 'when image URL is nil' do
-        before { listings[0]['image_url'] = nil }
-
-        it 'does not include img tag' do
-          body = nil
-          allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-            mail = method.call(&block)
-            body = mail.html_part.body.encoded
-            mail
-          end
-
-          described_class.send_alerts(listings)
-          expect(body).not_to include('<img')
-        end
-      end
-
-      context 'when price is missing' do
-        before { listings[0]['price'] = nil }
-
-        it 'displays N/A for price' do
-          body = nil
-          allow(Mail).to receive(:new).and_wrap_original do |method, &block|
-            mail = method.call(&block)
-            body = mail.html_part.body.encoded
-            mail
-          end
-
-          described_class.send_alerts(listings)
-          expect(body).to include('N/A')
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).not_to include('<img')
         end
       end
     end
 
-    context 'error handling' do
+    context 'when price is missing' do
+      before { allow(listings.first).to receive(:price).and_return(nil) }
+
+      it 'displays N/A for price' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).to include('N/A')
+        end
+      end
+    end
+
+    context 'when deliver raises an error' do
       it 'handles delivery errors gracefully' do
         allow(Mail).to receive(:new) do |&block|
           mail = double('Mail::Message')
@@ -241,7 +169,7 @@ RSpec.describe EmailService do
           mail
         end
 
-        expect { described_class.send_alerts(listings) }.not_to raise_error
+        expect { call }.not_to raise_error
       end
     end
   end
