@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Main monitor orchestration
-class Monitor
+class MarketplaceMonitor
   def initialize
     Config.validate!
   end

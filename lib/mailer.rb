@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'mail'
-
 # Wraps the Mail gem with a simple, testable interface
 class Mailer
   class DeliveryError < StandardError; end

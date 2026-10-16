@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
+# Require our monitor before ActiveRecord loads Ruby's stdlib Monitor,
+# which would otherwise conflict with our class name.
+require_relative 'lib/monitor'
+
 require 'active_record'
 require 'dotenv/load'
 require 'httparty'
 require 'json'
 require 'mail'
 require 'sqlite3'
+require 'thor'
 require 'zeitwerk'
 
 require_relative 'config/zeitwerk'

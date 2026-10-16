@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'mail'
-
 # Email service for sending alert notifications
 class EmailService
   class << self

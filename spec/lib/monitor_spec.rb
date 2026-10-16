@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Monitor do
+RSpec.describe MarketplaceMonitor do
   subject(:monitor) { described_class.new }
 
   let!(:saved_search) do

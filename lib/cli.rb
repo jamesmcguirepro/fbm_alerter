@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'thor'
-require_relative 'monitor'
-
 class CLI < Thor
   desc 'add', 'Add a new search'
   option :query, aliases: ['-q'], required: true, desc: 'Search query'
@@ -70,7 +67,7 @@ class CLI < Thor
   private
 
   def monitor
-    @_monitor ||= Monitor.new
+    @_monitor ||= MarketplaceMonitor.new
   end
 
   def search_object(options: {})
