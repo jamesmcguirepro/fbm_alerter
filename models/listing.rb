@@ -3,16 +3,22 @@
 # Table name: listings
 #
 #  id            :integer          not null, primary key
-#  title         :string           not null
-#  price         :float
-#  location      :string
-#  url           :string
-#  image_url     :string
-#  search_query  :string
 #  first_seen_at :datetime
+#  image_url     :string
+#  is_sold       :boolean          default(FALSE)
 #  last_seen_at  :datetime
-#  is_sold       :boolean
-#  listing_id    :string          not null, unique
+#  location      :string
+#  price         :float
+#  search_query  :string
+#  title         :string           not null
+#  url           :string
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
+#  listing_id    :string           not null
+#
+# Indexes
+#
+#  index_listings_on_listing_id  (listing_id) UNIQUE
 #
 class Listing < ActiveRecord::Base
   validates :title, presence: true

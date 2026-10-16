@@ -1,4 +1,21 @@
 
+# == Schema Information
+#
+# Table name: saved_searches
+#
+#  id              :integer          not null, primary key
+#  condition       :string
+#  delivery_method :string
+#  email           :string
+#  lat             :decimal(, )
+#  long            :decimal(, )
+#  max_price       :decimal(, )
+#  min_price       :decimal(, )
+#  query           :string
+#  radius_km       :integer
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#
 class SavedSearch < ActiveRecord::Base
   has_many :alerts
   has_many :listings

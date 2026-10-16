@@ -15,7 +15,7 @@ gem 'zeitwerk', '~> 2.6.0'
 
 group :development, :test do
   # Gemfile
-  # gem 'annotate', '~> 3.2'
+  gem 'annotaterb', '~> 4.0'
   gem 'database_cleaner-active_record'
   gem 'rspec', '~> 3.13.0'
   gem 'timecop', '~> 0.9.11'
