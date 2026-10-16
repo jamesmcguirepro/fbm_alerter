@@ -35,26 +35,6 @@ class Config
       ENV['DB_PATH'] || './marketplace_monitor.db'
     end
 
-    # Parse search configuration from environment variable
-    # Format: query|lat|lng|min_price|max_price|[radius_km]|[condition]|[delivery_method]
-    # Multiple searches separated by semicolons
-    def search_config
-      raw = ENV['SEARCHES'] || raise('SEARCHES not set in .env')
-      raw.split(';').map do |search|
-        parts = search.strip.split('|')
-        {
-          query: parts[0].strip,
-          lat: parts[1].to_f,
-          long: parts[2].to_f,
-          min_price: parts[3].to_i,
-          max_price: parts[4].to_i,
-          radius_km: (parts[5] || 65).to_i,
-          condition: parts[6]&.strip,
-          delivery_method: parts[7]&.strip
-        }
-      end
-    end
-
     # Parse duration strings like "30m", "2h", "1d" into seconds
     def parse_interval(interval_str)
       case interval_str
@@ -74,7 +54,6 @@ class Config
       errors = []
       errors << 'SOCIAVAULT_API_KEY not set' unless ENV['SOCIAVAULT_API_KEY']
       errors << 'EMAIL_TO not set or empty' if email_to.empty?
-      errors << 'SEARCHES not set' unless ENV['SEARCHES']
 
       return unless errors.any?
 
