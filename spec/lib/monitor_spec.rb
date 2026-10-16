@@ -5,39 +5,50 @@ require 'spec_helper'
 RSpec.describe Monitor do
   subject(:monitor) { described_class.new }
 
-  let(:search_config) do
-    [
-      { query: 'apartment', lat: 40.7128, long: -74.0060 },
-      { query: 'house', lat: 40.7128, long: -74.0060 }
-    ]
+  let!(:saved_search) do
+    SavedSearch.create!(
+      query: 'apartment',
+      lat: 40.7128,
+      long: -74.0060,
+      min_price: 100,
+      max_price: 500,
+      radius_km: 25,
+      email: 'owner@example.com'
+    )
   end
 
   let(:search_result) do
     {
       'data' => {
         'listings' => {
-          '1' => { 'id' => '1', 'title' => 'Cozy Apt' },
-          '2' => { 'id' => '2', 'title' => 'Spacious House' }
+          '1' => {
+            'id' => '1',
+            'title' => 'Cozy Apt',
+            'price' => { 'amount' => 200 },
+            'location' => { 'display_name' => 'NYC' },
+            'url' => 'https://example.com/1',
+            'primary_photo' => { 'url' => 'https://example.com/photo.jpg' },
+            'is_sold' => false
+          },
+          '2' => {
+            'id' => '2',
+            'title' => 'Spacious House',
+            'price' => { 'amount' => 400 },
+            'location' => { 'display_name' => 'Brooklyn, NY' },
+            'url' => 'https://example.com/2',
+            'primary_photo' => { 'url' => 'https://example.com/photo2.jpg' },
+            'is_sold' => false
+          }
         }
       }
     }
   end
 
-  let(:unseen_listings) do
-    [
-      { 'id' => '1', 'title' => 'Cozy Apt' },
-      { 'id' => '2', 'title' => 'Spacious House' }
-    ]
-  end
-
   before do
-    allow(Alert).to receive(:record_alert)
     allow(Config).to receive(:validate!)
-    allow(Config).to receive(:search_config).and_return(search_config)
+    allow(SociaVaultClient).to receive(:search_from_object).and_return(search_result)
     allow(EmailService).to receive(:send_alerts)
-    allow(Listing).to receive(:add_listing)
-    allow(Listing).to receive(:unnotified_and_unsold).and_return(unseen_listings)
-    allow(SociaVaultClient).to receive(:search).and_return(search_result)
+    allow(Alert).to receive(:record_alert)
   end
 
   describe '#initialize' do
@@ -47,217 +58,272 @@ RSpec.describe Monitor do
     end
   end
 
-  describe '#run_search' do
-    it 'iterates through each search configuration' do
-      expect(Config).to receive(:search_config).and_return(search_config)
+  describe '#execute_saved_searches' do
+    it 'iterates through each saved search in the database' do
+      SavedSearch.create!(
+        query: 'house',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 200,
+        max_price: 800,
+        radius_km: 25,
+        email: 'owner@example.com'
+      )
 
       monitor.execute_saved_searches
 
-      expect(SociaVaultClient).to have_received(:search).twice
+      expect(SociaVaultClient).to have_received(:search_from_object).twice
     end
 
-    it 'calls monitor_search for each configured search' do
-      allow(monitor).to receive(:execute_search)
-
-      monitor.execute_saved_searches
-
-      search_config.each do |search|
-        expect(monitor).to have_received(:execute_search).with(search)
-      end
-    end
-
-    it 'sends alerts after all searches complete' do
+    it 'calls execute_search for each saved search' do
+      allow(monitor).to receive(:execute_search).and_return([])
       allow(monitor).to receive(:send_alerts)
 
       monitor.execute_saved_searches
 
-      expect(monitor).to have_received(:send_alerts)
+      expect(monitor).to have_received(:execute_search).with(
+        search_object: an_instance_of(SearchObject),
+        email: 'owner@example.com'
+      ).at_least(:once)
+    end
+
+    it 'sends alerts for new listings found' do
+      new_listing = Listing.create!(
+        listing_id: 'new-1',
+        title: 'New Listing',
+        price: 200,
+        location: 'NYC',
+        url: 'https://example.com/new-1',
+        search_query: 'apartment'
+      )
+      allow(monitor).to receive(:execute_search).and_return([new_listing])
+      allow(monitor).to receive(:send_alerts)
+
+      monitor.execute_saved_searches
+
+      expect(monitor).to have_received(:send_alerts).with(
+        listings: [new_listing],
+        saved_search: saved_search
+      )
+    end
+
+    it 'does not call the API when there are no saved searches' do
+      SavedSearch.delete_all
+
+      monitor.execute_saved_searches
+
+      expect(SociaVaultClient).not_to have_received(:search_from_object)
     end
 
     it 'outputs the start message' do
-      expect { monitor.execute_saved_searches }.to output(/🔍 Starting marketplace search/).to_stdout
+      expect { monitor.execute_saved_searches }
+        .to output(/🔍 Starting marketplace search/).to_stdout
     end
   end
 
-  describe '#monitor_search' do
-    let(:search) { search_config.first }
-
-    it 'calls SociaVaultClient with search parameters' do
-      monitor.send(:execute_search, search)
-
-      expect(SociaVaultClient).to have_received(:search).with(**search)
+  describe '#execute_search' do
+    let(:search_object) do
+      SearchObject.new(
+        query: 'apartment',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        condition: nil,
+        delivery_method: nil
+      )
     end
 
-    it 'adds each listing' do
-      monitor.send(:execute_search, search)
+    it 'calls SociaVaultClient with the search object' do
+      monitor.send(:execute_search, search_object:, email: 'test@example.com')
 
-      search_result['data']['listings'].each_value do |listing|
-        expect(Listing).to have_received(:add_listing).with(listing, search[:query])
-      end
+      expect(SociaVaultClient).to have_received(:search_from_object).with(search_object:)
+    end
+
+    it 'adds each new listing to the database' do
+      monitor.send(:execute_search, search_object:, email: 'test@example.com')
+
+      expect(Listing.where(listing_id: '1').count).to eq(1)
+      expect(Listing.where(listing_id: '2').count).to eq(1)
+    end
+
+    it 'returns the new listings' do
+      result = monitor.send(:execute_search, search_object:, email: 'test@example.com')
+
+      expect(result.length).to eq(2)
+      expect(result.first).to be_a(Listing)
     end
 
     it 'outputs the search query and location' do
-      expect { monitor.send(:execute_search, search) }
-        .to output(/Searching: #{search[:query]}/).to_stdout
+      expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
+        .to output(/Searching: apartment/).to_stdout
     end
 
     it 'outputs the number of listings found' do
-      expect { monitor.send(:execute_search, search) }
+      expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
         .to output(/Found 2 listing/).to_stdout
+    end
+
+    context 'when a listing already exists' do
+      before do
+        Listing.create!(
+          listing_id: '1',
+          title: 'Existing',
+          location: 'NYC',
+          url: 'https://example.com/1',
+          search_query: 'apartment'
+        )
+        Listing.create!(
+          listing_id: '2',
+          title: 'Existing 2',
+          location: 'Brooklyn, NY',
+          url: 'https://example.com/2',
+          search_query: 'apartment'
+        )
+      end
+
+      it 'does not create duplicates' do
+        expect {
+          monitor.send(:execute_search, search_object:, email: 'test@example.com')
+        }.not_to change(Listing, :count)
+      end
     end
 
     context 'when API returns empty listings' do
       before do
-        allow(SociaVaultClient).to receive(:search)
+        allow(SociaVaultClient).to receive(:search_from_object)
           .and_return({ 'data' => { 'listings' => {} } })
       end
 
       it 'does not add listings' do
-        monitor.send(:execute_search, search)
-
-        expect(Listing).not_to have_received(:add_listing)
+        expect {
+          monitor.send(:execute_search, search_object:, email: 'test@example.com')
+        }.not_to change(Listing, :count)
       end
 
       it 'outputs appropriate message' do
-        expect { monitor.send(:execute_search, search) }
+        expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
           .to output(/No listings found/).to_stdout
       end
     end
 
     context 'when API returns unexpected format' do
       before do
-        allow(SociaVaultClient).to receive(:search).and_return({})
+        allow(SociaVaultClient).to receive(:search_from_object).and_return({})
       end
 
       it 'does not add listings' do
-        monitor.send(:execute_search, search)
-
-        expect(Listing).not_to have_received(:add_listing)
+        expect {
+          monitor.send(:execute_search, search_object:, email: 'test@example.com')
+        }.not_to change(Listing, :count)
       end
 
       it 'outputs the unexpected response message' do
-        expect { monitor.send(:execute_search, search) }
+        expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
           .to output(/No listings found or unexpected response format/).to_stdout
       end
     end
 
     context 'when API call raises an error' do
-      let(:error_message) { 'Connection timeout' }
-
       before do
-        allow(SociaVaultClient).to receive(:search)
-          .and_raise(StandardError, error_message)
+        allow(SociaVaultClient).to receive(:search_from_object)
+          .and_raise(StandardError, 'Connection timeout')
       end
 
       it 'catches the error and continues' do
-        expect { monitor.send(:execute_search, search) }.not_to raise_error
+        expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
+          .not_to raise_error
       end
 
       it 'outputs the error message' do
-        expect { monitor.send(:execute_search, search) }
-          .to output(/✗ Error: #{error_message}/).to_stdout
+        expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
+          .to output(/✗ Error: Connection timeout/).to_stdout
       end
 
       it 'does not add listings' do
-        monitor.send(:execute_search, search)
-
-        expect(Listing).not_to have_received(:add_listing)
-      end
-    end
-
-    context 'when listings key is missing from response' do
-      before do
-        allow(SociaVaultClient).to receive(:search)
-          .and_return({ 'data' => {} })
-      end
-
-      it 'outputs the unexpected response message' do
-        expect { monitor.send(:execute_search, search) }
-          .to output(/No listings found or unexpected response format/).to_stdout
-      end
-    end
-
-    context 'when data key is missing from response' do
-      before do
-        allow(SociaVaultClient).to receive(:search).and_return({})
-      end
-
-      it 'outputs the unexpected response message' do
-        expect { monitor.send(:execute_search, search) }
-          .to output(/No listings found or unexpected response format/).to_stdout
+        expect {
+          monitor.send(:execute_search, search_object:, email: 'test@example.com')
+        }.not_to change(Listing, :count)
       end
     end
   end
 
   describe '#send_alerts' do
-    it 'retrieves unnotified and unsold listings' do
-      monitor.send(:send_alerts)
-
-      expect(Listing).to have_received(:unnotified_and_unsold)
+    let(:new_listing) do
+      Listing.create!(
+        listing_id: 'alert-1',
+        title: 'Test Listing',
+        price: 200,
+        location: 'NYC',
+        url: 'https://example.com/1',
+        search_query: 'apartment'
+      )
     end
 
     it 'sends alerts via EmailService' do
-      monitor.send(:send_alerts)
+      monitor.send(:send_alerts, listings: [new_listing], saved_search:)
 
-      expect(EmailService).to have_received(:send_alerts).with(unseen_listings)
+      expect(EmailService).to have_received(:send_alerts).with(
+        listings: [new_listing],
+        emails: ['owner@example.com']
+      )
     end
 
     it 'records an alert for each listing' do
-      monitor.send(:send_alerts)
+      monitor.send(:send_alerts, listings: [new_listing], saved_search:)
 
-      unseen_listings.each do |listing|
-        expect(Alert).to have_received(:record_alert).with(listing_id: listing['id'])
-      end
+      expect(Alert).to have_received(:record_alert).with(
+        listing_id: new_listing.id,
+        search_id: saved_search.id
+      )
     end
 
     it 'outputs the number of alerts sent' do
-      expect { monitor.send(:send_alerts) }
-        .to output(/📧 Sending alerts for #{unseen_listings.length}/).to_stdout
+      expect { monitor.send(:send_alerts, listings: [new_listing], saved_search:) }
+        .to output(/📧 Sending alerts for 1 new listing/).to_stdout
     end
 
-    context 'when there are no unseen listings' do
-      before do
-        allow(Listing).to receive(:unnotified_and_unsold).and_return([])
-      end
-
+    context 'when there are no new listings' do
       it 'does not send alerts' do
-        monitor.send(:send_alerts)
+        monitor.send(:send_alerts, listings: [], saved_search:)
 
         expect(EmailService).not_to have_received(:send_alerts)
       end
 
       it 'does not record any alerts' do
-        monitor.send(:send_alerts)
+        monitor.send(:send_alerts, listings: [], saved_search:)
 
         expect(Alert).not_to have_received(:record_alert)
       end
 
       it 'outputs the no new listings message' do
-        expect { monitor.send(:send_alerts) }
+        expect { monitor.send(:send_alerts, listings: [], saved_search:) }
           .to output(/✓ No new listings to alert/).to_stdout
       end
     end
   end
 
-  describe 'integration: full search cycle' do
-    it 'completes a full search and alert cycle' do
-      monitor.execute_saved_searches
-
-      search_config.each do |search|
-        search_result['data']['listings'].each_value do |listing|
-          expect(Listing).to have_received(:add_listing).with(listing, search[:query])
-        end
-      end
-
-      expect(EmailService).to have_received(:send_alerts)
-      unseen_listings.each do |listing|
-        expect(Alert).to have_received(:record_alert).with(listing_id: listing['id'])
-      end
+  describe '#search' do
+    let(:search_object) do
+      SearchObject.new(
+        query: 'apartment',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        condition: nil,
+        delivery_method: nil
+      )
     end
 
-    it 'outputs complete sequence of messages' do
-      expect { monitor.execute_saved_searches }
-        .to output(/🔍 Starting marketplace search|Searching:|Found|📧 Sending alerts/).to_stdout
+    it 'calls execute_search with the search object' do
+      allow(monitor).to receive(:execute_search).and_return([])
+
+      monitor.search(search_object:)
+
+      expect(monitor).to have_received(:execute_search).with(search_object:)
     end
   end
 end

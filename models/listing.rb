@@ -21,21 +21,21 @@ class Listing < ActiveRecord::Base
   has_one :saved_search
 
   # @param [ListingObject] listing_object
-  # @param [Integer] search_id
   # @return [Listing]
   def self.add_listing(listing_object:)
     attributes = {
-      listing_id: listing_object.id,
+      listing_id: listing_object.listing_id,
       title: listing_object.title,
       price: listing_object.price,
       location: listing_object.location,
       url: listing_object.url,
       image_url: listing_object.image_url,
+      search_query: listing_object.search_query,
     }
 
     now = Time.current
 
-    listing = find_or_initialize_by(listing_id: listing_object.id)
+    listing = find_or_initialize_by(listing_id: listing_object.listing_id)
     listing.assign_attributes(attributes)
     listing.first_seen_at ||= now
     listing.last_seen_at = now

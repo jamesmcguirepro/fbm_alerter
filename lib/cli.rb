@@ -25,10 +25,9 @@ class CLI < Thor
     monitor.add_saved_search(search_object: search_object(options:), email: options[:email])
   end
 
-  desc 'delete ID', 'Delete an item by ID'
+  desc 'delete ID', 'Delete a saved search by ID'
   def delete(id)
-    puts "Deleting item with ID: #{id}"
-    monitor
+    monitor.remove_saved_search(id:)
   end
 
   desc 'exec', 'Execute all saved searches'

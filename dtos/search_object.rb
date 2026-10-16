@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class SearchObject
-  def initialize(query:, lat:, long:, min_price:, max_price:, radius_km:, condition:, delivery_method:)
+  def initialize(query:, lat:, long:, min_price:, max_price:, radius_km:, condition:, delivery_method:, id: nil)
     @query = query
     @lat = lat
     @long = long
@@ -10,7 +10,7 @@ class SearchObject
     @radius_km = radius_km
     @condition = condition
     @delivery_method = delivery_method
-    @id = nil
+    @id = id
   end
 
   # @param [SavedSearch] saved_search
