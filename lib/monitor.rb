@@ -54,31 +54,41 @@ class Monitor
     puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
 
     begin
-      result = SociaVaultClient.search(**search_object.search_hash)
+      result = SociaVaultClient.search_from_object(search_object:)
 
-      if result['data'] && result['data']['listings'] && result['data']['listings'].any?
-        listings = result['data']['listings'].values
-        puts "  Found #{listings.length} listing(s)"
-
-        listings.each do |listing|
-          Listing.add_listing(listing, search_object.query)
-        end
-      else
-        puts '  No listings found or unexpected response format'
-      end
+      new_listings = handle_result(result:)
     rescue StandardError => e
       puts "  ✗ Error: #{e.message}"
     end
   end
 
-  # Send alerts for new listings
-  def send_alerts
-    unseen_listings = Listing.unnotified_and_unsold
+  def handle_result(result:)
+    new_listings = []
+    if result['data'] && result['data']['listings'] && result['data']['listings'].any?
+      listings = result['data']['listings'].values
+      puts "  Found #{listings.length} listing(s)"
 
-    if unseen_listings.any?
-      puts "\n📧 Sending alerts for #{unseen_listings.length} new listing(s)..."
-      EmailService.send_alerts(unseen_listings)
-      unseen_listings.each { |listing| Alert.record_alert(listing_id: listing['id']) }
+      listings.each do |listing|
+        listing_object = ListingObject.from_listing_response(response: listing)
+
+        if Listing.exists?(listing_id: listing.listing_id)
+          puts "Listing #{listing.title} already exists"
+          next
+        end
+
+        new_listings << Listing.add_listing(listing_object:)
+      end
+    else
+      puts '  No listings found or unexpected response format'
+    end
+  end
+
+  # Send alerts for new listings
+  def send_alerts(listings:, saved_search:)
+    if listings.any?
+      puts "\n📧 Sending alerts for #{listings.length} new listing(s)..."
+      EmailService.send_alerts(listings:, emails: [saved_search.email])
+      listings.each { |listing| Alert.record_alert(listing_id: listing.id, search_id: saved_search.id) }
     else
       puts "\n✓ No new listings to alert"
     end

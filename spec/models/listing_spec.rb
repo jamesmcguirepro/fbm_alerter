@@ -7,6 +7,7 @@ RSpec.describe Listing, type: :model do
   subject(:model) { Listing }
 
   describe '.add_listing' do
+    let(:call) { model.add_listing(listing_object: listing_data)}
     let(:search_query) { 'studio apartment' }
 
     let(:listing_data) do
@@ -28,12 +29,12 @@ RSpec.describe Listing, type: :model do
     context 'creating a new listing' do
       it 'creates a listing with the provided data' do
         expect {
-          Listing.add_listing(listing_data, search_query)
+          Listing.add_listing(listing_data)
         }.to change(Listing, :count).by(1)
       end
 
       it 'sets all attributes correctly' do
-        Listing.add_listing(listing_data, search_query)
+        Listing.add_listing(listing_data)
         listing = Listing.find_by(listing_id: listing_data['id'])
 
         expect(listing.title).to eq('Cozy Studio in Downtown')
@@ -46,7 +47,7 @@ RSpec.describe Listing, type: :model do
 
       it 'sets first_seen_at on creation' do
         Timecop.freeze(Time.parse('2024-01-15 10:00:00')) do
-          Listing.add_listing(listing_data, search_query)
+          Listing.add_listing(listing_data)
           listing = Listing.find_by(listing_id: listing_data['id'])
 
           expect(listing.first_seen_at).to be_present
@@ -55,7 +56,7 @@ RSpec.describe Listing, type: :model do
       end
 
       it 'sets last_seen_at on creation' do
-        Listing.add_listing(listing_data, search_query)
+        Listing.add_listing(listing_data)
         listing = Listing.find_by(listing_id: listing_data['id'])
 
         expect(listing.last_seen_at).to be_present

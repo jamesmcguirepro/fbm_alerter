@@ -1,6 +1,7 @@
 
 class SavedSearch < ActiveRecord::Base
   has_many :alerts
+  has_many :listings
 
   def self.add_search(search_object:, email:)
     create!(
@@ -10,6 +11,7 @@ class SavedSearch < ActiveRecord::Base
       min_price: search_object.min_price,
       max_price: search_object.max_price,
       condition: search_object.condition,
+      radius_km: search_object.radius_km,
       delivery_method: search_object.delivery_method,
       email:,
     )

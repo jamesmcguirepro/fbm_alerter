@@ -6,6 +6,7 @@ class CreateSavedSearches < ActiveRecord::Migration[8.1]
       t.decimal :long
       t.decimal :min_price
       t.decimal :max_price
+      t.integer :radius_km
       t.integer :condition
       t.string :delivery_method
       t.string :email

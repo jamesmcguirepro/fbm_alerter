@@ -18,30 +18,29 @@ class Listing < ActiveRecord::Base
   validates :title, presence: true
 
   has_many :alerts
+  has_one :saved_search
 
-  scope :unnotified_and_unsold, lambda {
-    left_outer_joins(:alerts)
-      .where(alerts: { id: nil }, is_sold: false)
-      .order(first_seen_at: :desc)
-  }
-
-  def self.add_listing(listing_data, search_query)
+  # @param [ListingObject] listing_object
+  # @param [Integer] search_id
+  # @return [Listing]
+  def self.add_listing(listing_object:)
     attributes = {
-      listing_id: listing_data['id'],
-      title: listing_data['title'],
-      price: listing_data['price']['amount'],
-      location: listing_data['location']['display_name'],
-      url: listing_data['url'],
-      image_url: listing_data['primary_photo']&.dig('url'),
-      search_query:
+      listing_id: listing_object.id,
+      title: listing_object.title,
+      price: listing_object.price,
+      location: listing_object.location,
+      url: listing_object.url,
+      image_url: listing_object.image_url,
     }
 
     now = Time.current
 
-    listing = find_or_initialize_by(listing_id: listing_data['id'])
+    listing = find_or_initialize_by(listing_id: listing_object.id)
     listing.assign_attributes(attributes)
     listing.first_seen_at ||= now
     listing.last_seen_at = now
-    listing.save
+    listing.save!
+
+    listing
   end
 end

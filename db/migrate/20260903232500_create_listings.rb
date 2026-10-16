@@ -7,12 +7,11 @@ class CreateListings < ActiveRecord::Migration[8.1]
       t.string   :location
       t.string   :url
       t.string   :image_url
-      t.string   :search_query
       t.datetime :first_seen_at, default: -> { 'CURRENT_TIMESTAMP' }
       t.datetime :last_seen_at,  default: -> { 'CURRENT_TIMESTAMP' }
       t.boolean  :is_sold,       default: false
     end
 
-    add_index :listings, :listing_id, unique: true
+    add_index :listings, :listing_id #, unique: true
   end
 end

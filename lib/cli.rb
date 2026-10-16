@@ -47,6 +47,7 @@ class CLI < Thor
   option :query, aliases: ['-q'], required: true, desc: 'Search query'
   option :lat, required: true, desc: 'Latitude'
   option :long, required: true, desc: 'Longitude'
+  option :radius, type: :numeric, desc: 'Radius (km)'
   option :min, type: :numeric, desc: 'Minimum price'
   option :max, type: :numeric, desc: 'Maximum price'
   option :cond, desc: 'Condition'
@@ -55,6 +56,7 @@ class CLI < Thor
     puts "Searching for:"
     puts "  Query: #{options[:query]}"
     puts "  Location: #{options[:lat]}, #{options[:long]}"
+    puts "  Radius: #{options[:radius]}"
     puts "  Price range: #{options[:min]} - #{options[:max]}"
     puts "  Condition: #{options[:cond]}"
     puts "  Delivery: #{options[:del]}"
@@ -68,14 +70,12 @@ class CLI < Thor
 
   private
 
-
-
   def monitor
     @_monitor ||= Monitor.new
   end
 
   def search_object(options: {})
-    query, lat, long, min_price, max_price, condition, delivery_method = options.values_at(:query, :lat, :long, :min, :max, :cond, :del)
+    query, lat, long, min_price, max_price, radius_km, condition, delivery_method = options.values_at(:query, :lat, :long, :min, :max, :radius_km, :cond, :del)
 
     SearchObject.new(
       query:,
@@ -83,6 +83,7 @@ class CLI < Thor
       long:,
       min_price:,
       max_price:,
+      radius_km:,
       condition:,
       delivery_method:
     )

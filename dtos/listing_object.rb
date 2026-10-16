@@ -30,5 +30,22 @@ class ListingObject
     )
   end
 
+  # @param [Hash] response
+  # @option []
+  def self.from_listing_response(response:)
+    new(
+      listing_id: response['id'],
+      title: response['title'],
+      price: response['price']['amount'],
+      location: response['location']['display_name'],
+      url: response['url'],
+      image_url: response['primary_photo']&.dig('url'),
+      first_seen_at: nil, # TODO: fix
+      last_seen_at: nil,
+      is_sold: response['is_sold'],
+      search_query:
+    )
+  end
+
   attr_reader :title, :price, :location, :url, :image_url, :search_query, :first_seen_at, :last_seen_at, :is_sold, :listing_id
 end

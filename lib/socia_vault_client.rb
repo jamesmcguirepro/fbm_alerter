@@ -3,6 +3,20 @@
 # SociaVault API client for Facebook Marketplace searches
 class SociaVaultClient
   class << self
+    # @param [SearchObject] search_object
+    def search_from_object(search_object:)
+      search(
+        query: search_object.query,
+        lat: search_object.lat,
+        long: search_object.long,
+        min_price: search_object.min_price,
+        max_price: search_object.max_price,
+        radius_km: search_object.radius_km,
+        condition: search_object.condition,
+        delivery_method: search_object.delivery_method
+      )
+
+    end
     # Search Facebook Marketplace
     # @param query [String] Search keyword
     # @param lat [Float] Latitude
@@ -35,7 +49,7 @@ class SociaVaultClient
         timeout: 30
       )
 
-      handle_response(response)
+      handle_response(response:)
     end
 
     private
@@ -61,7 +75,7 @@ class SociaVaultClient
     end
 
     # Handle API response
-    def handle_response(response)
+    def handle_response(response:)
       case response.code
       when 200
         response.parsed_response
