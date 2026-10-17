@@ -123,6 +123,19 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).not_to include('data-href=')
     end
 
+    # The shared rows partial would happily render the thumbnail column here;
+    # the dashboard passes thumbnail: false, and this is what that buys.
+    it 'leaves the thumbnail column off the recent listings table' do
+      Listing.create!(
+        listing_id: 'recent-thumb', title: 'Photo Bike', image_url: 'https://example.com/p.jpg'
+      )
+
+      get '/dashboard'
+
+      expect(last_response.body).to include('Photo Bike')
+      expect(last_response.body).not_to include('<img src=')
+    end
+
     it 'links a recent listing back to the search that produced it' do
       search = SavedSearch.create!(
         query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
@@ -476,6 +489,40 @@ RSpec.describe MarketplaceApp do
 
       expect(last_response.body).not_to include('<script>alert(1)</script>')
       expect(last_response.body).to include('sold=1%22%3E')
+    end
+
+    it 'escapes the title filter it echoes back into the form' do
+      get '/listings', { 'query' => '"><script>alert(1)</script>' }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).not_to include('<script>alert(1)</script>')
+      expect(last_response.body).to include('value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"')
+    end
+
+    it 'still filters by the title after escaping it' do
+      Listing.create!(listing_id: 'quote-1', title: 'A "quoted" bike')
+
+      get '/listings', { 'query' => '"quoted"' }
+
+      expect(last_response.body).to include('A &quot;quoted&quot; bike')
+    end
+
+    # The dashboard and this page share app/views/listings/_rows.erb, so these
+    # two specs pin the flags that make the two tables different.
+    it 'shows the thumbnail column and which run found the listing' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      run = SearchRun.create!(saved_search_id: search.id, success: true)
+      Listing.create!(
+        listing_id: 'thumb-1', title: 'Photo Bike', image_url: 'https://example.com/p.jpg',
+        url: 'https://facebook.com/marketplace/item/thumb-1/', search_run_id: run.id
+      )
+
+      get '/listings'
+
+      expect(last_response.body).to include('<img src="https://example.com/p.jpg"')
+      expect(last_response.body).to include('found ')
     end
 
     it 'shows the run that discovered the listing' do

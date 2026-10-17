@@ -5,11 +5,11 @@
 <div class="form">
   <form action="/searches" method="post">
     <div class="field">
-      <label>Name <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">(optional label)</span></label>
+      <label>Name <span class="label-hint">(optional label)</span></label>
       <input type="text" name="name" value="<%= escape_html(@search&.name || '') %>">
     </div>
     <div class="field">
-      <label>Query <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">e.g. mountain bike</span></label>
+      <label>Query <span class="label-hint">e.g. mountain bike</span></label>
       <input type="text" name="query" value="<%= escape_html(@search&.query || '') %>" required>
     </div>
     <div class="field">
@@ -21,7 +21,7 @@
       <input type="number" step="any" name="long" value="<%= escape_html(@search&.long || '') %>" required>
     </div>
     <div class="field">
-      <label>Radius (km) <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">5–1000</span></label>
+      <label>Radius (km) <span class="label-hint">5–1000</span></label>
       <input type="number" min="5" max="1000" name="radius_km" value="<%= escape_html(@search&.radius_km || 65) %>" required>
     </div>
     <div class="field">
@@ -52,7 +52,7 @@
       </select>
     </div>
     <div class="field">
-      <label>Email address <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">alerts sent here</span></label>
+      <label>Email address <span class="label-hint">alerts sent here</span></label>
       <input type="email" name="email" value="<%= escape_html(@search&.email || '') %>" required>
     </div>
     <div class="actions">

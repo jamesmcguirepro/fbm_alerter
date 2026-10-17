@@ -1,6 +1,6 @@
 <h1>Edit search</h1>
 
-<p style="color:#6b7280;font-size:0.9rem;margin-top:-0.5rem;">
+<p class="page-note">
   Saving forks a new search and pauses this one, so existing listings keep the search that found them.
 </p>
 
@@ -26,7 +26,7 @@
       <input type="number" step="any" name="long" value="<%= escape_html(@search.long) %>" required>
     </div>
     <div class="field">
-      <label>Radius (km) <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">5–1000</span></label>
+      <label>Radius (km) <span class="label-hint">5–1000</span></label>
       <input type="number" min="5" max="1000" name="radius_km" value="<%= escape_html(@search&.radius_km || 65) %>" required>
     </div>
     <div class="field">

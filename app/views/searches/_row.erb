@@ -17,12 +17,11 @@
             hx-target="#run-log-<%= search.id %>"
             hx-swap="innerHTML"
             class="button button--secondary button--small">Run now</button>
-    <div id="run-log-<%= search.id %>" style="margin-top:0.35rem;font-size:0.8rem;color:#6b7280;"></div>
+    <div id="run-log-<%= search.id %>" class="muted run-log-slot"></div>
     <button hx-post="/searches/<%= search.id %>/toggle"
             hx-target="closest tr"
             hx-swap="outerHTML"
-            class="button button--small"
-            style="background:<%= search.active ? '#dc2626' : '#16a34a' %>;color:#fff;">
+            class="button button--small <%= search.active ? 'button--danger' : 'button--success' %>">
       <%= search.active ? 'Pause' : 'Resume' %>
     </button>
     <a href="/searches/<%= search.id %>/edit" class="button button--small button--secondary">Edit</a>

@@ -4,11 +4,11 @@
    title="Open your SociaVault dashboard">
   <h2>Credits left</h2>
   <% if @credits_error %>
-    <div class="value" style="color:#b91c1c;">—</div>
-    <div style="font-size:0.85rem;color:#b91c1c;">⚠ can't reach SociaVault</div>
+    <div class="value value--danger">—</div>
+    <div class="card-note card-note--danger">⚠ can't reach SociaVault</div>
   <% else %>
-    <div class="value"<%= ' style="color:#b45309;"' if low_credits?(@credits) %>><%= format_number(@credits) %></div>
-    <div style="font-size:0.85rem;color:#6b7280;">
+    <div class="value<%= ' value--low' if low_credits?(@credits) %>"><%= format_number(@credits) %></div>
+    <div class="card-note">
       <% if @credits.nil? %>
         no balance returned
       <% elsif low_credits?(@credits) %>

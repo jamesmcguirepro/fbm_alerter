@@ -43,6 +43,12 @@ a { color: #2563eb; }
 .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.25rem; }
 .card h2 { margin: 0 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
 .card .value { font-size: 2rem; font-weight: 700; color: #111827; }
+/* Card footnote and tinted value. The repeated class names (.value.value--low)
+   raise these above the base rules on specificity rather than file order. */
+.card-note { font-size: 0.85rem; color: #6b7280; }
+.card-note.card-note--danger { color: #b91c1c; }
+.card .value.value--danger { color: #b91c1c; }
+.card .value.value--low { color: #b45309; }
 
 /* Clickable cards */
 a.card--link { display: block; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
@@ -88,6 +94,20 @@ td.nowrap { white-space: nowrap; }
 .field-checkbox { display: flex; align-items: center; gap: 0.5rem; }
 .field-checkbox input { width: auto; }
 
+/* Hint inside a field label: "Name (optional label)". */
+.label-hint { font-weight: 400; font-size: 0.85rem; color: #6b7280; }
+
+/* Standfirst above a form. */
+.page-note { color: #6b7280; font-size: 0.9rem; margin-top: -0.5rem; }
+
+/* Filter bar (/listings): a .form laid out on a single row. The two rules that
+   tighten this one form are written to outrank .form / .field label on
+   specificity, so file order does not matter. */
+.form.form--wide { max-width: 700px; }
+.filter-form { display: flex; gap: 0.5rem; align-items: flex-end; }
+.filter-form .field { margin-bottom: 0; }
+.filter-form .field label { margin-bottom: 0.25rem; }
+
 /* Input with an inline clear (×) button */
 .input-clear { position: relative; }
 .input-clear input { padding-right: 2.5rem; }
@@ -105,6 +125,7 @@ td.nowrap { white-space: nowrap; }
   border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem;
 }
 .form-errors ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.form-errors p { margin: 0.5rem 0 0; }
 
 /* Buttons */
 button, .button {
@@ -116,6 +137,7 @@ button:hover, .button:hover { opacity: 0.9; }
 .button--primary { background: #2563eb; color: #fff; }
 .button--secondary { background: #e5e7eb; color: #111827; }
 .button--danger { background: #dc2626; color: #fff; }
+.button--success { background: #16a34a; color: #fff; }
 .button--small { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
 .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -127,6 +149,8 @@ pre.run-log {
   background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;
 }
+/* Placeholder under "Run now" that the log is swapped into. */
+.run-log-slot { margin-top: 0.35rem; }
 
 /* Pagination */
 .pagination { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1rem; }

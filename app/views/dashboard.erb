@@ -4,7 +4,7 @@
   <a href="/searches" class="card card--link">
     <h2>Saved searches</h2>
     <div class="value"><%= @search_count %></div>
-    <div style="font-size:0.85rem;color:#6b7280;"><%= @active_count %> active</div>
+    <div class="card-note"><%= @active_count %> active</div>
   </a>
   <a href="/listings" class="card card--link">
     <h2>Listings seen</h2>
@@ -21,7 +21,7 @@
   <a href="/searches" class="card card--link">
     <h2>API calls</h2>
     <div class="value"><%= @api_call_count %></div>
-    <div style="font-size:0.85rem;color:#6b7280;"><%= @api_today_count %> today · 1 credit each</div>
+    <div class="card-note"><%= @api_today_count %> today · 1 credit each</div>
   </a>
   <a class="card card--link" id="credits-card" href="https://sociavault.com/dashboard"
      target="_blank" rel="noopener"
@@ -29,7 +29,7 @@
      title="Open your SociaVault dashboard">
     <h2>Credits left</h2>
     <div class="value">…</div>
-    <div style="font-size:0.85rem;color:#6b7280;">checking SociaVault…</div>
+    <div class="card-note">checking SociaVault…</div>
   </a>
 </div>
 
@@ -54,16 +54,10 @@
     </tr>
   </thead>
   <tbody>
-    <% @recent_listings.each do |listing| %>
-    <tr<% if listing.url.present? %> data-href="<%= escape_html(listing.url) %>"<% end %>>
-      <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
-      <td class="nowrap"><%= format_price(listing.price) %></td>
-      <td><%= escape_html(listing.location || '—') %></td>
-      <td><%= search_query_link(@search_id_by_query[listing.search_query], listing.search_query) %></td>
-      <td class="nowrap"><%= format_date(listing.last_seen_at) %></td>
-      <td><%= listing.is_sold ? '✓' : '—' %></td>
-    </tr>
-    <% end %>
+    <%= erb :'listings/_rows', layout: false, locals: {
+      listings: @recent_listings, search_id_by_query: @search_id_by_query,
+      thumbnail: false, run: false
+    } %>
   </tbody>
 </table>
 <% else %>

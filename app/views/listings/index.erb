@@ -1,13 +1,13 @@
 <h1>Listings</h1>
 
-<div class="form" style="max-width:700px;">
-  <form action="/listings" method="get" style="display:flex;gap:0.5rem;align-items:flex-end;">
-    <div class="field" style="margin-bottom:0;">
-      <label style="display:block;margin-bottom:0.25rem;">Search title</label>
-      <input type="text" name="query" value="<%= @query %>" placeholder="Filter by title…">
+<div class="form form--wide">
+  <form action="/listings" method="get" class="filter-form">
+    <div class="field">
+      <label>Search title</label>
+      <input type="text" name="query" value="<%= escape_html(@query) %>" placeholder="Filter by title…">
     </div>
-    <div class="field" style="margin-bottom:0;">
-      <label style="display:block;margin-bottom:0.25rem;">Sold</label>
+    <div class="field">
+      <label>Sold</label>
       <select name="sold">
         <option value="">All</option>
         <option value="0" <%= @sold == '0' ? 'selected' : nil %>>Not sold</option>
@@ -27,22 +27,9 @@
     </tr>
   </thead>
   <tbody>
-    <% @listings.each do |listing| %>
-    <tr<% if listing.url.present? %> data-href="<%= escape_html(listing.url) %>"<% end %>>
-      <td><% if listing.image_url %><%= external_link(listing.url, image_tag(listing.image_url, listing.title)) %><% end %></td>
-      <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
-      <td class="nowrap"><%= format_price(listing.price) %></td>
-      <td><%= escape_html(listing.location || '—') %></td>
-      <td>
-        <%= search_query_link(@search_id_by_query[listing.search_query], listing.search_query) %>
-        <% if listing.search_run %>
-          <div class="muted">found <%= format_date(listing.search_run.created_at) %></div>
-        <% end %>
-      </td>
-      <td class="nowrap"><%= format_date(listing.last_seen_at) %></td>
-      <td><%= listing.is_sold ? '✓' : '—' %></td>
-    </tr>
-    <% end %>
+    <%= erb :'listings/_rows', layout: false, locals: {
+      listings: @listings, search_id_by_query: @search_id_by_query, thumbnail: true, run: true
+    } %>
   </tbody>
 </table>
 
