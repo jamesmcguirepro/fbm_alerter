@@ -35,8 +35,22 @@ class MarketplaceApp < Sinatra::Base
     redirect '/dashboard'
   end
 
+  # Failures render a readable page: the message matters (a constraint error,
+  # say), and seeing it in the browser beats a JSON blob. Clients that ask for
+  # JSON still get JSON.
   error do
-    content_type :json
-    { status: 'error', message: env['sinatra.error'].message }.to_json
+    exception = env['sinatra.error']
+
+    # Deliberately not request.accept?: a wildcard `*/*` (what a client sends
+    # when it has no preference) matches every type, so it cannot be used to
+    # tell JSON clients from browsers.
+    if env['HTTP_ACCEPT'].to_s.include?('application/json')
+      content_type :json
+      { status: 'error', message: exception.message }.to_json
+    else
+      status 500
+      @error_message = exception.message
+      erb :error
+    end
   end
 end

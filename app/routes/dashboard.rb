@@ -47,8 +47,8 @@ class MarketplaceApp < Sinatra::Base
   # Everything the dashboard view needs. Shared by the initial page load and
   # the htmx re-render after "Run all searches now", so the two can't drift.
   def load_dashboard
-    @search_count       = SavedSearch.count
-    @active_count       = SavedSearch.where(active: true).count
+    @search_count       = SavedSearch.kept.count
+    @active_count       = SavedSearch.kept.where(active: true).count
     @listing_count      = Listing.count
     @alert_count        = Alert.count
     @api_call_count     = SearchRun.count

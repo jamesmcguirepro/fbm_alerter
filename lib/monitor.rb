@@ -20,7 +20,7 @@ class MarketplaceMonitor
   def execute_saved_searches
     @io.puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
-    SavedSearch.where(active: true).each do |saved_search|
+    SavedSearch.kept.where(active: true).each do |saved_search|
       next if skip_invalid_coordinates?(saved_search)
 
       search_object = SearchObject.from_saved_search(saved_search:)
@@ -32,7 +32,7 @@ class MarketplaceMonitor
   end
 
   def list_saved_searches
-    SavedSearch.all.each { |search| search.print_search(io: @io) }
+    SavedSearch.kept.each { |search| search.print_search(io: @io) }
   end
 
   def remove_saved_search(id:)
@@ -40,9 +40,10 @@ class MarketplaceMonitor
 
     search.print_search(io: @io)
 
-    SavedSearch.delete(id)
+    # Soft delete: the search disappears, its alert and run history does not.
+    search.discard
 
-    @io.puts "Deleted search ID #{search.id}"
+    @io.puts "Deleted search ID #{search.id} (its alerts and run history are kept)"
   end
 
   # @param [SearchObject] search_object

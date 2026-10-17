@@ -137,6 +137,21 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(href="/searches?inactive=1#search-row-#{search.id}"))
     end
 
+    it 'does not count a discarded search' do
+      SavedSearch.create!(
+        query: 'still here', lat: 40.7128, long: -74.0060, email: 'owner@example.com', active: true
+      )
+      gone = SavedSearch.create!(
+        query: 'gone', lat: 40.7128, long: -74.0060, email: 'owner@example.com', active: true
+      )
+      gone.discard
+
+      get '/dashboard'
+
+      expect(last_response.body).to match(%r{<h2>Saved searches</h2>\s*<div class="value">1</div>})
+      expect(last_response.body).to include('1 active')
+    end
+
     it 're-renders the dashboard with the run log after running every search' do
       SavedSearch.create!(
         query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com', active: true
@@ -176,6 +191,26 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(hx-post="/searches/#{search.id}/toggle"))
       expect(last_response.body).to include(%(hx-delete="/searches/#{search.id}"))
       expect(last_response.body).to include(%(id="search-row-#{search.id}"))
+    end
+
+    it 'hides a discarded search' do
+      search.discard
+
+      get '/searches?inactive=1'
+
+      expect(last_response.body).not_to include("search-row-#{search.id}")
+      expect(last_response.body).not_to include('>bike<')
+    end
+
+    it 'escapes the query it echoes back into the row' do
+      SavedSearch.create!(
+        query: 'a "quoted" <b>term</b>', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+
+      get '/searches'
+
+      expect(last_response.body).to include('a &quot;quoted&quot; &lt;b&gt;term&lt;/b&gt;')
+      expect(last_response.body).not_to include('<b>term</b>')
     end
 
     it 'shows the resolved place name together with the raw coordinates' do
@@ -246,6 +281,17 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(422)
       expect(last_response.body).to include('must be a number between 5 and 1000 km')
     end
+
+    it 'escapes the values it re-renders in the form' do
+      post '/searches', {
+        query: '<script>alert(1)</script>', lat: 40.7128, long: -74.0060,
+        radius_km: 2000, email: 'owner@example.com'
+      }
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.body).to include('&lt;script&gt;alert(1)&lt;/script&gt;')
+      expect(last_response.body).not_to include('<script>alert(1)</script>')
+    end
   end
 
   describe 'GET /searches/:id/edit' do
@@ -305,15 +351,30 @@ RSpec.describe MarketplaceApp do
       )
     end
 
-    it 'deletes the saved search' do
+    it 'soft deletes the saved search' do
       delete "/searches/#{search.id}"
-      expect(SavedSearch.exists?(search.id)).to be false
+
+      expect(search.reload).to be_discarded
+      expect(SavedSearch.exists?(search.id)).to be true
     end
 
     it 'returns an empty 200 so htmx removes the row (not a redirect)' do
       delete "/searches/#{search.id}"
       expect(last_response.status).to eq(200)
       expect(last_response.body.strip).to eq('')
+    end
+
+    it 'soft deletes a search that has alerts and runs, keeping the history' do
+      listing = Listing.create!(listing_id: 'history-1', title: 'History Bike')
+      Alert.create!(listing_id: listing.id, search_id: search.id, sent_at: Time.now)
+      SearchRun.create!(saved_search_id: search.id, success: true)
+
+      delete "/searches/#{search.id}"
+
+      expect(last_response.status).to eq(200)
+      expect(search.reload).to be_discarded
+      expect(Alert.count).to eq(1)
+      expect(SearchRun.count).to eq(1)
     end
   end
 
@@ -397,6 +458,26 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).not_to include('data-href=')
     end
 
+    it 'filters by title, case-insensitively' do
+      Listing.create!(listing_id: 'filter-1', title: 'Blue Bike')
+      Listing.create!(listing_id: 'filter-2', title: 'Red Truck')
+
+      get '/listings', { 'query' => 'bike' }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('Blue Bike')
+      expect(last_response.body).not_to include('Red Truck')
+    end
+
+    it 'escapes the sold filter when building pagination links' do
+      26.times { |i| Listing.create!(listing_id: "page-#{i}", title: "Item #{i}") }
+
+      get '/listings', { 'sold' => '1"><script>alert(1)</script>' }
+
+      expect(last_response.body).not_to include('<script>alert(1)</script>')
+      expect(last_response.body).to include('sold=1%22%3E')
+    end
+
     it 'shows the run that discovered the listing' do
       search = SavedSearch.create!(
         query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
@@ -455,6 +536,33 @@ RSpec.describe MarketplaceApp do
 
       expect(last_response.body).to include('May 31, 2026 08:04 PM PDT')
       expect(last_response.body).not_to match(/\d{2}:\d{2}:\d{2}/)
+    end
+
+    it 'escapes listing titles' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      listing = Listing.create!(listing_id: 'escaped-1', title: '<b>bold</b> bike')
+      Alert.create!(listing_id: listing.id, search_id: search.id, sent_at: Time.now)
+
+      get '/alerts'
+
+      expect(last_response.body).to include('&lt;b&gt;bold&lt;/b&gt; bike')
+      expect(last_response.body).not_to include('<b>bold</b>')
+    end
+
+    it 'keeps alerts from a discarded search, without a dead link' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      listing = Listing.create!(listing_id: 'escaped-2', title: 'Orphan Bike')
+      Alert.create!(listing_id: listing.id, search_id: search.id, sent_at: Time.now)
+      search.discard
+
+      get '/alerts'
+
+      expect(last_response.body).to include('Orphan Bike')
+      expect(last_response.body).not_to include("#search-row-#{search.id}")
     end
   end
 
@@ -651,6 +759,35 @@ RSpec.describe MarketplaceApp do
 
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('Vintage Road Bike')
+    end
+  end
+
+  describe 'error handling' do
+    before { allow(SavedSearch).to receive(:kept).and_raise('boom') }
+
+    it 'renders a readable page rather than a JSON blob' do
+      get '/searches'
+
+      expect(last_response.status).to eq(500)
+      expect(last_response.body).to include('Something went wrong')
+      expect(last_response.body).to include('boom')
+    end
+
+    it 'escapes the error message' do
+      allow(SavedSearch).to receive(:kept).and_raise('<script>alert(1)</script>')
+
+      get '/searches'
+
+      expect(last_response.body).not_to include('<script>alert(1)</script>')
+      expect(last_response.body).to include('&lt;script&gt;')
+    end
+
+    it 'still returns JSON to clients that ask for it' do
+      get '/searches', {}, { 'HTTP_ACCEPT' => 'application/json' }
+
+      expect(last_response.status).to eq(500)
+      expect(last_response.headers['Content-Type']).to include('application/json')
+      expect(JSON.parse(last_response.body)).to include('status' => 'error', 'message' => 'boom')
     end
   end
 end

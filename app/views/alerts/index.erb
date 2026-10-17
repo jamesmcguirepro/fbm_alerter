@@ -11,8 +11,9 @@
     <% @alerts.each do |alert| %>
     <tr>
       <td class="nowrap"><%= format_date(alert.sent_at, seconds: true) %></td>
-      <td><%= truncate(alert.listing.title) %></td>
-      <td><%= search_query_link(alert.search_id, alert.saved_search.query) %></td>
+      <td><%= escape_html(truncate(alert.listing.title)) %></td>
+      <%# A discarded search has no row to link to, so the query shows as plain text. %>
+      <td><%= search_query_link(alert.saved_search.discarded? ? nil : alert.search_id, alert.saved_search.query) %></td>
       <td class="nowrap"><%= format_price(alert.listing.price) %></td>
     </tr>
     <% end %>

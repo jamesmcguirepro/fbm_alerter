@@ -7,7 +7,9 @@ class MarketplaceApp < Sinatra::Base
     query = Listing.all.includes(:search_run)
 
     if params[:query].to_s.strip != ''
-      query = query.where('title ILIKE ?', "%#{params[:query]}%")
+      # ILIKE is Postgres, not SQLite; LIKE is already case-insensitive for
+      # ASCII, so a plain substring match behaves the way users expect here.
+      query = query.where('title LIKE ?', "%#{params[:query]}%")
     end
 
     if params[:sold] == '1'

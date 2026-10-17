@@ -106,9 +106,10 @@ module ViewHelpers
   end
 
   # Map a listing's stored query string back to a saved search id, so a listing
-  # row can link to the search that produced it (earliest search wins).
+  # row can link to the search that produced it (earliest search wins). Deleted
+  # searches are skipped, so their listings fall back to plain text.
   def search_id_by_query
-    SavedSearch.order(:created_at).pluck(:query, :id).each_with_object({}) do |(query, id), map|
+    SavedSearch.kept.order(:created_at).pluck(:query, :id).each_with_object({}) do |(query, id), map|
       map[query] ||= id
     end
   end
@@ -153,7 +154,7 @@ module ViewHelpers
   def qs_extra
     parts = []
     parts << "query=#{CGI.escape(@query)}" if @query.to_s.strip != ''
-    parts << "sold=#{@sold}" if @sold.to_s.strip != ''
+    parts << "sold=#{CGI.escape(@sold.to_s)}" if @sold.to_s.strip != ''
     parts.empty? ? '' : "&#{parts.join('&')}"
   end
 end

@@ -1,6 +1,6 @@
 <% if @log.to_s.strip.empty? %>
   No output.
 <% else %>
-<pre class="run-log"><%= @log %></pre>
+<pre class="run-log"><%= escape_html(@log) %></pre>
 <% end %>
 <td id="search-calls-<%= @search.id %>" hx-swap-oob="true"><%= calls_cell(@search) %></td>

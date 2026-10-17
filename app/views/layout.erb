@@ -37,10 +37,10 @@
 
   <main class="container">
     <% if session[:flash] %>
-      <div class="flash flash--success"><%= session.delete(:flash) %></div>
+      <div class="flash flash--success"><%= escape_html(session.delete(:flash)) %></div>
     <% end %>
     <% if session[:flash_error] %>
-      <div class="flash flash--error"><%= session.delete(:flash_error) %></div>
+      <div class="flash flash--error"><%= escape_html(session.delete(:flash_error)) %></div>
     <% end %>
 
     <%= yield %>

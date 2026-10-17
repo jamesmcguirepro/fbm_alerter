@@ -5,6 +5,7 @@
 
 require 'active_record'
 require 'active_support/all'
+require 'discard'
 require 'dotenv/load'
 require 'httparty'
 require 'json'

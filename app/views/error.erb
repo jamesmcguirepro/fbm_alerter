@@ -1,0 +1,13 @@
+<h1>Something went wrong</h1>
+
+<div class="card">
+  <div class="form-errors">
+    <strong>The app could not finish that request.</strong>
+    <p class="muted" style="margin: 0.5rem 0 0;"><%= escape_html(@error_message) %></p>
+  </div>
+</div>
+
+<div class="actions">
+  <a href="/dashboard" class="button button--primary">Back to the dashboard</a>
+  <a href="/settings" class="button button--secondary">Check settings</a>
+</div>

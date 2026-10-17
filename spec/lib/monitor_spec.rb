@@ -420,10 +420,25 @@ RSpec.describe MarketplaceMonitor do
       )
     end
 
-    it 'deletes the saved search' do
+    it 'soft deletes the saved search' do
       expect {
         monitor.remove_saved_search(id: saved_search.id)
-      }.to change(SavedSearch, :count).by(-1)
+      }.to change { SavedSearch.kept.count }.by(-1)
+
+      expect(saved_search.reload).to be_discarded
+    end
+
+    it 'keeps the row and its alert and run history' do
+      listing = Listing.create!(listing_id: 'kept-1', title: 'Kept Bike')
+      # Alert.record_alert is stubbed for this file, so insert the alert directly.
+      Alert.create!(listing_id: listing.id, search_id: saved_search.id, sent_at: Time.now)
+      SearchRun.create!(saved_search_id: saved_search.id, success: true)
+
+      monitor.remove_saved_search(id: saved_search.id)
+
+      expect(SavedSearch.count).to eq(1)
+      expect(Alert.count).to eq(1)
+      expect(SearchRun.count).to eq(1)
     end
 
     it 'outputs the deleted search ID' do

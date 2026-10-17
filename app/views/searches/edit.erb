@@ -11,31 +11,31 @@
     <input type="hidden" name="_method" value="patch">
     <div class="field">
       <label>Name</label>
-      <input type="text" name="name" value="<%= @search.name || '' %>">
+      <input type="text" name="name" value="<%= escape_html(@search.name || '') %>">
     </div>
     <div class="field">
       <label>Query</label>
-      <input type="text" name="query" value="<%= @search.query %>" required>
+      <input type="text" name="query" value="<%= escape_html(@search.query) %>" required>
     </div>
     <div class="field">
       <label>Latitude</label>
-      <input type="number" step="any" name="lat" value="<%= @search.lat %>" required>
+      <input type="number" step="any" name="lat" value="<%= escape_html(@search.lat) %>" required>
     </div>
     <div class="field">
       <label>Longitude</label>
-      <input type="number" step="any" name="long" value="<%= @search.long %>" required>
+      <input type="number" step="any" name="long" value="<%= escape_html(@search.long) %>" required>
     </div>
     <div class="field">
       <label>Radius (km) <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">5–1000</span></label>
-      <input type="number" min="5" max="1000" name="radius_km" value="<%= @search&.radius_km || 65 %>" required>
+      <input type="number" min="5" max="1000" name="radius_km" value="<%= escape_html(@search&.radius_km || 65) %>" required>
     </div>
     <div class="field">
       <label>Min price</label>
-      <input type="number" name="min_price" value="<%= @search.min_price || '' %>">
+      <input type="number" name="min_price" value="<%= escape_html(@search.min_price || '') %>">
     </div>
     <div class="field">
       <label>Max price</label>
-      <input type="number" name="max_price" value="<%= @search.max_price || '' %>">
+      <input type="number" name="max_price" value="<%= escape_html(@search.max_price || '') %>">
     </div>
     <div class="field">
       <label>Condition</label>
@@ -58,7 +58,7 @@
     </div>
     <div class="field">
       <label>Email address</label>
-      <input type="email" name="email" value="<%= @search.email %>" required>
+      <input type="email" name="email" value="<%= escape_html(@search.email) %>" required>
     </div>
     <div class="field field-checkbox">
       <input type="checkbox" name="active" id="active" <%= @search.active ? 'checked' : nil %>>

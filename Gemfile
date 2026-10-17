@@ -4,6 +4,7 @@ ruby '4.0.6'
 
 gem 'activerecord' , '~> 8.1.3'
 gem 'chronic_duration', '~> 0.10.6'
+gem 'discard', '~> 2.0'
 gem 'dotenv', '~> 2.8.1'
 gem 'httparty', '~> 0.22.0'
 gem 'mail', '~> 2.8.1'

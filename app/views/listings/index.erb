@@ -32,7 +32,7 @@
       <td><% if listing.image_url %><%= external_link(listing.url, image_tag(listing.image_url, listing.title)) %><% end %></td>
       <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
       <td class="nowrap"><%= format_price(listing.price) %></td>
-      <td><%= listing.location || '—' %></td>
+      <td><%= escape_html(listing.location || '—') %></td>
       <td>
         <%= search_query_link(@search_id_by_query[listing.search_query], listing.search_query) %>
         <% if listing.search_run %>

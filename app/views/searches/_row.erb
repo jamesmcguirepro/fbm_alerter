@@ -1,14 +1,15 @@
 <tr id="search-row-<%= search.id %>">
-  <td><%= search.name || '(unnamed)' %></td>
-  <td><%= search.query %></td>
+  <%# Queries, names and addresses are user input, so they are escaped here. %>
+  <td><%= escape_html(search.name || '(unnamed)') %></td>
+  <td><%= escape_html(search.query) %></td>
   <td>
-    <div><%= search.location_label || '—' %></div>
+    <div><%= escape_html(search.location_label || '—') %></div>
     <% if search.resolved_location.present? && search.lat && search.long %>
       <div class="coord"><%= format_coordinates(search.lat, search.long) %></div>
     <% end %>
   </td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
-  <td><%= search.email %></td>
+  <td><%= escape_html(search.email) %></td>
   <td id="search-calls-<%= search.id %>"><%= calls_cell(search) %></td>
   <td><%= active_badge(search) %></td>
   <td class="actions">
@@ -26,7 +27,7 @@
     </button>
     <a href="/searches/<%= search.id %>/edit" class="button button--small button--secondary">Edit</a>
     <button hx-delete="/searches/<%= search.id %>"
-            hx-confirm="Delete this search?"
+            hx-confirm="Remove this search? Its alerts and run history are kept."
             hx-target="closest tr"
             hx-swap="outerHTML"
             class="button button--small button--danger">Delete</button>

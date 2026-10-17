@@ -6,6 +6,7 @@
 #  id                :integer          not null, primary key
 #  active            :boolean          default(TRUE), not null
 #  condition         :string
+#  deleted_at        :datetime
 #  delivery_method   :string
 #  email             :string
 #  lat               :decimal(, )
@@ -20,9 +21,16 @@
 #  updated_at        :datetime         not null
 #
 class SavedSearch < ActiveRecord::Base
+  include Discard::Model
+
   has_many :alerts
   has_many :listings, through: :alerts
   has_many :search_runs
+
+  # Soft delete via discard. `kept` hides discarded searches, while the row and
+  # its alerts and runs all stay put, so the alert history survives. Discard,
+  # unlike paranoia, adds no default scope, so joins keep seeing the history.
+  self.discard_column = :deleted_at
 
   attribute :radius_km, default: 65
 

@@ -23,7 +23,7 @@ class MarketplaceApp < Sinatra::Base
 
   get '/searches' do
     @show_inactive = params[:inactive] == '1'
-    scope = SavedSearch.order(created_at: :desc)
+    scope = SavedSearch.kept.order(created_at: :desc)
     scope = scope.where(active: true) unless @show_inactive
     @searches = scope.all
     # Best-effort backfill of cached place names; each is looked up only once.
