@@ -75,6 +75,7 @@ class CLI < Thor
     radius_km = options[:radius_km] || options[:radius]
 
     SearchObject.new(
+      id: nil,
       query: options[:query],
       lat: options[:lat],
       long: options[:long],

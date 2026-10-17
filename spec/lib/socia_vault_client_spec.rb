@@ -208,6 +208,7 @@ RSpec.describe SociaVaultClient do
   describe '.search_from_object' do
     let(:search_object) do
       SearchObject.new(
+        id: nil,
         query: 'bike',
         lat: 40.7128,
         long: -74.0060,

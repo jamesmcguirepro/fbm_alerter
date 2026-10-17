@@ -124,6 +124,7 @@ RSpec.describe MarketplaceMonitor do
   describe '#execute_search' do
     let(:search_object) do
       SearchObject.new(
+        id: nil,
         query: 'apartment',
         lat: 40.7128,
         long: -74.0060,
@@ -307,6 +308,7 @@ RSpec.describe MarketplaceMonitor do
   describe '#search' do
     let(:search_object) do
       SearchObject.new(
+        id: nil,
         query: 'apartment',
         lat: 40.7128,
         long: -74.0060,
@@ -330,6 +332,7 @@ RSpec.describe MarketplaceMonitor do
   describe '#add_saved_search' do
     let(:search_object) do
       SearchObject.new(
+        id: nil,
         query: 'bike',
         lat: 40.7128,
         long: -74.0060,

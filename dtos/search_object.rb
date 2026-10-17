@@ -1,21 +1,11 @@
 # frozen_string_literal: true
 
-class SearchObject
-  def initialize(query:, lat:, long:, min_price:, max_price:, radius_km:, condition:, delivery_method:, id: nil)
-    @query = query
-    @lat = lat
-    @long = long
-    @min_price = min_price
-    @max_price = max_price
-    @radius_km = radius_km
-    @condition = condition
-    @delivery_method = delivery_method
-    @id = id
-  end
-
-  # @param [SavedSearch] saved_search
+class SearchObject < Data.define(
+  :query, :lat, :long, :min_price, :max_price,
+  :radius_km, :condition, :delivery_method, :id
+)
   def self.from_saved_search(saved_search:)
-    SearchObject.new(
+    new(
       id: saved_search.id,
       query: saved_search.query,
       lat: saved_search.lat,
@@ -26,20 +16,5 @@ class SearchObject
       condition: saved_search.condition,
       delivery_method: saved_search.delivery_method
     )
-  end
-
-  attr_reader :id, :query, :lat, :long, :min_price, :max_price, :radius_km, :condition, :delivery_method
-
-  def search_hash
-    {
-      query: @query,
-      lat: @lat,
-      long: @long,
-      min_price: @min_price,
-      max_price: @max_price,
-      radius_km: @radius_km,
-      condition: @condition,
-      delivery_method: @delivery_method
-    }
   end
 end
