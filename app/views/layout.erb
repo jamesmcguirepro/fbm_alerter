@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace Monitor</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/htmx.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="/" class="logo">🔔 Marketplace Monitor</a>
+      <nav>
+        <a href="/dashboard"<%= ' class="active"' if request.path_info == '/dashboard' %>>Dashboard</a>
+        <a href="/searches"<%= ' class="active"' if request.path_info.start_with?('/searches') %>>Searches</a>
+        <a href="/listings"<%= ' class="active"' if request.path_info == '/listings' %>>Listings</a>
+        <a href="/alerts"<%= ' class="active"' if request.path_info == '/alerts' %>>Alerts</a>
+        <a href="/settings"<%= ' class="active"' if request.path_info == '/settings' %>>Settings</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <% if session[:flash] %>
+      <div class="flash flash--success"><%= session.delete(:flash) %></div>
+    <% end %>
+    <% if session[:flash_error] %>
+      <div class="flash flash--error"><%= session.delete(:flash_error) %></div>
+    <% end %>
+
+    <%= yield %>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <small>Marketplace Monitor v<%= defined?(VERSION) ? VERSION : '1.0.0' %></small>
+    </div>
+  </footer>
+
+  <script>
+    // Clear an input via a [data-clear="#selector"] button (event-delegated).
+    document.addEventListener('click', function (event) {
+      var btn = event.target.closest('[data-clear]');
+      if (!btn) return;
+      var input = document.querySelector(btn.getAttribute('data-clear'));
+      if (input) { input.value = ''; input.focus(); }
+    });
+  </script>
+</body>
+</html>

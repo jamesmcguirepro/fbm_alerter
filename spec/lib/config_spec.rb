@@ -27,30 +27,6 @@ RSpec.describe Config do
     end
   end
 
-  describe '.email_to' do
-    it 'returns array of recipients' do
-      expect(described_class.email_to).to eq(['recipient@example.com'])
-    end
-
-    it 'handles multiple recipients' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com, b@example.com, c@example.com')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com', 'c@example.com'])
-    end
-
-    it 'strips whitespace' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com , b@example.com ')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com'])
-    end
-
-    it 'filters empty strings' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com,,b@example.com')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com'])
-    end
-  end
-
   describe '.smtp_address' do
     it 'returns SMTP address from environment' do
       expect(described_class.smtp_address).to eq('smtp.gmail.com')
@@ -78,18 +54,6 @@ RSpec.describe Config do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('SMTP_PORT').and_return(nil)
       expect(described_class.smtp_port).to eq(587)
-    end
-  end
-
-  describe '.db_path' do
-    it 'returns database path from environment' do
-      expect(described_class.db_path).to eq('test_marketplace_monitor.db')
-    end
-
-    it 'returns default when not set' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('DB_PATH').and_return(nil)
-      expect(described_class.db_path).to eq('./marketplace_monitor.db')
     end
   end
 
@@ -125,12 +89,6 @@ RSpec.describe Config do
     it 'raises error when API key is missing' do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('SOCIAVAULT_API_KEY').and_return(nil)
-      expect { described_class.validate! }.to raise_error
-    end
-
-    it 'raises error when EMAIL_TO is missing' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('')
       expect { described_class.validate! }.to raise_error
     end
   end

@@ -1,0 +1,33 @@
+<h1>Alerts</h1>
+
+<% if @alerts.any? %>
+<table>
+  <thead>
+    <tr>
+      <th>Sent at</th><th>Listing</th><th>Search</th><th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @alerts.each do |alert| %>
+    <tr>
+      <td class="nowrap"><%= format_date(alert.sent_at) %></td>
+      <td><%= truncate(alert.listing.title) %></td>
+      <td><%= truncate(alert.saved_search.query) %></td>
+      <td class="nowrap"><%= format_price(alert.listing.price) %></td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<div class="pagination">
+  <% (1..[@total_pages, 1].max).each do |p| %>
+    <% if p == @page %>
+      <span class="current"><%= p %></span>
+    <% else %>
+      <a href="/alerts?page=<%= p %>"><%= p %></a>
+    <% end %>
+  <% end %>
+</div>
+<% else %>
+<div class="empty">No alerts sent yet.</div>
+<% end %>

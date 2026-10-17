@@ -1,0 +1,5 @@
+<% if @log.to_s.strip.empty? %>
+  No output.
+<% else %>
+<pre class="run-log"><%= @log %></pre>
+<% end %>

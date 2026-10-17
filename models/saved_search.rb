@@ -4,6 +4,7 @@
 # Table name: saved_searches
 #
 #  id              :integer          not null, primary key
+#  active          :boolean          default(TRUE), not null
 #  condition       :string
 #  delivery_method :string
 #  email           :string
@@ -11,6 +12,7 @@
 #  long            :decimal(, )
 #  max_price       :decimal(, )
 #  min_price       :decimal(, )
+#  name            :string
 #  query           :string
 #  radius_km       :integer
 #  created_at      :datetime         not null
@@ -34,7 +36,7 @@ class SavedSearch < ActiveRecord::Base
     )
   end
 
-  def print_search
-    puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
+  def print_search(io: $stdout)
+    io.puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
   end
 end

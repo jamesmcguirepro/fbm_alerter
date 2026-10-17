@@ -1,0 +1,22 @@
+<h1>Searches</h1>
+
+<div class="actions">
+  <a href="/searches/new" class="button button--primary">+ Add search</a>
+</div>
+
+<% if @searches.any? %>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th><th>Query</th><th>Location</th><th>Price</th><th>Email</th><th>Status</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @searches.each do |search| %>
+      <%= erb :'searches/_row', layout: false, locals: { search: search } %>
+    <% end %>
+  </tbody>
+</table>
+<% else %>
+<div class="empty">No searches saved yet. Add one to get started.</div>
+<% end %>

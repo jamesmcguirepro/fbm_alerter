@@ -1,0 +1,31 @@
+<h1>Settings</h1>
+
+<div class="card">
+  <h2>Configuration</h2>
+  <table>
+    <tr><th>Setting</th><th>Value</th></tr>
+    <tr><td>SOCIAVAULT_API_KEY</td><td><%= mask(Config.api_key) %></td></tr>
+    <tr><td>EMAIL_FROM</td><td><%= Config.email_from %></td></tr>
+    <tr><td>SMTP_ADDRESS</td><td><%= Config.smtp_address %></td></tr>
+    <tr><td>SMTP_PORT</td><td><%= Config.smtp_port %></td></tr>
+    <tr><td>SMTP_USERNAME</td><td><%= Config.smtp_username %></td></tr>
+    <tr><td>Database</td><td><%= ActiveRecord::Base.connection_db_config.database %></td></tr>
+    <tr><td>Environment</td><td><%= ENV['RUBY_ENV'] %></td></tr>
+  </table>
+</div>
+
+<div class="form" style="max-width:520px;">
+  <h2>Send test email</h2>
+  <form action="/settings/test-email" method="post">
+    <div class="field">
+      <label for="test-email-to">To</label>
+      <div class="input-clear">
+        <input type="email" id="test-email-to" name="email" value="<%= Config.email_from %>" required>
+        <button type="button" class="input-clear__btn" data-clear="#test-email-to" aria-label="Clear email field" title="Clear">×</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="button button--primary">Send test email</button>
+    </div>
+  </form>
+</div>

@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# IMPORTANT: select the test database BEFORE anything loads .env or the app.
+# Ordering matters because dotenv sets RUBY_ENV=development from .env, and the
+# DB connection is established during the app require. If this runs late, tests
+# connect to (and DatabaseCleaner truncates) the DEVELOPMENT database.
+ENV['RUBY_ENV'] = 'test'
+
 require 'database_cleaner/active_record'
 require 'dotenv/load'
 require 'rspec'
@@ -7,9 +13,14 @@ require 'timecop'
 require 'webmock/rspec'
 require_relative '../main'
 
-ENV['RUBY_ENV'] = 'test'
-
 ActiveRecord::Base.connection_pool.migration_context.migrate
+
+# Guard: never let specs point at (and truncate) the development database.
+connected_db = ActiveRecord::Base.connection_db_config.database.to_s
+unless connected_db.include?('test')
+  raise "Refusing to run specs against non-test database: #{connected_db}. " \
+        "Check that RUBY_ENV is set to 'test' before the app is required."
+end
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -39,8 +50,5 @@ end
 # Test environment setup
 ENV['SOCIAVAULT_API_KEY'] = 'sk_test_key'
 ENV['EMAIL_FROM'] = 'test@example.com'
-ENV['EMAIL_TO'] = 'recipient@example.com'
 ENV['SMTP_USERNAME'] = 'test_user'
 ENV['SMTP_PASSWORD'] = 'test_pass'
-ENV['DB_PATH'] = 'test_marketplace_monitor.db'
-ENV['SEARCHES'] = 'bike|40.7128|-74.0060|100|500|25'

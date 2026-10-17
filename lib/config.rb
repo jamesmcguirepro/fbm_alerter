@@ -11,10 +11,6 @@ class Config
       ENV['EMAIL_FROM'] || 'marketplace-alerts@example.com'
     end
 
-    def email_to
-      (ENV['EMAIL_TO'] || '').split(',').map(&:strip).reject(&:empty?)
-    end
-
     def smtp_address
       ENV['SMTP_ADDRESS'] || 'smtp.gmail.com'
     end
@@ -29,10 +25,6 @@ class Config
 
     def smtp_password
       ENV['SMTP_PASSWORD']
-    end
-
-    def db_path
-      ENV['DB_PATH'] || './marketplace_monitor.db'
     end
 
     # Parse duration strings like "30m", "2h", "1d" into seconds
@@ -53,7 +45,6 @@ class Config
     def validate!
       errors = []
       errors << 'SOCIAVAULT_API_KEY not set' unless ENV['SOCIAVAULT_API_KEY']
-      errors << 'EMAIL_TO not set or empty' if email_to.empty?
 
       return unless errors.any?
 
