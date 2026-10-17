@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MarketplaceApp < Sinatra::Base
-  helpers ViewHelpers
-
   get '/alerts' do
     page = [params[:page].to_i, 1].max
     per_page = 50

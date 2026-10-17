@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MarketplaceApp < Sinatra::Base
-  helpers ViewHelpers
-
   helpers do
     # Attributes submitted by the new/edit search forms.
     def saved_search_attributes

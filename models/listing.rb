@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # == Schema Information
 #
 # Table name: listings
@@ -45,7 +47,7 @@ class Listing < ActiveRecord::Base
       location: listing_object.location,
       url: listing_object.url,
       image_url: listing_object.image_url,
-      search_query: listing_object.search_query,
+      search_query: listing_object.search_query
     }
 
     now = Time.current

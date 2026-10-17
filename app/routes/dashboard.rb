@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MarketplaceApp < Sinatra::Base
-  helpers ViewHelpers
-
   get '/dashboard' do
     load_dashboard
 

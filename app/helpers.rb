@@ -30,6 +30,7 @@ module ViewHelpers
   def escape_html(text)
     CGI.escapeHTML(text.to_s)
   end
+
   def format_price(value)
     PriceFormatter.format(value)
   end
@@ -99,10 +100,6 @@ module ViewHelpers
     output.string
   rescue StandardError => e
     "✗ Error: #{e.message}\n"
-  end
-
-  def search_link(search)
-    "/searches/#{search.id}"
   end
 
   # Map a listing's stored query string back to a saved search id, so a listing

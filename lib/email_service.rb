@@ -136,7 +136,7 @@ class EmailService
 
     def format_time(value)
       return nil if value.nil?
-      return value.strftime('%b %-d, %Y') if value.respond_to?(:strftime)
+      return value.strftime('%b %d, %Y') if value.respond_to?(:strftime)
 
       value.to_s
     end

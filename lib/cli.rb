@@ -72,8 +72,6 @@ class CLI < Thor
   end
 
   def search_object(options: {})
-    radius_km = options[:radius_km] || options[:radius]
-
     SearchObject.new(
       id: nil,
       query: options[:query],
@@ -81,7 +79,7 @@ class CLI < Thor
       long: options[:long],
       min_price: options[:min],
       max_price: options[:max],
-      radius_km: radius_km,
+      radius_km: options[:radius],
       condition: options[:cond],
       delivery_method: options[:del]
     )

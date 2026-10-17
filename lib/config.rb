@@ -35,20 +35,6 @@ class Config
       %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
     end
 
-    # Parse duration strings like "30m", "2h", "1d" into seconds
-    def parse_interval(interval_str)
-      case interval_str
-      when /^(\d+)m$/
-        Regexp.last_match(1).to_i * 60
-      when /^(\d+)h$/
-        Regexp.last_match(1).to_i * 3600
-      when /^(\d+)d$/
-        Regexp.last_match(1).to_i * 86_400
-      else
-        30 * 60 # default to 30 minutes
-      end
-    end
-
     # Validate configuration
     def validate!
       errors = []

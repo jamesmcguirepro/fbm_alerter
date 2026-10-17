@@ -15,8 +15,8 @@ class SociaVaultClient
         condition: search_object.condition,
         delivery_method: search_object.delivery_method
       )
-
     end
+
     # Search Facebook Marketplace
     # @param query [String] Search keyword
     # @param lat [Float] Latitude

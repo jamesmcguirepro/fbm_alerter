@@ -122,16 +122,15 @@ class MarketplaceMonitor
       listings.each do |listing|
         listing_object = ListingObject.from_listing_response(response: listing, search_query: search_query)
 
-        existing = Listing.exists?(listing_id: listing_object.listing_id)
+        # add_listing upserts, so one call both stores the listing and says
+        # whether it is new: only a first sighting is worth alerting on.
+        saved = Listing.add_listing(listing_object:, search_run:)
 
-        if existing
-          @io.puts "Listing #{listing_object.title} already exists"
-          # Still refresh last_seen_at without touching first_seen_at
-          Listing.add_listing(listing_object:)
-          next
+        if saved.previously_new_record?
+          new_listings << saved
+        else
+          @io.puts "Listing #{saved.title} already exists"
         end
-
-        new_listings << Listing.add_listing(listing_object:, search_run:)
       end
     else
       @io.puts '  No listings found or unexpected response format'

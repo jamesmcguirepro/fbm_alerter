@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MarketplaceApp < Sinatra::Base
-  helpers ViewHelpers
-
   helpers do
     # Recent listings from a single search, ready for the email template.
     # Falls back to sample data so the preview always renders something. No

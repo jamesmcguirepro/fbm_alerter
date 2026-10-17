@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 
 # == Schema Information
 #
@@ -24,7 +25,6 @@ class SavedSearch < ActiveRecord::Base
   include Discard::Model
 
   has_many :alerts
-  has_many :listings, through: :alerts
   has_many :search_runs
 
   # Soft delete via discard. `kept` hides discarded searches, while the row and

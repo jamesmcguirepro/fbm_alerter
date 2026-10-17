@@ -57,30 +57,6 @@ RSpec.describe Config do
     end
   end
 
-  describe '.parse_interval' do
-    it 'parses minutes' do
-      expect(described_class.parse_interval('30m')).to eq(1800)
-    end
-
-    it 'parses hours' do
-      expect(described_class.parse_interval('2h')).to eq(7200)
-    end
-
-    it 'parses days' do
-      expect(described_class.parse_interval('1d')).to eq(86_400)
-    end
-
-    it 'returns default for invalid format' do
-      expect(described_class.parse_interval('invalid')).to eq(1800)
-    end
-
-    it 'handles single digit times' do
-      expect(described_class.parse_interval('1m')).to eq(60)
-      expect(described_class.parse_interval('1h')).to eq(3600)
-      expect(described_class.parse_interval('1d')).to eq(86_400)
-    end
-  end
-
   describe '.dry_run?' do
     after { ENV.delete('DRY_RUN') }
 
