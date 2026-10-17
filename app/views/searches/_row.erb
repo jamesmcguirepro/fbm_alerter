@@ -13,22 +13,28 @@
   <td id="search-calls-<%= search.id %>"><%= calls_cell(search) %></td>
   <td><%= active_badge(search) %></td>
   <td class="actions">
-    <button hx-post="/searches/<%= search.id %>/run"
-            hx-target="#run-log-<%= search.id %>"
-            hx-swap="innerHTML"
-            class="button button--secondary button--small">Run now</button>
-    <div id="run-log-<%= search.id %>" class="muted run-log-slot"></div>
-    <button hx-post="/searches/<%= search.id %>/toggle"
-            hx-target="closest tr"
-            hx-swap="outerHTML"
-            class="button button--small <%= search.active ? 'button--danger' : 'button--success' %>">
-      <%= search.active ? 'Pause' : 'Resume' %>
-    </button>
-    <a href="/searches/<%= search.id %>/edit" class="button button--small button--secondary">Edit</a>
-    <button hx-delete="/searches/<%= search.id %>"
-            hx-confirm="Remove this search? Its alerts and run history are kept."
-            hx-target="closest tr"
-            hx-swap="outerHTML"
-            class="button button--small button--danger">Delete</button>
+    <div class="run-group">
+      <button hx-post="/searches/<%= search.id %>/run"
+              hx-target="#run-log-<%= search.id %>"
+              hx-swap="innerHTML"
+              hx-on::htmx:request="this.disabled=true; this.textContent='Running…'"
+              hx-on::htmx:after-request="this.disabled=false; this.textContent='Run now'"
+              class="button button--secondary button--small">Run now</button>
+      <div id="run-log-<%= search.id %>" class="run-log-slot"></div>
+    </div>
+    <div class="row-actions">
+      <button hx-post="/searches/<%= search.id %>/toggle"
+              hx-target="closest tr"
+              hx-swap="outerHTML"
+              class="button button--small <%= search.active ? 'button--danger' : 'button--success' %>">
+        <%= search.active ? 'Pause' : 'Resume' %>
+      </button>
+      <a href="/searches/<%= search.id %>/edit" class="button button--small button--secondary">Edit</a>
+      <button hx-delete="/searches/<%= search.id %>"
+              hx-confirm="Remove this search? Its alerts and run history are kept."
+              hx-target="closest tr"
+              hx-swap="outerHTML"
+              class="button button--small button--danger">Delete</button>
+    </div>
   </td>
 </tr>

@@ -144,13 +144,22 @@ button:hover, .button:hover { opacity: 0.9; }
 /* Actions row */
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 
+/* Per-row actions cell: run + log on top, secondary actions below. */
+td.actions { display: flex; flex-direction: column; gap: 0.5rem; align-items: start; }
+
+.run-group { display: flex; flex-direction: column; gap: 0.25rem; align-items: start; }
+
+.row-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.run-log-slot { margin-top: 0.25rem; }
+
 /* Run log */
 pre.run-log {
   background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
-/* Placeholder under "Run now" that the log is swapped into. */
-.run-log-slot { margin-top: 0.35rem; }
 
 /* Pagination */
 .pagination { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1rem; }
