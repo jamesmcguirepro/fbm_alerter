@@ -237,8 +237,11 @@ RSpec.describe MarketplaceApp do
       get '/searches'
 
       expect(last_response.body).to include(%(hx-on::htmx:request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-#{search.id}').showModal()"))
-      expect(last_response.body).to include(%(hx-on::htmx:after-request="this.disabled=false; this.textContent='Run now'; document.getElementById('run-modal-#{search.id}').close()"))
-      expect(last_response.body).to include(%(hx-on::htmx:after-settle="document.getElementById('run-modal-#{search.id}').close()"))
+      expect(last_response.body).to include(%(hx-on::htmx:after-request="this.disabled=false; this.textContent='Run now'"))
+      # The modal must stay open so the run log is visible — it should not be
+      # auto-closed when the request settles.
+      expect(last_response.body).not_to include(%(after-settle))
+      expect(last_response.body).not_to include("run-modal-#{search.id}').close()")
     end
 
     it 'hides a discarded search' do
