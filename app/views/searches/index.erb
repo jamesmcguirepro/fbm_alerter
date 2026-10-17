@@ -2,6 +2,11 @@
 
 <div class="actions">
   <a href="/searches/new" class="button button--primary">+ Add search</a>
+  <% if @show_inactive %>
+    <a href="/searches" class="button button--secondary">Hide inactive</a>
+  <% else %>
+    <a href="/searches?inactive=1" class="button button--secondary">Show inactive</a>
+  <% end %>
 </div>
 
 <% if @searches.any? %>
@@ -18,5 +23,11 @@
   </tbody>
 </table>
 <% else %>
-<div class="empty">No searches saved yet. Add one to get started.</div>
+<div class="empty">
+  <% if @show_inactive %>
+    No searches saved yet. Add one to get started.
+  <% else %>
+    No active searches. <a href="/searches?inactive=1">Show inactive</a>.
+  <% end %>
+</div>
 <% end %>

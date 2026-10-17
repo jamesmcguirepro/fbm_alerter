@@ -36,7 +36,7 @@
       <td>
         <% sid = @search_id_by_query[listing.search_query] %>
         <% if sid %>
-          <a href="/searches#search-row-<%= sid %>"><%= truncate(listing.search_query) %></a>
+          <a href="/searches?inactive=1#search-row-<%= sid %>"><%= truncate(listing.search_query) %></a>
         <% else %>
           <%= truncate(listing.search_query) %>
         <% end %>

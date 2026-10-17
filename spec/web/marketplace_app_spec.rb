@@ -53,6 +53,15 @@ RSpec.describe MarketplaceApp do
       }.to_json,
       headers: { 'Content-Type' => 'application/json' }
     )
+
+    # Reverse geocoding on the searches page must never hit the network.
+    stub_request(:get, %r{nominatim\.openstreetmap\.org/reverse}).to_return(
+      status: 200,
+      body: {
+        'address' => { 'city' => 'New York', 'state' => 'New York' }
+      }.to_json,
+      headers: { 'Content-Type' => 'application/json' }
+    )
   end
 
   describe 'GET /health' do
@@ -95,6 +104,27 @@ RSpec.describe MarketplaceApp do
       get '/searches'
       expect(last_response.body).to include(%(hx-post="/searches/#{search.id}/toggle"))
       expect(last_response.body).to include(%(hx-delete="/searches/#{search.id}"))
+      expect(last_response.body).to include(%(id="search-row-#{search.id}"))
+    end
+
+    it 'shows a resolved place name instead of raw coordinates' do
+      get '/searches'
+      expect(last_response.body).to include('New York')
+      expect(last_response.body).not_to include('40.7128, -74.006')
+      expect(search.reload.resolved_location).to eq('New York')
+    end
+
+    it 'hides inactive searches unless explicitly requested' do
+      paused = SavedSearch.create!(
+        query: 'paused', lat: 40.7128, long: -74.0060,
+        email: 'owner@example.com', active: false
+      )
+
+      get '/searches'
+      expect(last_response.body).not_to include(%(id="search-row-#{paused.id}"))
+
+      get '/searches?inactive=1'
+      expect(last_response.body).to include(%(id="search-row-#{paused.id}"))
       expect(last_response.body).to include(%(id="search-row-#{search.id}"))
     end
   end
@@ -149,17 +179,26 @@ RSpec.describe MarketplaceApp do
   end
 
   describe 'PATCH /searches/:id' do
-    it 'updates the saved search' do
-      search = SavedSearch.create!(
+    it 'forks a new search and pauses the original' do
+      original = SavedSearch.create!(
         query: 'bike', lat: 40.7128, long: -74.0060,
-        min_price: 100, max_price: 500, email: 'owner@example.com'
+        min_price: 100, max_price: 500, email: 'owner@example.com', active: true
       )
-      patch "/searches/#{search.id}", {
-        name: 'My Bike Search', query: 'bike', lat: 40.7128, long: -74.0060,
-        min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com'
-      }
+
+      expect do
+        patch "/searches/#{original.id}", {
+          name: 'My Bike Search', query: 'bike', lat: 40.7128, long: -74.0060,
+          min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com',
+          active: 'on'
+        }
+      end.to change(SavedSearch, :count).by(1)
+
       expect(last_response.status).to eq(302)
-      expect(search.reload.name).to eq('My Bike Search')
+
+      replacement = SavedSearch.where.not(id: original.id).last
+      expect(replacement.name).to eq('My Bike Search')
+      expect(replacement.active).to be true
+      expect(original.reload.active).to be false
     end
 
     it 'rejects out-of-range coordinates and keeps the stored value' do
@@ -249,7 +288,7 @@ RSpec.describe MarketplaceApp do
 
       get '/listings'
       expect(last_response.status).to eq(200)
-      expect(last_response.body).to include(%(href="/searches#search-row-#{search.id}"))
+      expect(last_response.body).to include(%(href="/searches?inactive=1#search-row-#{search.id}"))
       expect(last_response.body).to include(%(data-href="https://facebook.com/marketplace/item/abc123/"))
       expect(last_response.body).to include(
         %(<a href="https://facebook.com/marketplace/item/abc123/" target="_blank" rel="noopener">Test Bike</a>)

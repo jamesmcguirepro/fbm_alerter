@@ -3,26 +3,31 @@
 #
 # Table name: saved_searches
 #
-#  id              :integer          not null, primary key
-#  active          :boolean          default(TRUE), not null
-#  condition       :string
-#  delivery_method :string
-#  email           :string
-#  lat             :decimal(, )
-#  long            :decimal(, )
-#  max_price       :decimal(, )
-#  min_price       :decimal(, )
-#  name            :string
-#  query           :string
-#  radius_km       :integer
-#  created_at      :datetime         not null
-#  updated_at      :datetime         not null
+#  id                :integer          not null, primary key
+#  active            :boolean          default(TRUE), not null
+#  condition         :string
+#  delivery_method   :string
+#  email             :string
+#  lat               :decimal(, )
+#  long              :decimal(, )
+#  max_price         :decimal(, )
+#  min_price         :decimal(, )
+#  name              :string
+#  query             :string
+#  radius_km         :integer
+#  resolved_location :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
 #
 class SavedSearch < ActiveRecord::Base
   has_many :alerts
   has_many :listings, through: :alerts
 
   attribute :radius_km, default: 65
+
+  # Keep coordinates at ~11 m precision, then drop a stale cached place name.
+  before_save :round_coordinates
+  before_save :reset_resolved_location, if: :coordinates_changed?
 
   validates :lat, numericality: {
     greater_than_or_equal_to: -90, less_than_or_equal_to: 90,
@@ -59,7 +64,41 @@ class SavedSearch < ActiveRecord::Base
     lat.to_f.between?(-90, 90) && long.to_f.between?(-180, 180)
   end
 
+  # Resolve and cache a human-readable place name for the coordinates via a
+  # free reverse-geocoding service. Returns the name, or nil when unavailable.
+  def resolve_location!
+    return resolved_location if resolved_location.present?
+    return nil unless valid_coordinates?
+
+    name = ReverseGeocoder.lookup(lat: lat.to_f, long: long.to_f)
+    update_column(:resolved_location, name) if name.present?
+    name
+  end
+
+  # Place name for display, falling back to raw coordinates when unresolved.
+  def location_label
+    return resolved_location if resolved_location.present?
+    return nil if lat.nil? || long.nil?
+
+    "#{lat}, #{long}"
+  end
+
   def print_search(io: $stdout)
     io.puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
+  end
+
+  private
+
+  def round_coordinates
+    self.lat = lat.round(4) if lat
+    self.long = long.round(4) if long
+  end
+
+  def coordinates_changed?
+    persisted? && (will_save_change_to_attribute?(:lat) || will_save_change_to_attribute?(:long))
+  end
+
+  def reset_resolved_location
+    self.resolved_location = nil
   end
 end

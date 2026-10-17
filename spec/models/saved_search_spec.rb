@@ -118,4 +118,68 @@ RSpec.describe SavedSearch, type: :model do
       expect(described_class.new(attrs.merge(radius_km: 1001))).not_to be_valid
     end
   end
+
+  describe '#resolve_location! / #location_label' do
+    let(:attrs) { { query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com' } }
+
+    def stub_lookup(city: 'Austin', state: 'Texas')
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/reverse}).to_return(
+        status: 200,
+        body: { 'address' => { 'city' => city, 'state' => state } }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+    end
+
+    it 'resolves and caches the place name' do
+      stub_lookup
+      search = described_class.create!(attrs)
+
+      expect(search.resolve_location!).to eq('Austin, Texas')
+      expect(search.reload.resolved_location).to eq('Austin, Texas')
+      expect(search.location_label).to eq('Austin, Texas')
+    end
+
+    it 'uses the cache and makes no request when a name is present' do
+      search = described_class.create!(attrs.merge(resolved_location: 'Cached, CA'))
+
+      expect(search.resolve_location!).to eq('Cached, CA')
+      expect(a_request(:get, %r{nominatim})).not_to have_been_made
+    end
+
+    it 'returns nil and makes no request without valid coordinates' do
+      search = described_class.new(query: 'bike')
+
+      expect(search.resolve_location!).to be_nil
+      expect(a_request(:get, %r{nominatim})).not_to have_been_made
+    end
+
+    it 'falls back to raw coordinates for display when unresolved' do
+      expect(described_class.new(attrs).location_label).to eq('40.7128, -74.006')
+    end
+  end
+
+  describe 'coordinate precision' do
+    it 'rounds coordinates to 4 decimals on save' do
+      search = described_class.create!(
+        query: 'bike', lat: 34.43295451090155, long: -119.71922006451092,
+        email: 'owner@example.com'
+      )
+
+      expect(search.lat.to_f).to eq(34.433)
+      expect(search.long.to_f).to eq(-119.7192)
+    end
+  end
+
+  describe 'coordinate changes' do
+    it 'clears a stale cached place name' do
+      search = described_class.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com',
+        resolved_location: 'New York, New York'
+      )
+
+      search.update!(lat: 34.0)
+
+      expect(search.reload.resolved_location).to be_nil
+    end
+  end
 end

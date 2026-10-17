@@ -3,8 +3,31 @@
 class MarketplaceApp < Sinatra::Base
   helpers ViewHelpers
 
+  helpers do
+    # Attributes submitted by the new/edit search forms.
+    def saved_search_attributes
+      {
+        query: params[:query],
+        lat: params[:lat],
+        long: params[:long],
+        min_price: params[:min_price],
+        max_price: params[:max_price],
+        radius_km: params[:radius_km],
+        condition: params[:condition],
+        delivery_method: params[:delivery_method],
+        email: params[:email],
+        name: params[:name]
+      }
+    end
+  end
+
   get '/searches' do
-    @searches = SavedSearch.order(created_at: :desc).all
+    @show_inactive = params[:inactive] == '1'
+    scope = SavedSearch.order(created_at: :desc)
+    scope = scope.where(active: true) unless @show_inactive
+    @searches = scope.all
+    # Best-effort backfill of cached place names; each is looked up only once.
+    @searches.each(&:resolve_location!)
     erb :'searches/index'
   end
 
@@ -14,19 +37,7 @@ class MarketplaceApp < Sinatra::Base
   end
 
   post '/searches' do
-    search = SavedSearch.new(
-      query: params[:query],
-      lat: params[:lat],
-      long: params[:long],
-      min_price: params[:min_price],
-      max_price: params[:max_price],
-      radius_km: params[:radius_km],
-      condition: params[:condition],
-      delivery_method: params[:delivery_method],
-      email: params[:email],
-      name: params[:name],
-      active: true
-    )
+    search = SavedSearch.new(saved_search_attributes.merge(active: true))
 
     if search.save
       redirect '/searches'
@@ -42,26 +53,21 @@ class MarketplaceApp < Sinatra::Base
     erb :'searches/edit'
   end
 
+  # Saved searches are immutable: editing forks a new search and pauses the
+  # original, so listings keep pointing at the search that actually found them.
   patch '/searches/:id' do
-    search = SavedSearch.find(params[:id])
-    search.update(
-      query: params[:query],
-      lat: params[:lat],
-      long: params[:long],
-      min_price: params[:min_price],
-      max_price: params[:max_price],
-      radius_km: params[:radius_km],
-      condition: params[:condition],
-      delivery_method: params[:delivery_method],
-      email: params[:email],
-      name: params[:name],
-      active: params[:active] == 'on'
-    )
+    original = SavedSearch.find(params[:id])
+    attributes = saved_search_attributes.merge(active: params[:active] == 'on')
+    replacement = SavedSearch.new(attributes)
 
-    if search.save
+    if replacement.save
+      original.update_column(:active, false)
       redirect '/searches'
     else
-      @search = search
+      # Re-render with the entered values and errors, without saving anything.
+      @search = original
+      @search.assign_attributes(attributes)
+      @search.valid?
       status 422
       erb :'searches/edit'
     end
