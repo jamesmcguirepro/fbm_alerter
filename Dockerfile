@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ruby:3.4.4-slim
+FROM ruby:4.0.6-slim
 
 # Install system dependencies for native gems (sqlite3, etc.)
 RUN apt-get update -qq && \

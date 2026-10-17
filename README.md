@@ -4,7 +4,7 @@ A Ruby application that monitors Facebook Marketplace listings and sends email a
 
 ## Prerequisites
 
-- Ruby 3.2+ (or Docker)
+- Ruby 4.0+ (or Docker)
 - SQLite3 (bundled with Docker image)
 - A SociaVault API account (https://sociavault.com)
 - An email account with SMTP access

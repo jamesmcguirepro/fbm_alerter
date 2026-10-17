@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-ruby '3.4.4'
+ruby '4.0.6'
 
 gem 'activerecord' , '~> 8.1.3'
 gem 'chronic_duration', '~> 0.10.6'
