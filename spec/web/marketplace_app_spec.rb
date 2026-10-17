@@ -352,5 +352,38 @@ RSpec.describe MarketplaceApp do
       post '/settings/test-email', { email: '' }
       expect(last_response.status).to eq(302)
     end
+
+    it 'sends an email in the alert format' do
+      expect(Mailer).to receive(:send_email) do |args|
+        expect(args[:html_body]).to include('New Marketplace Listings')
+      end
+
+      post '/settings/test-email', { email: 'dest@example.com' }
+      expect(last_response.status).to eq(302)
+    end
+  end
+
+  describe 'GET /settings/email-preview' do
+    it 'renders the alert email from stored listings without calling the API' do
+      Listing.create!(
+        listing_id: 'preview-1', title: 'Preview Bike', price: 1200,
+        location: 'Austin, TX', search_query: 'bike',
+        url: 'https://facebook.com/marketplace/item/preview-1/'
+      )
+
+      get '/settings/email-preview'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.content_type).to include('text/html')
+      expect(last_response.body).to include('Preview Bike')
+      expect(last_response.body).to include('New Marketplace Listings')
+    end
+
+    it 'falls back to sample listings when the database is empty' do
+      get '/settings/email-preview'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('Vintage Road Bike')
+    end
   end
 end

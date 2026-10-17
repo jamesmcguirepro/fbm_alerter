@@ -106,7 +106,7 @@ RSpec.describe EmailService do
       expect(mailer).to have_received(:send_email) do |args|
         html_body = args[:html_body]
         expect(html_body).to include("class=", "container")
-        expect(html_body).to start_with('<html>')
+        expect(html_body).to start_with('<!DOCTYPE html>')
         expect(html_body.strip).to end_with('</html>')
       end
     end
@@ -133,6 +133,49 @@ RSpec.describe EmailService do
                                'https://example.com/photo.jpg',
                                'bike'
                              )
+      end
+    end
+
+    it 'links each listing title to its ad' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include(
+          '<a href="https://facebook.com/marketplace/item/123/" target="_blank">Mountain Bike</a>'
+        )
+      end
+    end
+
+    it 'escapes HTML in listing text' do
+      allow(listings.first).to receive(:title).and_return('Bike & <Parts>')
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('Bike &amp; &lt;Parts&gt;')
+        expect(args[:html_body]).not_to include('<Parts>')
+      end
+    end
+
+    it 'formats the listed date' do
+      allow(listings.first).to receive(:first_seen_at).and_return(Time.new(2026, 10, 16, 9, 30))
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('Listed: Oct 16, 2026')
+      end
+    end
+
+    context 'when location is blank' do
+      before { allow(listings.first).to receive(:location).and_return(nil) }
+
+      it 'omits the location line' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).not_to include('📍')
+        end
       end
     end
 
@@ -171,6 +214,16 @@ RSpec.describe EmailService do
 
         expect { call }.not_to raise_error
       end
+    end
+  end
+
+  describe '.render' do
+    it 'builds standalone HTML without sending mail' do
+      html = described_class.render(listings: [])
+
+      expect(html).to start_with('<!DOCTYPE html>')
+      expect(html.strip).to end_with('</html>')
+      expect(mailer).not_to have_received(:send_email)
     end
   end
 end

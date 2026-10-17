@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'cgi'
+
 # Email service for sending alert notifications
 class EmailService
   class << self
@@ -10,11 +12,21 @@ class EmailService
       return if listings.empty?
 
       subject = "🔔 #{listings.length} New Marketplace Listing(s)"
-      html_body = build_html_email(listings:)
+      html_body = render(listings:)
 
       emails.each do |recipient|
         send_to_recipient(recipient:, subject:, html_body:)
       end
+    end
+
+    # Build the full alert email HTML. Public so it can be rendered for a
+    # preview without sending (and without spending any API credits).
+    # @param listings [Array<ListingObject>]
+    # @return [String]
+    def render(listings:)
+      html = header(count: listings.length)
+      listings.each { |listing| html += listing_section(listing:) }
+      html + footer
     end
 
     private
@@ -28,36 +40,28 @@ class EmailService
       puts "✗ Failed to send email to #{recipient}: #{e.message}"
     end
 
-    # Build HTML email body
-    # param [Array<ListingObject>] listings
-    def build_html_email(listings:)
-      html = build_email_header(count: listings.length)
-
-      listings.each do |listing|
-        html += build_listing_section(listing:)
-      end
-
-      html + build_email_footer
-    end
-
     # Email header HTML
-    def build_email_header(count:)
+    def header(count:)
       <<~HTML
+        <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="UTF-8">
             <style>
-              body { font-family: Arial, sans-serif; background: #f5f5f5; }
-              .container { max-width: 800px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+              body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
+              .container { max-width: 600px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 8px; }
               .header { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+              .header h1 { margin: 0 0 6px; font-size: 20px; }
+              .header p { margin: 0; color: #666; }
               .listing { border: 1px solid #ddd; margin: 15px 0; padding: 15px; border-radius: 4px; }
-              .listing:hover { background: #f9f9f9; }
-              .title { font-size: 18px; font-weight: bold; color: #007bff; margin: 10px 0; }
+              .title { font-size: 18px; font-weight: bold; margin: 10px 0; }
+              .title a { color: #007bff; text-decoration: none; }
               .price { font-size: 24px; font-weight: bold; color: #28a745; }
-              .location { color: #666; font-size: 14px; }
+              .location { color: #666; font-size: 14px; margin-top: 4px; }
               .image { max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; }
-              .link { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
-              .link:hover { background: #0056b3; }
-              .query { background: #f0f0f0; padding: 5px 10px; border-radius: 3px; font-size: 12px; color: #666; display: inline-block; margin: 5px 0; }
+              .link { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; }
+              .query { background: #f0f0f0; padding: 5px 10px; border-radius: 3px; font-size: 12px; color: #666; display: inline-block; }
+              .listed { font-size: 12px; color: #999; margin-top: 10px; }
             </style>
           </head>
           <body>
@@ -71,27 +75,54 @@ class EmailService
 
     # Build HTML for a single listing
     # @param [ListingObject] listing
-    def build_listing_section(listing:)
-      image_html = listing.image_url ? %(<img src="#{listing.image_url}" class="image" />) : ''
-      price_display = PriceFormatter.format(listing.price)
-
+    def listing_section(listing:)
       <<~HTML
         <div class="listing">
-          <span class="query">#{listing.search_query}</span>
-          #{image_html}
-          <div class="title">#{listing.title}</div>
-          <div class="price">#{price_display}</div>
-          <div class="location">📍 #{listing.location}</div>
-          <a href="#{listing.url}" class="link" target="_blank">View Listing</a>
-          <div style="font-size: 12px; color: #999; margin-top: 10px;">
-            Listed: #{listing.first_seen_at}
-          </div>
+          <span class="query">#{escape(listing.search_query)}</span>
+          #{image_html(listing)}
+          <div class="title">#{title_html(listing)}</div>
+          <div class="price">#{PriceFormatter.format(listing.price)}</div>
+          #{location_html(listing)}
+          #{link_html(listing)}
+          #{listed_html(listing)}
         </div>
       HTML
     end
 
+    def image_html(listing)
+      return '' if listing.image_url.to_s.strip.empty?
+
+      %(<img src="#{escape(listing.image_url)}" class="image" alt="">)
+    end
+
+    def title_html(listing)
+      title = escape(listing.title)
+      return title if listing.url.to_s.strip.empty?
+
+      %(<a href="#{escape(listing.url)}" target="_blank">#{title}</a>)
+    end
+
+    def location_html(listing)
+      return '' if listing.location.to_s.strip.empty?
+
+      %(<div class="location">📍 #{escape(listing.location)}</div>)
+    end
+
+    def link_html(listing)
+      return '' if listing.url.to_s.strip.empty?
+
+      %(<a href="#{escape(listing.url)}" class="link" target="_blank">View Listing</a>)
+    end
+
+    def listed_html(listing)
+      date = format_time(listing.first_seen_at)
+      return '' if date.nil?
+
+      %(<div class="listed">Listed: #{date}</div>)
+    end
+
     # Email footer HTML
-    def build_email_footer
+    def footer
       <<~HTML
               <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
                 <p>Marketplace Monitor • Automated Email Alert</p>
@@ -100,6 +131,17 @@ class EmailService
           </body>
         </html>
       HTML
+    end
+
+    def escape(text)
+      CGI.escapeHTML(text.to_s)
+    end
+
+    def format_time(value)
+      return nil if value.nil?
+      return value.strftime('%b %-d, %Y') if value.respond_to?(:strftime)
+
+      value.to_s
     end
   end
 end
