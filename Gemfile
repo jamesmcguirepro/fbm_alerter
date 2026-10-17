@@ -19,6 +19,7 @@ group :development, :test do
   gem 'database_cleaner-active_record'
   gem 'rspec', '~> 3.13.0'
   gem 'timecop', '~> 0.9.11'
+  gem 'webmock', '~> 3.24'
 end
 
 group :development do

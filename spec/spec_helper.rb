@@ -4,6 +4,7 @@ require 'database_cleaner/active_record'
 require 'dotenv/load'
 require 'rspec'
 require 'timecop'
+require 'webmock/rspec'
 require_relative '../main'
 
 ENV['RUBY_ENV'] = 'test'
@@ -22,10 +23,12 @@ RSpec.configure do |config|
   config.before(:suite) do
     DatabaseCleaner.strategy = :transaction
     DatabaseCleaner.clean_with(:truncation)
+    WebMock.disable_net_connect!(allow_localhost: true)
   end
 
   config.before(:each) do
     DatabaseCleaner.start
+    WebMock.reset!
   end
 
   config.after(:each) do

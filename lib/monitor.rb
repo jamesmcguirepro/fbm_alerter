@@ -74,8 +74,12 @@ class MarketplaceMonitor
       listings.each do |listing|
         listing_object = ListingObject.from_listing_response(response: listing, search_query: search_query)
 
-        if Listing.exists?(listing_id: listing_object.listing_id)
+        existing = Listing.exists?(listing_id: listing_object.listing_id)
+
+        if existing
           puts "Listing #{listing_object.title} already exists"
+          # Still refresh last_seen_at without touching first_seen_at
+          Listing.add_listing(listing_object:)
           next
         end
 

@@ -1,0 +1,16 @@
+services:
+  marketplace-monitor:
+    build: .
+    env_file: .env
+    environment:
+      - RUBY_ENV=development
+      - DB_PATH=/data/marketplace_monitor.db
+    volumes:
+      - marketplace-monitor-data:/data
+    # Default command runs all saved searches once
+    command: exec
+    # For interactive CLI use:
+    # command: add -q bike -lat 30.2677 -long -97.7475 --min 100 --max 500 --email you@example.com
+
+volumes:
+  marketplace-monitor-data:
