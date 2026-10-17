@@ -163,6 +163,7 @@ pre.run-log {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  z-index: 1000;
 }
 .run-modal::backdrop {
   background: rgba(0, 0, 0, 0.45);
@@ -196,6 +197,11 @@ pre.run-log {
 .run-modal-body pre.run-log {
   margin: 0;
   max-height: none;
+}
+
+/* Actions column buttons need a little more breathing room inside a table cell. */
+.actions-col button {
+  padding: 0.5rem 0.85rem;
 }
 
 /* Pagination */
