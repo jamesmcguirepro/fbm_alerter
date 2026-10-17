@@ -210,6 +210,12 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
     end
 
+    it 'shows only the first 7 and last 3 characters of the API key' do
+      get '/settings'
+      expect(last_response.body).to include('sk_test*key')
+      expect(last_response.body).not_to include('sk_test_key')
+    end
+
     it 'prefills the test-email field with EMAIL_FROM, labelled and clearable' do
       get '/settings'
       expect(last_response.body).to include('<label for="test-email-to">To</label>')

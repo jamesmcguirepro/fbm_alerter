@@ -54,7 +54,7 @@ module ViewHelpers
   def mask(str)
     return '—' if str.nil? || str.empty?
 
-    str.length > 8 ? ('*' * (str.length - 8)) + str[-8..] : '••••••••'
+    str.length > 10 ? "#{str[0, 7]}#{'*' * (str.length - 10)}#{str[-3, 3]}" : ('*' * str.length)
   end
 
   def qs_extra
