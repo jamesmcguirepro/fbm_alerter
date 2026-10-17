@@ -169,6 +169,7 @@ pre.run-log {
   background: rgba(0, 0, 0, 0.45);
 }
 .run-modal-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -199,9 +200,11 @@ pre.run-log {
   max-height: none;
 }
 
-/* Actions column buttons need a little more breathing room inside a table cell. */
-.actions-col button {
-  padding: 0.5rem 0.85rem;
+/* Actions column: space the buttons out inside the table cell. */
+.actions-col {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 /* Pagination */
