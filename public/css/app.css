@@ -10,13 +10,19 @@ body { margin: 0; background: #f6f7f9; color: #1f2937; }
 
 /* Header */
 .header { background: #111827; color: #fff; padding: 1rem 0; margin-bottom: 1.5rem; }
-.header .container { display: flex; align-items: center; gap: 2rem; }
+.header .container { display: flex; align-items: center; gap: 0.75rem 2rem; flex-wrap: wrap; }
 .logo { font-weight: 700; font-size: 1.25rem; text-decoration: none; color: #fff; }
 .logo:hover { opacity: 0.9; }
 .header nav { margin-left: auto; display: flex; gap: 1.25rem; }
 .header nav a { color: #d1d5db; text-decoration: none; font-size: 0.95rem; padding: 0.5rem 0; border-bottom: 2px solid transparent; }
 .header nav a:hover { color: #fff; }
 .header nav a.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
+/* Time-zone picker (site-wide, lives in the header) */
+.tz-form { display: flex; align-items: center; gap: 0.5rem; }
+.tz-form label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
+.tz-form select { padding: 0.35rem 0.5rem; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; background: #1f2937; color: #e5e7eb; }
+.tz-form select:focus { outline: 2px solid #60a5fa; outline-offset: 1px; }
 
 /* Flash */
 .flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.95rem; }
@@ -55,6 +61,7 @@ td.nowrap { white-space: nowrap; }
 .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
 .badge--active { background: #dcfce7; color: #166534; }
 .badge--paused { background: #fef3c7; color: #92400e; }
+.badge--dry-run { background: #b45309; color: #fff; }
 
 /* Forms */
 .form { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.5rem; max-width: 520px; margin-bottom: 1.5rem; }

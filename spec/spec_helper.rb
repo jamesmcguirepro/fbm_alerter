@@ -6,6 +6,12 @@
 # connect to (and DatabaseCleaner truncates) the DEVELOPMENT database.
 ENV['RUBY_ENV'] = 'test'
 
+# Same reasoning: a developer's .env may set DRY_RUN=true, which would no-op
+# every search in the suite. Pin it off before .env loads (dotenv never
+# overrides a variable that is already set). Specs that exercise dry run set it
+# themselves.
+ENV['DRY_RUN'] = 'false'
+
 require 'database_cleaner/active_record'
 require 'dotenv/load'
 require 'rspec'

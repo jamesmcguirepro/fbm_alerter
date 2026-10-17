@@ -11,6 +11,10 @@
   <header class="header">
     <div class="container">
       <a href="/" class="logo">🔔 Marketplace Monitor</a>
+      <% if Config.dry_run? %>
+        <span class="badge badge--dry-run"
+              title="DRY_RUN is on: searches are not sent to SociaVault and spend no credits.">Dry run</span>
+      <% end %>
       <nav>
         <a href="/dashboard"<%= ' class="active"' if request.path_info == '/dashboard' %>>Dashboard</a>
         <a href="/searches"<%= ' class="active"' if request.path_info.start_with?('/searches') %>>Searches</a>
@@ -18,6 +22,16 @@
         <a href="/alerts"<%= ' class="active"' if request.path_info == '/alerts' %>>Alerts</a>
         <a href="/settings"<%= ' class="active"' if request.path_info == '/settings' %>>Settings</a>
       </nav>
+      <form method="post" action="/dashboard/timezone" class="tz-form">
+        <input type="hidden" name="return_to" value="<%= escape_html(request.fullpath) %>">
+        <label for="tz">Time zone</label>
+        <select id="tz" name="tz" data-autosubmit>
+          <% TIME_ZONES.each do |zone, label| %>
+            <option value="<%= zone %>"<%= ' selected' if zone == active_time_zone %>><%= label %></option>
+          <% end %>
+        </select>
+        <noscript><button type="submit" class="button button--secondary button--small">Apply</button></noscript>
+      </form>
     </div>
   </header>
 
@@ -53,6 +67,12 @@
       if (!row || event.target.closest('a, button')) return;
       var url = row.getAttribute('data-href');
       if (url) window.open(url, '_blank', 'noopener');
+    });
+
+    // Submit the form when a [data-autosubmit] select changes.
+    document.addEventListener('change', function (event) {
+      var select = event.target.closest('select[data-autosubmit]');
+      if (select && select.form) select.form.submit();
     });
   </script>
 </body>

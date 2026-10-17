@@ -96,6 +96,10 @@ Create a `.env` file (copy from `.env.example`). Required settings:
 - `EMAIL_FROM` — sender ("From") address for alert emails (recipients are set per saved search)
 - `SMTP_ADDRESS` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` — SMTP credentials (Gmail app password recommended)
 
+Optional:
+
+- `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
+
 ### Saved searches
 
 Searches are stored in the SQLite database. Add them via the CLI:

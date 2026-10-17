@@ -190,6 +190,22 @@ RSpec.describe MarketplaceMonitor do
       expect(run.listings.map(&:listing_id)).to contain_exactly('1', '2')
     end
 
+    context 'in dry run' do
+      before { allow(Config).to receive(:dry_run?).and_return(true) }
+
+      it 'skips the API call and records no credit' do
+        expect(SociaVaultClient).not_to receive(:search_from_object)
+
+        result = nil
+        expect {
+          result = monitor.send(:execute_search, search_object:, saved_search:)
+        }.to output(/DRY RUN/).to_stdout
+
+        expect(result).to eq([])
+        expect(SearchRun.count).to eq(0)
+      end
+    end
+
     context 'when the API call fails' do
       before do
         allow(SociaVaultClient).to receive(:search_from_object)

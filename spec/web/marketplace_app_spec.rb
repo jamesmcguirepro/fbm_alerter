@@ -62,6 +62,13 @@ RSpec.describe MarketplaceApp do
       }.to_json,
       headers: { 'Content-Type' => 'application/json' }
     )
+
+    # Credit balance shown on the dashboard (loaded by htmx).
+    stub_request(:get, %r{https://api\.sociavault\.com/v1/credits}).to_return(
+      status: 200,
+      body: { 'credits' => 950, 'subscriptionStatus' => 'active', 'subscriptionId' => nil }.to_json,
+      headers: { 'Content-Type' => 'application/json' }
+    )
   end
 
   describe 'GET /health' do
@@ -77,6 +84,70 @@ RSpec.describe MarketplaceApp do
       get '/dashboard'
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('Dashboard')
+    end
+
+    it 'loads the credit balance asynchronously so the page never blocks' do
+      get '/dashboard'
+
+      expect(last_response.body).to include('id="credits-card"')
+      expect(last_response.body).to include('hx-get="/dashboard/credits"')
+      expect(last_response.body).to include('hx-trigger="load, refresh"')
+    end
+
+    it 'links the credit card to the SociaVault dashboard' do
+      get '/dashboard'
+
+      expect(last_response.body).to include('href="https://sociavault.com/dashboard"')
+      expect(last_response.body).to include('target="_blank"')
+    end
+
+    it 'links each recent listing row to the listing' do
+      Listing.create!(
+        listing_id: 'recent-1', title: 'Recent Bike',
+        url: 'https://facebook.com/marketplace/item/recent-1/'
+      )
+
+      get '/dashboard'
+
+      expect(last_response.body)
+        .to include('data-href="https://facebook.com/marketplace/item/recent-1/"')
+      expect(last_response.body).to include('>Recent Bike</a>')
+    end
+
+    it 'leaves a recent listing unlinked when it has no URL' do
+      Listing.create!(listing_id: 'recent-2', title: 'Mystery Item')
+
+      get '/dashboard'
+
+      expect(last_response.body).to include('Mystery Item')
+      expect(last_response.body).not_to include('data-href=')
+    end
+
+    it 'links a recent listing back to the search that produced it' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      Listing.create!(
+        listing_id: 'recent-3', title: 'Search Bike', search_query: 'bike',
+        url: 'https://facebook.com/marketplace/item/recent-3/'
+      )
+
+      get '/dashboard'
+
+      expect(last_response.body).to include(%(href="/searches?inactive=1#search-row-#{search.id}"))
+    end
+
+    it 're-renders the dashboard with the run log after running every search' do
+      SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com', active: true
+      )
+
+      post '/dashboard/run-all'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('id="run-all-log"')
+      expect(last_response.body).to include('Searching: bike')
+      expect(last_response.body).to include('Recent listings')
     end
   end
 
@@ -337,7 +408,7 @@ RSpec.describe MarketplaceApp do
 
       get '/listings'
 
-      expect(last_response.body).to include("found #{run.created_at.strftime('%b %d, %Y %I:%M %p')}")
+      expect(last_response.body).to match(/found [A-Z][a-z]{2} \d{2}, \d{4}/)
     end
   end
 
@@ -345,6 +416,19 @@ RSpec.describe MarketplaceApp do
     it 'renders' do
       get '/alerts'
       expect(last_response.status).to eq(200)
+    end
+
+    it 'links each alert back to the search that produced it' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      listing = Listing.create!(listing_id: 'alert-1', title: 'Alert Bike', search_query: 'bike')
+      Alert.record_alert(listing_id: listing.id, search_id: search.id)
+
+      get '/alerts'
+
+      expect(last_response.body).to include(%(href="/searches?inactive=1#search-row-#{search.id}"))
+      expect(last_response.body).to include('Alert Bike')
     end
   end
 
@@ -413,6 +497,110 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('API calls')
       expect(last_response.body).to include('1 credit each')
+    end
+  end
+
+  describe 'GET /dashboard/credits' do
+    it 'shows the remaining balance from SociaVault' do
+      get '/dashboard/credits'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('950')
+      expect(last_response.body).to include('plan active')
+    end
+
+    it 'links to the SociaVault dashboard and keeps its refresh trigger' do
+      get '/dashboard/credits'
+
+      expect(last_response.body).to include('href="https://sociavault.com/dashboard"')
+      # The partial deliberately has no `load` trigger: it is swapped in by a
+      # `load` request, so re-adding it would re-fetch itself forever.
+      expect(last_response.body).not_to include('hx-trigger="load')
+      expect(last_response.body).to include('hx-trigger="refresh"')
+    end
+
+    it 'degrades gracefully when SociaVault is unreachable' do
+      stub_request(:get, %r{https://api\.sociavault\.com/v1/credits}).to_raise(SocketError)
+
+      get '/dashboard/credits'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include("can't reach SociaVault")
+    end
+  end
+
+  describe 'time zone display' do
+    it 'offers a dropdown in the header that defaults to Pacific' do
+      get '/dashboard'
+
+      expect(last_response.body).to include('name="tz"')
+      expect(last_response.body)
+        .to include('<option value="America/Los_Angeles" selected>Pacific (PT)</option>')
+    end
+
+    it 'is available on every page, not just the dashboard' do
+      get '/listings'
+
+      expect(last_response.body).to include('id="tz"')
+      expect(last_response.body).to include('name="tz"')
+    end
+
+    it 'remembers the chosen zone' do
+      post '/dashboard/timezone', { tz: 'America/New_York' }
+      expect(last_response.status).to eq(302)
+
+      get '/dashboard'
+      expect(last_response.body)
+        .to include('<option value="America/New_York" selected>Eastern (ET)</option>')
+    end
+
+    it 'returns you to the page you were on' do
+      post '/dashboard/timezone', { tz: 'UTC', return_to: '/listings?query=bike' }
+
+      expect(last_response.status).to eq(302)
+      expect(last_response.headers['Location']).to end_with('/listings?query=bike')
+    end
+
+    it 'refuses to bounce to another site' do
+      post '/dashboard/timezone', { tz: 'UTC', return_to: 'https://evil.example.com/' }
+
+      expect(last_response.headers['Location']).to end_with('/dashboard')
+    end
+
+    it 'ignores an unknown zone' do
+      post '/dashboard/timezone', { tz: 'Mars/Phobos' }
+
+      get '/dashboard'
+      expect(last_response.body)
+        .to include('<option value="America/Los_Angeles" selected>Pacific (PT)</option>')
+    end
+
+    it 'renders timestamps in the chosen zone' do
+      Listing.create!(
+        listing_id: 'tz-1', title: 'TZ Bike', last_seen_at: Time.utc(2026, 6, 1, 3, 0, 0)
+      )
+      post '/dashboard/timezone', { tz: 'America/New_York' }
+
+      get '/dashboard'
+
+      # 03:00 UTC on Jun 1 is 11:00 PM on May 31 in Eastern daylight time.
+      expect(last_response.body).to include('May 31, 2026 11:00 PM EDT')
+    end
+  end
+
+  describe 'dry run' do
+    it 'flags it in the header so a credit-free run is obvious' do
+      allow(Config).to receive(:dry_run?).and_return(true)
+
+      get '/dashboard'
+
+      expect(last_response.body).to include('badge--dry-run')
+    end
+
+    it 'shows no badge when it is off' do
+      get '/dashboard'
+
+      expect(last_response.body).not_to include('badge--dry-run')
     end
   end
 

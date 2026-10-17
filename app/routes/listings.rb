@@ -31,9 +31,7 @@ class MarketplaceApp < Sinatra::Base
 
     # Map a listing's stored query string to a saved search, so the listings
     # view can link back to the search that produced it.
-    @search_id_by_query = SavedSearch.order(:created_at).pluck(:query, :id).each_with_object({}) do |(saved_query, id), map|
-      map[saved_query] ||= id
-    end
+    @search_id_by_query = search_id_by_query
 
     erb :'listings/index'
   end

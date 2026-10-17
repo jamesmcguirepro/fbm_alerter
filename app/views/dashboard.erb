@@ -23,15 +23,27 @@
     <div class="value"><%= @api_call_count %></div>
     <div style="font-size:0.85rem;color:#6b7280;"><%= @api_today_count %> today · 1 credit each</div>
   </a>
+  <a class="card card--link" id="credits-card" href="https://sociavault.com/dashboard"
+     target="_blank" rel="noopener"
+     hx-get="/dashboard/credits" hx-trigger="load, refresh" hx-swap="outerHTML"
+     title="Open your SociaVault dashboard">
+    <h2>Credits left</h2>
+    <div class="value">…</div>
+    <div style="font-size:0.85rem;color:#6b7280;">checking SociaVault…</div>
+  </a>
 </div>
 
 <div class="actions">
-  <button hx-post="/dashboard/run-all" hx-target="#run-all-log" hx-swap="innerHTML" class="button button--primary">
+  <button hx-post="/dashboard/run-all" hx-target="main" hx-swap="innerHTML" class="button button--primary">
     ▶ Run all searches now
   </button>
 </div>
 
-<div id="run-all-log"></div>
+<div id="run-all-log">
+  <% unless @log.to_s.strip.empty? %>
+    <pre class="run-log"><%= @log %></pre>
+  <% end %>
+</div>
 
 <h2>Recent listings</h2>
 <% if @recent_listings.any? %>
@@ -43,11 +55,11 @@
   </thead>
   <tbody>
     <% @recent_listings.each do |listing| %>
-    <tr>
-      <td><%= truncate(listing.title) %></td>
+    <tr<% if listing.url.present? %> data-href="<%= escape_html(listing.url) %>"<% end %>>
+      <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
       <td class="nowrap"><%= format_price(listing.price) %></td>
       <td><%= listing.location || '—' %></td>
-      <td><%= truncate(listing.search_query) %></td>
+      <td><%= search_query_link(@search_id_by_query[listing.search_query], listing.search_query) %></td>
       <td class="nowrap"><%= format_date(listing.last_seen_at) %></td>
       <td><%= listing.is_sold ? '✓' : '—' %></td>
     </tr>

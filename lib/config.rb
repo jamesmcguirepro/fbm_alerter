@@ -27,6 +27,14 @@ class Config
       ENV['SMTP_PASSWORD']
     end
 
+    # When true, scrape calls become a no-op: the whole pipeline (UI, dashboard,
+    # alert emails) can be exercised without spending a credit. Accepts the
+    # usual truthy spellings, but `true`/`false` is the intended form. The
+    # credit balance is still read for real, since that call is free.
+    def dry_run?
+      %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
+    end
+
     # Parse duration strings like "30m", "2h", "1d" into seconds
     def parse_interval(interval_str)
       case interval_str

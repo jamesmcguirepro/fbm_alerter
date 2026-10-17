@@ -271,4 +271,60 @@ RSpec.describe SociaVaultClient do
       expect(response).to eq(success_response)
     end
   end
+
+  describe '.search in dry run' do
+    before { allow(Config).to receive(:dry_run?).and_return(true) }
+
+    it 'never touches the network' do
+      expect(HTTParty).not_to receive(:get)
+
+      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060)
+
+      expect(result['data']['listings']).to be_empty
+    end
+
+    it 'still reads the credit balance, because that call is free' do
+      allow(HTTParty).to receive(:get).and_return(
+        double(code: 200, parsed_response: { 'credits' => 950 }, success?: true)
+      )
+
+      expect(described_class.credits['credits']).to eq(950)
+      expect(HTTParty).to have_received(:get).with(
+        'https://api.sociavault.com/v1/credits', anything
+      )
+    end
+  end
+
+  describe '.credits' do
+    let(:balance_response) do
+      { 'credits' => 950, 'subscriptionStatus' => 'active', 'subscriptionId' => nil }
+    end
+
+    before do
+      allow(HTTParty).to receive(:get).and_return(
+        double(code: 200, parsed_response: balance_response, success?: true)
+      )
+    end
+
+    it 'calls the credits endpoint with the API key' do
+      described_class.credits
+
+      expect(HTTParty).to have_received(:get).with(
+        'https://api.sociavault.com/v1/credits',
+        hash_including(headers: hash_including('X-API-Key' => 'sk_test_key'))
+      )
+    end
+
+    it 'returns the remaining balance' do
+      expect(described_class.credits['credits']).to eq(950)
+    end
+
+    it 'raises when the key is rejected' do
+      allow(HTTParty).to receive(:get).and_return(
+        double(code: 401, parsed_response: { 'error' => 'Invalid API key' }, success?: false)
+      )
+
+      expect { described_class.credits }.to raise_error(/Authentication Error/)
+    end
+  end
 end

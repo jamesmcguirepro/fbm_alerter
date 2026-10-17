@@ -12,7 +12,7 @@
     <tr>
       <td class="nowrap"><%= format_date(alert.sent_at) %></td>
       <td><%= truncate(alert.listing.title) %></td>
-      <td><%= truncate(alert.saved_search.query) %></td>
+      <td><%= search_query_link(alert.search_id, alert.saved_search.query) %></td>
       <td class="nowrap"><%= format_price(alert.listing.price) %></td>
     </tr>
     <% end %>

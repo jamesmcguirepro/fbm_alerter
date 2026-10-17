@@ -30,6 +30,10 @@ class SociaVaultClient
     # @return [Hash] API response containing listings
     def search(query:, lat:, long:, min_price: nil, max_price: nil,
                radius_km: 65, condition: nil, delivery_method: nil, count: 24)
+      # No-op at the API call: spend nothing and return what an empty search
+      # would have returned. See Config.dry_run?.
+      return { 'data' => { 'listings' => {} } } if Config.dry_run?
+
       params = build_params(
         query:,
         lat:,
@@ -47,6 +51,19 @@ class SociaVaultClient
         query: params,
         headers: { 'X-API-Key' => Config.api_key },
         timeout: 30
+      )
+
+      handle_response(response:)
+    end
+
+    # Remaining credit balance for the account behind the API key.
+    # This is an account read, not a scrape, so it spends no credits.
+    # @return [Hash] e.g. { 'credits' => 950, 'subscriptionStatus' => 'active' }
+    def credits
+      response = HTTParty.get(
+        "#{BASE_URL}#{CREDITS_ENDPOINT}",
+        headers: { 'X-API-Key' => Config.api_key },
+        timeout: 10
       )
 
       handle_response(response:)
@@ -95,6 +112,7 @@ class SociaVaultClient
 
     BASE_URL = 'https://api.sociavault.com'
     ENDPOINT = '/v1/scrape/facebook-marketplace/search'
-    private_constant :BASE_URL, :ENDPOINT
+    CREDITS_ENDPOINT = '/v1/credits'
+    private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT
   end
 end

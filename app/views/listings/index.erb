@@ -34,12 +34,7 @@
       <td class="nowrap"><%= format_price(listing.price) %></td>
       <td><%= listing.location || '—' %></td>
       <td>
-        <% sid = @search_id_by_query[listing.search_query] %>
-        <% if sid %>
-          <a href="/searches?inactive=1#search-row-<%= sid %>"><%= truncate(listing.search_query) %></a>
-        <% else %>
-          <%= truncate(listing.search_query) %>
-        <% end %>
+        <%= search_query_link(@search_id_by_query[listing.search_query], listing.search_query) %>
         <% if listing.search_run %>
           <div class="muted">found <%= format_date(listing.search_run.created_at) %></div>
         <% end %>

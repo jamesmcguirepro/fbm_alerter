@@ -86,6 +86,13 @@ class MarketplaceMonitor
   def execute_search(search_object:, email: nil, saved_search: nil)
     @io.puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
 
+    # Dry run: skip the API call entirely, and record no run, because no
+    # credit was actually spent.
+    if Config.dry_run?
+      @io.puts '  ⃠ DRY RUN — API call skipped, no credit spent'
+      return []
+    end
+
     begin
       result = SociaVaultClient.search_from_object(search_object:)
     rescue StandardError => e

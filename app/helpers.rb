@@ -3,6 +3,30 @@
 require 'cgi'
 
 module ViewHelpers
+  # Curated short list — easy to scan. Value is an IANA zone name; add more
+  # here if you need them. Defaults to Pacific.
+  TIME_ZONES = [
+    ['America/Los_Angeles', 'Pacific (PT)'],
+    ['America/Denver', 'Mountain (MT)'],
+    ['America/Chicago', 'Central (CT)'],
+    ['America/New_York', 'Eastern (ET)'],
+    ['UTC', 'UTC']
+  ].freeze
+
+  DEFAULT_TIME_ZONE = 'America/Los_Angeles'
+
+  # The zone chosen in the dropdown (falls back to the default).
+  def active_time_zone
+    chosen = session[:time_zone].to_s
+    TIME_ZONES.any? { |zone, _| zone == chosen } ? chosen : DEFAULT_TIME_ZONE
+  end
+
+  # Only ever bounce back into this app (never to an absolute or off-site URL).
+  def back_to(path)
+    path = path.to_s
+    path.start_with?('/') && !path.start_with?('//') ? path : '/dashboard'
+  end
+
   def escape_html(text)
     CGI.escapeHTML(text.to_s)
   end
@@ -13,19 +37,32 @@ module ViewHelpers
   def format_date(value)
     return '—' if value.nil?
 
-    value.strftime('%b %d, %Y %I:%M %p')
+    value.in_time_zone(active_time_zone).strftime('%b %d, %Y %I:%M %p %Z')
   end
 
   def format_day(value)
     return '—' if value.nil?
 
-    value.strftime('%b %d, %Y')
+    value.in_time_zone(active_time_zone).strftime('%b %d, %Y')
   end
 
   def format_coordinates(lat, long)
     return '—' if lat.nil? || long.nil?
 
     '%.4f, %.4f' % [lat.to_f, long.to_f]
+  end
+
+  def format_number(value)
+    return '—' if value.nil?
+
+    ActiveSupport::NumberHelper.number_to_delimited(value)
+  end
+
+  # Warn on the dashboard once the balance gets tight (≈50 searches left).
+  CREDITS_LOW = 50
+
+  def low_credits?(credits)
+    !credits.nil? && credits.to_i < CREDITS_LOW
   end
 
   # API-call count for a saved search, rendered on its own (used inline in the
@@ -63,6 +100,24 @@ module ViewHelpers
 
   def search_link(search)
     "/searches/#{search.id}"
+  end
+
+  # Map a listing's stored query string back to a saved search id, so a listing
+  # row can link to the search that produced it (earliest search wins).
+  def search_id_by_query
+    SavedSearch.order(:created_at).pluck(:query, :id).each_with_object({}) do |(query, id), map|
+      map[query] ||= id
+    end
+  end
+
+  # A query label that links to the search's row on the searches page (paused
+  # searches included, hence `inactive=1`). Falls back to plain text when the
+  # search is unknown — e.g. a deleted search, or an ad-hoc CLI run.
+  def search_query_link(search_id, query)
+    label = escape_html(truncate(query))
+    return label if search_id.nil?
+
+    %(<a href="/searches?inactive=1#search-row-#{search_id}">#{label}</a>)
   end
 
   def image_tag(url, alt)

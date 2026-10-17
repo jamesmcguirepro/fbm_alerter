@@ -81,6 +81,43 @@ RSpec.describe Config do
     end
   end
 
+  describe '.dry_run?' do
+    after { ENV.delete('DRY_RUN') }
+
+    it 'is off when unset' do
+      ENV.delete('DRY_RUN')
+      expect(described_class.dry_run?).to be(false)
+    end
+
+    it 'turns on for true' do
+      ENV['DRY_RUN'] = 'true'
+      expect(described_class.dry_run?).to be(true)
+    end
+
+    it 'turns on for TRUE too' do
+      ENV['DRY_RUN'] = 'TRUE'
+      expect(described_class.dry_run?).to be(true)
+    end
+
+    it 'is off for false' do
+      ENV['DRY_RUN'] = 'false'
+      expect(described_class.dry_run?).to be(false)
+    end
+
+    it 'tolerates 1 and 0 as well' do
+      ENV['DRY_RUN'] = '1'
+      expect(described_class.dry_run?).to be(true)
+
+      ENV['DRY_RUN'] = '0'
+      expect(described_class.dry_run?).to be(false)
+    end
+
+    it 'treats anything else as off' do
+      ENV['DRY_RUN'] = 'maybe'
+      expect(described_class.dry_run?).to be(false)
+    end
+  end
+
   describe '.validate!' do
     it 'passes when all required vars are set' do
       expect { described_class.validate! }.not_to raise_error
