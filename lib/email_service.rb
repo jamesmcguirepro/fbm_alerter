@@ -73,7 +73,7 @@ class EmailService
     # @param [ListingObject] listing
     def build_listing_section(listing:)
       image_html = listing.image_url ? %(<img src="#{listing.image_url}" class="image" />) : ''
-      price_display = listing.price ? "$#{listing.price.round(2)}" : 'N/A'
+      price_display = PriceFormatter.format(listing.price)
 
       <<~HTML
         <div class="listing">

@@ -22,6 +22,8 @@ class SavedSearch < ActiveRecord::Base
   has_many :alerts
   has_many :listings, through: :alerts
 
+  attribute :radius_km, default: 65
+
   validates :lat, numericality: {
     greater_than_or_equal_to: -90, less_than_or_equal_to: 90,
     message: 'must be a number between -90 and 90'
@@ -29,6 +31,10 @@ class SavedSearch < ActiveRecord::Base
   validates :long, numericality: {
     greater_than_or_equal_to: -180, less_than_or_equal_to: 180,
     message: 'must be a number between -180 and 180'
+  }
+  validates :radius_km, numericality: {
+    greater_than_or_equal_to: 5, less_than_or_equal_to: 1000,
+    message: 'must be a number between 5 and 1000 km'
   }
 
   def self.add_search(search_object:, email:)

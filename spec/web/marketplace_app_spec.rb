@@ -104,7 +104,7 @@ RSpec.describe MarketplaceApp do
       expect do
         post '/searches', {
           query: 'bike', lat: 40.7128, long: -74.0060,
-          min_price: 100, max_price: 500, email: 'owner@example.com'
+          min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com'
         }
       end.to change(SavedSearch, :count).by(1)
 
@@ -116,12 +116,24 @@ RSpec.describe MarketplaceApp do
       expect do
         post '/searches', {
           query: 'bike', lat: 40.7128, long: -11971922006451092,
-          email: 'owner@example.com'
+          radius_km: 65, email: 'owner@example.com'
         }
       end.not_to change(SavedSearch, :count)
 
       expect(last_response.status).to eq(422)
       expect(last_response.body).to include('must be a number between -180 and 180')
+    end
+
+    it 'rejects an out-of-range radius and shows an error' do
+      expect do
+        post '/searches', {
+          query: 'bike', lat: 40.7128, long: -74.0060,
+          radius_km: 2000, email: 'owner@example.com'
+        }
+      end.not_to change(SavedSearch, :count)
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.body).to include('must be a number between 5 and 1000 km')
     end
   end
 
@@ -144,7 +156,7 @@ RSpec.describe MarketplaceApp do
       )
       patch "/searches/#{search.id}", {
         name: 'My Bike Search', query: 'bike', lat: 40.7128, long: -74.0060,
-        min_price: 100, max_price: 500, email: 'owner@example.com'
+        min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com'
       }
       expect(last_response.status).to eq(302)
       expect(search.reload.name).to eq('My Bike Search')
@@ -156,7 +168,8 @@ RSpec.describe MarketplaceApp do
         min_price: 100, max_price: 500, email: 'owner@example.com'
       )
       patch "/searches/#{search.id}", {
-        query: 'bike', lat: 40.7128, long: -11971922006451092, email: 'owner@example.com'
+        query: 'bike', lat: 40.7128, long: -11971922006451092,
+        radius_km: 65, email: 'owner@example.com'
       }
       expect(last_response.status).to eq(422)
       expect(search.reload.long.to_f).to be_within(0.0001).of(-74.006)
@@ -222,6 +235,33 @@ RSpec.describe MarketplaceApp do
     it 'renders' do
       get '/listings'
       expect(last_response.status).to eq(200)
+    end
+
+    it 'links a listing back to the search that produced it' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060,
+        min_price: 100, max_price: 500, email: 'owner@example.com'
+      )
+      Listing.create!(
+        listing_id: 'abc123', title: 'Test Bike', search_query: 'bike',
+        url: 'https://facebook.com/marketplace/item/abc123/'
+      )
+
+      get '/listings'
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include(%(href="/searches#search-row-#{search.id}"))
+      expect(last_response.body).to include(%(data-href="https://facebook.com/marketplace/item/abc123/"))
+      expect(last_response.body).to include(
+        %(<a href="https://facebook.com/marketplace/item/abc123/" target="_blank" rel="noopener">Test Bike</a>)
+      )
+    end
+
+    it 'does not link a listing that has no URL' do
+      Listing.create!(listing_id: 'no-url', title: 'Mystery Item')
+
+      get '/listings'
+      expect(last_response.body).to include('Mystery Item')
+      expect(last_response.body).not_to include('data-href=')
     end
   end
 

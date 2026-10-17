@@ -96,4 +96,26 @@ RSpec.describe SavedSearch, type: :model do
       expect(described_class.new(lat: 40.7128, long: -11971922006451092)).not_to be_valid_coordinates
     end
   end
+
+  describe 'radius validation' do
+    let(:attrs) { { query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com' } }
+
+    it 'defaults to 65 km' do
+      expect(described_class.new(attrs).radius_km).to eq(65)
+    end
+
+    it 'accepts a radius within 5..1000' do
+      expect(described_class.new(attrs.merge(radius_km: 25))).to be_valid
+    end
+
+    it 'rejects a radius below 5 km' do
+      search = described_class.new(attrs.merge(radius_km: 4))
+      expect(search).not_to be_valid
+      expect(search.errors[:radius_km]).to be_present
+    end
+
+    it 'rejects a radius above 1000 km' do
+      expect(described_class.new(attrs.merge(radius_km: 1001))).not_to be_valid
+    end
+  end
 end

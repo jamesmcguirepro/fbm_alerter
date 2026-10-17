@@ -46,6 +46,14 @@
       var input = document.querySelector(btn.getAttribute('data-clear'));
       if (input) { input.value = ''; input.focus(); }
     });
+
+    // Open a row's link (tr[data-href]) in a new tab unless a link/button was clicked.
+    document.addEventListener('click', function (event) {
+      var row = event.target.closest('tr[data-href]');
+      if (!row || event.target.closest('a, button')) return;
+      var url = row.getAttribute('data-href');
+      if (url) window.open(url, '_blank', 'noopener');
+    });
   </script>
 </body>
 </html>

@@ -22,8 +22,8 @@
       <input type="number" step="any" name="long" value="<%= @search.long %>" required>
     </div>
     <div class="field">
-      <label>Radius (km)</label>
-      <input type="number" name="radius_km" value="<%= @search.radius_km || '' %>">
+      <label>Radius (km) <span style="font-weight:400;font-size:0.85rem;color:#6b7280;">5–1000</span></label>
+      <input type="number" min="5" max="1000" name="radius_km" value="<%= @search&.radius_km || 65 %>" required>
     </div>
     <div class="field">
       <label>Min price</label>

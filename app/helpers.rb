@@ -7,9 +7,7 @@ module ViewHelpers
     CGI.escapeHTML(text.to_s)
   end
   def format_price(value)
-    return 'N/A' if value.nil?
-
-    "$#{value.to_f.round(2)}"
+    PriceFormatter.format(value)
   end
 
   def format_date(value)
@@ -49,6 +47,13 @@ module ViewHelpers
     return '' if url.nil? || url.empty?
 
     %(<img src="#{escape_html(url)}" alt="#{escape_html(alt)}" class="thumb">)
+  end
+
+  # Wrap content in an external link when a URL is present, otherwise return it as-is.
+  def external_link(url, content)
+    return content if url.nil? || url.to_s.strip.empty?
+
+    %(<a href="#{escape_html(url)}" target="_blank" rel="noopener">#{content}</a>)
   end
 
   def mask(str)

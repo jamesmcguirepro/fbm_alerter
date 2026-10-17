@@ -28,12 +28,19 @@
   </thead>
   <tbody>
     <% @listings.each do |listing| %>
-    <tr>
-      <td><% if listing.image_url %><%= image_tag(listing.image_url, listing.title).html_safe %><% end %></td>
-      <td><%= truncate(listing.title) %></td>
+    <tr<% if listing.url.present? %> data-href="<%= escape_html(listing.url) %>"<% end %>>
+      <td><% if listing.image_url %><%= external_link(listing.url, image_tag(listing.image_url, listing.title)) %><% end %></td>
+      <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
       <td class="nowrap"><%= format_price(listing.price) %></td>
       <td><%= listing.location || '—' %></td>
-      <td><%= truncate(listing.search_query) %></td>
+      <td>
+        <% sid = @search_id_by_query[listing.search_query] %>
+        <% if sid %>
+          <a href="/searches#search-row-<%= sid %>"><%= truncate(listing.search_query) %></a>
+        <% else %>
+          <%= truncate(listing.search_query) %>
+        <% end %>
+      </td>
       <td class="nowrap"><%= format_date(listing.last_seen_at) %></td>
       <td><%= listing.is_sold ? '✓' : '—' %></td>
     </tr>
