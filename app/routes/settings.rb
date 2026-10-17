@@ -4,12 +4,19 @@ class MarketplaceApp < Sinatra::Base
   helpers ViewHelpers
 
   helpers do
-    # Recent listings from the database, ready for the email template. Falls
-    # back to sample data so the preview always renders something. No external
-    # API is called, so previewing never spends SociaVault credits.
-    def preview_listings
-      recent = Listing.order(last_seen_at: :desc).limit(3).map { |listing| to_listing_object(listing) }
-      recent.empty? ? sample_listings : recent
+    # Recent listings from a single search, ready for the email template.
+    # Falls back to sample data so the preview always renders something. No
+    # external API is called, so previewing never spends SociaVault credits.
+    def preview_email
+      recent = Listing.order(last_seen_at: :desc).first
+      return { listings: sample_listings, query: 'road bike' } if recent.nil?
+
+      listings = Listing.where(search_query: recent.search_query)
+                        .order(last_seen_at: :desc)
+                        .limit(4)
+                        .map { |listing| to_listing_object(listing) }
+
+      { listings: listings, query: recent.search_query.presence || 'your search' }
     end
 
     def to_listing_object(listing)
@@ -59,7 +66,7 @@ class MarketplaceApp < Sinatra::Base
   # without sending mail or running any searches.
   get '/settings/email-preview' do
     content_type 'text/html'
-    EmailService.render(listings: preview_listings)
+    EmailService.render(**preview_email)
   end
 
   post '/settings/test-email' do
@@ -69,12 +76,12 @@ class MarketplaceApp < Sinatra::Base
       session[:flash_error] = 'Please provide a recipient email address.'
     else
       begin
-        listings = preview_listings
+        email = preview_email
         Mailer.send_email(
           to:,
           from: Config.email_from,
-          subject: "🔔 #{listings.length} New Marketplace Listing(s) (test)",
-          html_body: EmailService.render(listings:)
+          subject: "#{EmailService.subject_line(count: email[:listings].length, query: email[:query])} (test)",
+          html_body: EmailService.render(**email)
         )
         session[:flash] = "Test email sent to #{to}."
       rescue StandardError => e

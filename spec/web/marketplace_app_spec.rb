@@ -355,7 +355,8 @@ RSpec.describe MarketplaceApp do
 
     it 'sends an email in the alert format' do
       expect(Mailer).to receive(:send_email) do |args|
-        expect(args[:html_body]).to include('New Marketplace Listings')
+        expect(args[:subject]).to include('road bike')
+        expect(args[:html_body]).to include('<h1>road bike</h1>')
       end
 
       post '/settings/test-email', { email: 'dest@example.com' }
@@ -376,7 +377,7 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.content_type).to include('text/html')
       expect(last_response.body).to include('Preview Bike')
-      expect(last_response.body).to include('New Marketplace Listings')
+      expect(last_response.body).to include('<h1>bike</h1>')
     end
 
     it 'falls back to sample listings when the database is empty' do

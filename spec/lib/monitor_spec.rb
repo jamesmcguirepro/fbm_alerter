@@ -277,7 +277,8 @@ RSpec.describe MarketplaceMonitor do
 
       expect(EmailService).to have_received(:send_alerts).with(
         listings: [new_listing],
-        emails: ['owner@example.com']
+        emails: ['owner@example.com'],
+        query: 'apartment'
       )
     end
 

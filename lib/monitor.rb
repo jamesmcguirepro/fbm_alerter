@@ -128,7 +128,7 @@ class MarketplaceMonitor
   def send_alerts(listings:, saved_search:)
     if listings.any?
       @io.puts "\n📧 Sending alerts for #{listings.length} new listing(s)..."
-      EmailService.send_alerts(listings:, emails: [saved_search.email])
+      EmailService.send_alerts(listings:, emails: [saved_search.email], query: saved_search.query)
       listings.each { |listing| Alert.record_alert(listing_id: listing.id, search_id: saved_search.id) }
     else
       @io.puts "\n✓ No new listings to alert"
