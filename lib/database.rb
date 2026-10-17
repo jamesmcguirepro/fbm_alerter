@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'active_record'
-
 # SQLite database operations and management
 class Database
   class << self

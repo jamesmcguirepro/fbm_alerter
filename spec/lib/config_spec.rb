@@ -93,51 +93,6 @@ RSpec.describe Config do
     end
   end
 
-  describe '.search_config' do
-    it 'parses single search configuration' do
-      config = described_class.search_config
-      expect(config.length).to eq(1)
-      expect(config.first[:query]).to eq('bike')
-      expect(config.first[:lat]).to eq(40.7128)
-      expect(config.first[:long]).to eq(-74.0060)
-      expect(config.first[:min_price]).to eq(100)
-      expect(config.first[:max_price]).to eq(500)
-      expect(config.first[:radius_km]).to eq(25)
-    end
-
-    it 'parses multiple search configurations' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SEARCHES')
-                                .and_return('bike|40.7|-74|100|500;car|35|-120|5000|15000')
-      config = described_class.search_config
-      expect(config.length).to eq(2)
-      expect(config[0][:query]).to eq('bike')
-      expect(config[1][:query]).to eq('car')
-    end
-
-    it 'parses optional parameters' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SEARCHES')
-                                .and_return('bike|40.7|-74|100|500|25|used_good|shipping')
-      config = described_class.search_config
-      expect(config.first[:condition]).to eq('used_good')
-      expect(config.first[:delivery_method]).to eq('shipping')
-    end
-
-    it 'uses default radius when not provided' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SEARCHES').and_return('bike|40.7|-74|100|500')
-      config = described_class.search_config
-      expect(config.first[:radius_km]).to eq(65)
-    end
-
-    it 'raises error when not set' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SEARCHES').and_return(nil)
-      expect { described_class.search_config }.to raise_error(RuntimeError, /SEARCHES not set/)
-    end
-  end
-
   describe '.parse_interval' do
     it 'parses minutes' do
       expect(described_class.parse_interval('30m')).to eq(1800)
@@ -176,12 +131,6 @@ RSpec.describe Config do
     it 'raises error when EMAIL_TO is missing' do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('')
-      expect { described_class.validate! }.to raise_error
-    end
-
-    it 'raises error when SEARCHES is missing' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('SEARCHES').and_return(nil)
       expect { described_class.validate! }.to raise_error
     end
   end

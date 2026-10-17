@@ -1,26 +1,27 @@
 # frozen_string_literal: true
 
+# Require our monitor before ActiveRecord loads Ruby's stdlib Monitor,
+# which would otherwise conflict with our class name.
+require_relative 'lib/monitor'
+
 require 'active_record'
+require 'dotenv/load'
 require 'httparty'
 require 'json'
-require 'sqlite3'
 require 'mail'
-require 'dotenv/load'
-# require 'zeitwerk'
-# require_relative '../config/zeitwerk'
-require_relative 'lib/config'
-require_relative 'lib/database'
-require_relative 'lib/socia_vault_client'
-require_relative 'lib/email_service'
-require_relative 'lib/monitor'
-require_relative 'models/alert'
-require_relative 'models/listing'
+require 'sqlite3'
+require 'thor'
+require 'zeitwerk'
+
+require_relative 'config/zeitwerk'
 
 ENV['RUBY_ENV'] ||= 'development'
 VERSION = '1.0.0'
 
 Database.connect
 
-# monitor = Monitor.new
+def main
+  CLI.start(ARGV)
+end
 
-# monitor.run_search
+main if __FILE__ == $0

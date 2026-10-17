@@ -37,7 +37,6 @@ if [ ! -f .env ]; then
     echo "  - SOCIAVAULT_API_KEY (from https://sociavault.com/dashboard)"
     echo "  - EMAIL_FROM and EMAIL_TO"
     echo "  - SMTP settings (Gmail recommended)"
-    echo "  - SEARCHES (query|lat|lng|min|max format)"
     echo ""
     echo "Opening .env in editor..."
     ${EDITOR:-nano} .env
@@ -47,21 +46,24 @@ fi
 
 echo ""
 echo "Initializing database..."
-bundle exec rake db:init
-echo "✓ Database initialized"
+bundle exec rake db:migrate
+echo "✓ Database migrated"
 echo ""
 
 echo "Validating configuration..."
-bundle exec rake config:validate
+bundle exec ruby -e "require 'dotenv/load'; require_relative 'lib/config'; Config.validate!; puts '✓ Configuration valid'"
 echo ""
 
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Review and verify .env settings"
-echo "  2. Test with: bundle exec rake monitor:run"
-echo "  3. For continuous monitoring: bundle exec rake monitor:daemon"
-echo "  4. View database stats: bundle exec rake db:stats"
-echo "  5. For cron scheduling, add to crontab:"
-echo "     */30 * * * * cd $(pwd) && bundle exec rake monitor:run"
+echo "  2. Add a saved search:"
+echo "     bundle exec ruby main.rb add -q bike -lat 30.2677 -long -97.7475 --min 100 --max 500 --email you@example.com"
+echo "  3. List saved searches:  bundle exec ruby main.rb list"
+echo "  4. Run all saved searches: bundle exec ruby main.rb exec"
+echo "  5. After migrations, re-annotate models:"
+echo "     RUBYOPT='-I. -r./main.rb' bundle exec annotaterb models --model-dir models --ignore-unknown-models"
+echo "  6. For cron scheduling, add to crontab:"
+echo "     */30 * * * * cd $(pwd) && bundle exec ruby main.rb exec"
 echo ""

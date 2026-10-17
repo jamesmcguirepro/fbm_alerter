@@ -204,4 +204,71 @@ RSpec.describe SociaVaultClient do
       expect { described_class.search(**search_params) }.to raise_error(/500/)
     end
   end
+
+  describe '.search_from_object' do
+    let(:search_object) do
+      SearchObject.new(
+        id: nil,
+        query: 'bike',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        condition: 'used_good',
+        delivery_method: 'shipping'
+      )
+    end
+
+    let(:success_response) do
+      {
+        'data' => {
+          'listings' => {
+            '1' => {
+              'id' => '123456',
+              'title' => 'Mountain Bike',
+              'price' => { 'amount' => 250 },
+              'location' => { 'display_name' => 'New York, NY' },
+              'url' => 'https://facebook.com/marketplace/item/123456/',
+              'primary_photo' => { 'url' => 'https://example.com/photo.jpg' }
+            }
+          }
+        }
+      }
+    end
+
+    before do
+      allow(HTTParty).to receive(:get).and_return(
+        double(code: 200, parsed_response: success_response, success?: true)
+      )
+    end
+
+    it 'delegates to .search with search object attributes' do
+      described_class.search_from_object(search_object:)
+
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(
+          query: hash_including(
+            query: 'bike',
+            lat: 40.7128,
+            lng: -74.0060,
+            min_price: 100,
+            max_price: 500,
+            radius_km: 25,
+            condition: 'used_good',
+            delivery_method: 'shipping',
+            count: 24,
+            sort_by: 'creation_time_descend'
+          ),
+          headers: hash_including('X-API-Key' => 'sk_test_key')
+        )
+      )
+    end
+
+    it 'returns the API response' do
+      response = described_class.search_from_object(search_object:)
+      expect(response).to eq(success_response)
+    end
+  end
 end

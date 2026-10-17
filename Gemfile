@@ -1,23 +1,25 @@
 source 'https://rubygems.org'
 
-ruby '3.4.4'
+ruby '4.0.6'
 
 gem 'activerecord' , '~> 8.1.3'
 gem 'chronic_duration', '~> 0.10.6'
 gem 'dotenv', '~> 2.8.1'
 gem 'httparty', '~> 0.22.0'
 gem 'mail', '~> 2.8.1'
-gem 'rake', '~> 10.4.2'
+gem 'rake', '~> 13.1'
 gem 'sqlite3', '~> 2.1.0'
+gem 'thor', '~> 1.5.0'
 gem 'whenever', '~> 1.0.0'
 gem 'zeitwerk', '~> 2.6.0'
 
 group :development, :test do
   # Gemfile
-  # gem 'annotate', '~> 3.2'
+  gem 'annotaterb', '~> 4.0'
   gem 'database_cleaner-active_record'
   gem 'rspec', '~> 3.13.0'
   gem 'timecop', '~> 0.9.11'
+  gem 'webmock', '~> 3.24'
 end
 
 group :development do

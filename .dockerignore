@@ -1,0 +1,17 @@
+.git
+.gitignore
+.idea
+.ruby-lsp
+.env
+db/*.sqlite3
+db/test.sqlite3
+.bundle
+vendor
+spec
+*.gem
+*.rbc
+coverage
+doc
+rdoc
+tmp
+.byebug_history
