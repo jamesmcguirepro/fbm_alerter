@@ -277,7 +277,7 @@ RSpec.describe MarketplaceApp do
 
       get '/searches'
 
-      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
+      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}">))
       expect(last_response.body).to include('<div class="calls-count">2</div>')
     end
 
@@ -470,8 +470,10 @@ RSpec.describe MarketplaceApp do
 
       post "/searches/#{search.id}/run"
 
-      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
-      expect(last_response.body).to include('hx-swap-oob="true"')
+      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}" hx-swap-oob="true">))
+      # A bare <td> is invalid at the top level of the fragment htmx parses, so
+      # the browser drops it and its children leak into the swap target.
+      expect(last_response.body).not_to include('<td')
       expect(search.search_runs.count).to eq(1)
     end
   end

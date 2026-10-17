@@ -10,7 +10,7 @@
   </td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
   <td><%= escape_html(search.email) %></td>
-  <td id="search-calls-<%= search.id %>"><%= calls_cell(search) %></td>
+  <td><div id="search-calls-<%= search.id %>"><%= calls_cell(search) %></div></td>
   <td><%= active_badge(search) %></td>
   <td class="run-col">
     <button hx-post="/searches/<%= search.id %>/run"

@@ -3,4 +3,7 @@
 <% else %>
 <pre class="run-log"><%= escape_html(@log) %></pre>
 <% end %>
-<td id="search-calls-<%= @search.id %>" hx-swap-oob="true"><%= calls_cell(@search) %></td>
+<%# Out-of-band swap target must be a tag that is valid at the top level of a
+    fragment. A bare <td> is dropped by the HTML parser when htmx wraps the
+    response in a <template>, so use a <div> here and in _row.erb. %>
+<div id="search-calls-<%= @search.id %>" hx-swap-oob="true"><%= calls_cell(@search) %></div>
