@@ -11,7 +11,7 @@ RSpec.describe Alert, type: :model do
   end
 
   let!(:saved_search) do
-    SavedSearch.create!(query: 'test', email: 'owner@example.com')
+    SavedSearch.create!(query: 'test', lat: 40.7128, long: -74.0060, email: 'owner@example.com')
   end
 
   describe '.create' do

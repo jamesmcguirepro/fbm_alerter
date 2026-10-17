@@ -22,6 +22,15 @@ class SavedSearch < ActiveRecord::Base
   has_many :alerts
   has_many :listings, through: :alerts
 
+  validates :lat, numericality: {
+    greater_than_or_equal_to: -90, less_than_or_equal_to: 90,
+    message: 'must be a number between -90 and 90'
+  }
+  validates :long, numericality: {
+    greater_than_or_equal_to: -180, less_than_or_equal_to: 180,
+    message: 'must be a number between -180 and 180'
+  }
+
   def self.add_search(search_object:, email:)
     create!(
       query: search_object.query,
@@ -34,6 +43,14 @@ class SavedSearch < ActiveRecord::Base
       delivery_method: search_object.delivery_method,
       email:,
     )
+  end
+
+  # True when both coordinates are present and within valid bounds. Used to
+  # skip saved searches that would otherwise query the API with bad data.
+  def valid_coordinates?
+    return false if lat.nil? || long.nil?
+
+    lat.to_f.between?(-90, 90) && long.to_f.between?(-180, 180)
   end
 
   def print_search(io: $stdout)

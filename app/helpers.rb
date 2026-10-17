@@ -57,6 +57,14 @@ module ViewHelpers
     str.length > 10 ? "#{str[0, 7]}#{'*' * (str.length - 10)}#{str[-3, 3]}" : ('*' * str.length)
   end
 
+  # Render validation errors for a record as an HTML block ('' when valid).
+  def form_errors(record)
+    return '' if record.nil? || record.errors.empty?
+
+    items = record.errors.full_messages.map { |m| "<li>#{escape_html(m)}</li>" }.join
+    %(<div class="form-errors"><strong>Please fix the following:</strong><ul>#{items}</ul></div>)
+  end
+
   def qs_extra
     parts = []
     parts << "query=#{CGI.escape(@query)}" if @query.to_s.strip != ''

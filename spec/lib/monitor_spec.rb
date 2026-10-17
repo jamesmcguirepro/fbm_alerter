@@ -115,6 +115,16 @@ RSpec.describe MarketplaceMonitor do
       expect(SociaVaultClient).not_to have_received(:search_from_object)
     end
 
+    it 'skips saved searches with invalid coordinates' do
+      SavedSearch.delete_all
+      bad = SavedSearch.new(query: 'bad', lat: 34.4, long: -11971922006451092, email: 'owner@example.com')
+      bad.save!(validate: false)
+
+      expect { monitor.execute_saved_searches }
+        .to output(/Skipping 'bad'.*invalid coordinates/).to_stdout
+      expect(SociaVaultClient).not_to have_received(:search_from_object)
+    end
+
     it 'outputs the start message' do
       expect { monitor.execute_saved_searches }
         .to output(/🔍 Starting marketplace search/).to_stdout

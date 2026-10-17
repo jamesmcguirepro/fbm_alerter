@@ -111,6 +111,18 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(302)
       expect(last_response.headers['Location']).to end_with('/searches')
     end
+
+    it 'rejects out-of-range coordinates and shows an error' do
+      expect do
+        post '/searches', {
+          query: 'bike', lat: 40.7128, long: -11971922006451092,
+          email: 'owner@example.com'
+        }
+      end.not_to change(SavedSearch, :count)
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.body).to include('must be a number between -180 and 180')
+    end
   end
 
   describe 'GET /searches/:id/edit' do
@@ -130,9 +142,25 @@ RSpec.describe MarketplaceApp do
         query: 'bike', lat: 40.7128, long: -74.0060,
         min_price: 100, max_price: 500, email: 'owner@example.com'
       )
-      patch "/searches/#{search.id}", { name: 'My Bike Search' }
+      patch "/searches/#{search.id}", {
+        name: 'My Bike Search', query: 'bike', lat: 40.7128, long: -74.0060,
+        min_price: 100, max_price: 500, email: 'owner@example.com'
+      }
       expect(last_response.status).to eq(302)
       expect(search.reload.name).to eq('My Bike Search')
+    end
+
+    it 'rejects out-of-range coordinates and keeps the stored value' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060,
+        min_price: 100, max_price: 500, email: 'owner@example.com'
+      )
+      patch "/searches/#{search.id}", {
+        query: 'bike', lat: 40.7128, long: -11971922006451092, email: 'owner@example.com'
+      }
+      expect(last_response.status).to eq(422)
+      expect(search.reload.long.to_f).to be_within(0.0001).of(-74.006)
+      expect(last_response.body).to include('must be a number between -180 and 180')
     end
   end
 

@@ -54,4 +54,46 @@ RSpec.describe SavedSearch, type: :model do
       expect { search.print_search }.to output(/ID: #{search.id}/).to_stdout
     end
   end
+
+  describe 'coordinate validations' do
+    let(:attrs) { { query: 'bike', email: 'owner@example.com' } }
+
+    it 'is valid with in-range coordinates' do
+      expect(described_class.new(attrs.merge(lat: 40.7128, long: -74.0060))).to be_valid
+    end
+
+    it 'is invalid without a latitude' do
+      search = described_class.new(attrs.merge(long: -74.0060))
+      expect(search).not_to be_valid
+      expect(search.errors[:lat]).to be_present
+    end
+
+    it 'is invalid without a longitude' do
+      search = described_class.new(attrs.merge(lat: 40.7128))
+      expect(search).not_to be_valid
+      expect(search.errors[:long]).to be_present
+    end
+
+    it 'rejects a latitude outside -90..90' do
+      expect(described_class.new(attrs.merge(lat: 91, long: 0))).not_to be_valid
+    end
+
+    it 'rejects a longitude outside -180..180' do
+      expect(described_class.new(attrs.merge(lat: 0, long: -11971922006451092))).not_to be_valid
+    end
+  end
+
+  describe '#valid_coordinates?' do
+    it 'is true for in-range coordinates' do
+      expect(described_class.new(lat: 40.7128, long: -74.0060)).to be_valid_coordinates
+    end
+
+    it 'is false when coordinates are missing' do
+      expect(described_class.new(lat: nil, long: nil)).not_to be_valid_coordinates
+    end
+
+    it 'is false when coordinates are out of range' do
+      expect(described_class.new(lat: 40.7128, long: -11971922006451092)).not_to be_valid_coordinates
+    end
+  end
 end

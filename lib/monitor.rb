@@ -11,6 +11,9 @@ class MarketplaceMonitor
   # @param [String] email
   def add_saved_search(search_object:, email:)
     SavedSearch.add_search(search_object:, email:)
+  rescue ActiveRecord::RecordInvalid => e
+    @io.puts "✗ Could not add search: #{e.record.errors.full_messages.join(', ')}"
+    nil
   end
 
   # Run a complete search cycle over all saved searches in the DB
@@ -18,6 +21,8 @@ class MarketplaceMonitor
     @io.puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
     SavedSearch.where(active: true).each do |saved_search|
+      next if skip_invalid_coordinates?(saved_search)
+
       search_object = SearchObject.from_saved_search(saved_search:)
 
       new_listings = execute_search(search_object:, email: saved_search.email)
@@ -50,6 +55,8 @@ class MarketplaceMonitor
   # @return [Array<Listing>]
   def run_single(id:)
     saved_search = SavedSearch.find(id)
+    return [] if skip_invalid_coordinates?(saved_search)
+
     search_object = SearchObject.from_saved_search(saved_search:)
 
     new_listings = execute_search(search_object:, email: saved_search.email)
@@ -60,6 +67,16 @@ class MarketplaceMonitor
   end
 
   private
+
+  # Skip saved searches whose coordinates are missing or out of range rather
+  # than calling the API with a bad location. Returns true when skipped.
+  def skip_invalid_coordinates?(saved_search)
+    return false if saved_search.valid_coordinates?
+
+    @io.puts "  ⚠ Skipping '#{saved_search.query}' (ID #{saved_search.id}): " \
+             "invalid coordinates (#{saved_search.lat}, #{saved_search.long})"
+    true
+  end
 
   # Monitor a single search query
   # @param [SearchObject] search_object

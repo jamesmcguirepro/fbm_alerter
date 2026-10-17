@@ -75,6 +75,13 @@ td.nowrap { white-space: nowrap; }
 }
 .input-clear__btn:hover { color: #111827; background: #f3f4f6; }
 
+/* Validation errors */
+.form-errors {
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem;
+}
+.form-errors ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+
 /* Buttons */
 button, .button {
   display: inline-flex; align-items: center; gap: 0.4rem;

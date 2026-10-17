@@ -33,7 +33,7 @@ docker compose up -d web
 | `docker compose up` | Build image, migrate DB, run all saved searches once |
 | `docker compose up -d web` | Start the web GUI (http://localhost:9292) |
 | `docker compose run --rm marketplace-monitor list` | List saved searches |
-| `docker compose run --rm marketplace-monitor add -q bike -lat 30.2677 -long -97.7475 --min 100 --max 500 --email you@example.com` | Add a new saved search |
+| `docker compose run --rm marketplace-monitor add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com` | Add a new saved search |
 | `docker compose down -v` | Stop and remove the data volume (deletes the SQLite database) |
 
 Data persists in a Docker named volume (`marketplace-monitor-data`) mounted at `/app/storage` (SQLite file: `storage/development.sqlite3`).
@@ -84,7 +84,7 @@ cp .env.example .env
 ./setup.sh
 
 # 4. Add searches and run
-bundle exec ruby main.rb add -q bike -lat 30.2677 -long -97.7475 --min 100 --max 500 --email you@example.com
+bundle exec ruby main.rb add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com
 bundle exec ruby main.rb exec
 ```
 
@@ -101,8 +101,11 @@ Create a `.env` file (copy from `.env.example`). Required settings:
 Searches are stored in the SQLite database. Add them via the CLI:
 
 ```bash
-bundle exec ruby main.rb add -q "mountain bike" -lat 40.7128 -long -74.0060 --min 50 --max 300 --radius 25 --cond used_good --del shipping --email you@example.com
+bundle exec ruby main.rb add -q "mountain bike" --lat 40.7128 --long=-74.0060 --min 50 --max 300 --radius 25 --cond used_good --del shipping --email you@example.com
 ```
+
+> Use `--long=-74.0060` (with `=`) for negative longitudes — a space-separated value
+> starting with `-` is parsed as a command-line switch.
 
 Each search stores its own alert recipient (`--email`), which is where notifications for that search are sent.
 
