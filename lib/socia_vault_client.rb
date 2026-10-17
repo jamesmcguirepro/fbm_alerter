@@ -79,8 +79,7 @@ class SociaVaultClient
         lat:,
         lng: long,
         radius_km:,
-        count:,
-        sort_by: 'creation_time_descend'
+        count:
       }
 
       params[:min_price] = min_price if min_price

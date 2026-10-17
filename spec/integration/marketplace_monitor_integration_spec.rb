@@ -53,8 +53,7 @@ RSpec.describe 'Marketplace Monitor integration' do
           lat: '30.2677',
           lng: '-97.7475',
           radius_km: '65',
-          count: '24',
-          sort_by: 'creation_time_descend'
+          count: '24'
         ),
         headers: { 'X-API-Key' => 'sk_test_key' }
       )

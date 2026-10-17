@@ -64,12 +64,12 @@ RSpec.describe SociaVaultClient do
       )
     end
 
-    it 'sets default sort order' do
+    it 'does not send a sort order' do
       described_class.search(**search_params)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_including(sort_by: 'creation_time_descend'))
+        hash_including(query: hash_not_including(sort_by: 'creation_time_descend'))
       )
     end
 
@@ -258,8 +258,7 @@ RSpec.describe SociaVaultClient do
             radius_km: 25,
             condition: 'used_good',
             delivery_method: 'shipping',
-            count: 24,
-            sort_by: 'creation_time_descend'
+            count: 24
           ),
           headers: hash_including('X-API-Key' => 'sk_test_key')
         )
