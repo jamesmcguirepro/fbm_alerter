@@ -98,6 +98,9 @@ cp .env.example .env
 # 4. Add searches and run
 bundle exec ruby main.rb add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com
 bundle exec ruby main.rb exec
+
+# 5. Start the web GUI (http://localhost:9292)
+bundle exec puma -b tcp://0.0.0.0:9292 config.ru
 ```
 
 ## Configuration
