@@ -206,6 +206,38 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(id="search-row-#{search.id}"))
     end
 
+    it 'renders the two column headers (Run now and Actions)' do
+      get '/searches'
+
+      expect(last_response.body).to include('<th>Run now</th>')
+      expect(last_response.body).to include('<th>Actions</th>')
+    end
+
+    it 'renders the run column with a modal dialog' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(class="run-col"))
+      expect(last_response.body).to include(%(dialog id="run-modal-#{search.id}" class="run-modal"))
+      expect(last_response.body).to include(%(id="run-modal-body-#{search.id}"))
+    end
+
+    it 'renders the actions column with padded buttons' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(class="actions-col"))
+      expect(last_response.body).to include(%(hx-post="/searches/#{search.id}/toggle"))
+      expect(last_response.body).to include(%(hx-delete="/searches/#{search.id}"))
+      expect(last_response.body).to include(%(href="/searches/#{search.id}/edit"))
+    end
+
+    it 'opens the run modal when Run now is clicked' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(hx-on::htmx:request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-#{search.id}').showModal()"))
+      expect(last_response.body).to include(%(hx-on::htmx:after-request="this.disabled=false; this.textContent='Run now'; document.getElementById('run-modal-#{search.id}').close()"))
+      expect(last_response.body).to include(%(hx-on::htmx:after-settle="document.getElementById('run-modal-#{search.id}').close()"))
+    end
+
     it 'hides a discarded search' do
       search.discard
 
