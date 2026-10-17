@@ -219,6 +219,9 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(class="run-col"))
       expect(last_response.body).to include(%(dialog id="run-modal-#{search.id}" class="run-modal"))
       expect(last_response.body).to include(%(id="run-modal-body-#{search.id}"))
+      # The dialog must start closed: no `open` attribute, otherwise the modal
+      # shows on every page load.
+      expect(last_response.body).not_to match(/<dialog[^>]*\bopen\b/)
     end
 
     it 'renders the actions column with padded buttons' do

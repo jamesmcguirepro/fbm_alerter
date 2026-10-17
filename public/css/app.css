@@ -161,9 +161,14 @@ pre.run-log {
   max-width: 640px;
   width: 90vw;
   max-height: 85vh;
+  z-index: 1000;
+}
+/* Only take over layout when the dialog is actually open — a bare display
+   rule here would override the UA's `dialog:not([open]) { display: none }`
+   and leave the modal visible on every page load. */
+.run-modal[open] {
   display: flex;
   flex-direction: column;
-  z-index: 1000;
 }
 .run-modal::backdrop {
   background: rgba(0, 0, 0, 0.45);
