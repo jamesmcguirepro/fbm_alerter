@@ -34,10 +34,13 @@ module ViewHelpers
     PriceFormatter.format(value)
   end
 
-  def format_date(value)
+  # Timestamps in the chosen time zone. `seconds: true` adds HH:MM:SS, for
+  # screens where events within the same minute must be told apart.
+  def format_date(value, seconds: false)
     return '—' if value.nil?
 
-    value.in_time_zone(active_time_zone).strftime('%b %d, %Y %I:%M %p %Z')
+    pattern = seconds ? '%b %d, %Y %I:%M:%S %p %Z' : '%b %d, %Y %I:%M %p %Z'
+    value.in_time_zone(active_time_zone).strftime(pattern)
   end
 
   def format_day(value)

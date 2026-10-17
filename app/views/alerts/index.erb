@@ -10,7 +10,7 @@
   <tbody>
     <% @alerts.each do |alert| %>
     <tr>
-      <td class="nowrap"><%= format_date(alert.sent_at) %></td>
+      <td class="nowrap"><%= format_date(alert.sent_at, seconds: true) %></td>
       <td><%= truncate(alert.listing.title) %></td>
       <td><%= search_query_link(alert.search_id, alert.saved_search.query) %></td>
       <td class="nowrap"><%= format_price(alert.listing.price) %></td>

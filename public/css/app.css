@@ -6,20 +6,29 @@ html { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 
 body { margin: 0; background: #f6f7f9; color: #1f2937; }
 
+/* Links: one colour in every state. Setting it on `a` (rather than leaving it
+   to the browser) also covers :visited, so a link you have already clicked
+   stays this blue instead of turning purple. Component rules (nav, buttons,
+   pagination) set their own colours and still win. */
+a { color: #2563eb; }
+
 .container { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
 
 /* Header */
 .header { background: #111827; color: #fff; padding: 1rem 0; margin-bottom: 1.5rem; }
-.header .container { display: flex; align-items: center; gap: 0.75rem 2rem; flex-wrap: wrap; }
+/* Full-bleed bar (not the centred content column) so the time-zone picker can
+   sit against the far right edge of the header. Brand and nav on the left. */
+.header__bar { display: flex; align-items: center; gap: 0.75rem 2rem; flex-wrap: wrap; padding: 0 1.5rem; }
 .logo { font-weight: 700; font-size: 1.25rem; text-decoration: none; color: #fff; }
 .logo:hover { opacity: 0.9; }
-.header nav { margin-left: auto; display: flex; gap: 1.25rem; }
+.header nav { display: flex; gap: 1.25rem; }
 .header nav a { color: #d1d5db; text-decoration: none; font-size: 0.95rem; padding: 0.5rem 0; border-bottom: 2px solid transparent; }
 .header nav a:hover { color: #fff; }
 .header nav a.active { color: #60a5fa; border-bottom-color: #60a5fa; }
 
-/* Time-zone picker (site-wide, lives in the header) */
-.tz-form { display: flex; align-items: center; gap: 0.5rem; }
+/* Time-zone picker: pinned far right on the header bar (and on its own line,
+   still right-aligned, if the bar wraps on a narrow window). */
+.tz-form { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .tz-form label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
 .tz-form select { padding: 0.35rem 0.5rem; border: 1px solid #374151; border-radius: 6px; font-size: 0.85rem; background: #1f2937; color: #e5e7eb; }
 .tz-form select:focus { outline: 2px solid #60a5fa; outline-offset: 1px; }

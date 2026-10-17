@@ -430,6 +430,32 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(href="/searches?inactive=1#search-row-#{search.id}"))
       expect(last_response.body).to include('Alert Bike')
     end
+
+    it 'shows the send time to the second' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      listing = Listing.create!(listing_id: 'alert-seconds', title: 'Timed Bike')
+      Alert.create!(
+        listing_id: listing.id, search_id: search.id, sent_at: Time.utc(2026, 6, 1, 3, 4, 5)
+      )
+
+      get '/alerts'
+
+      # 03:04:05 UTC on Jun 1 is 08:04:05 PM on May 31 in Pacific (PDT).
+      expect(last_response.body).to include('May 31, 2026 08:04:05 PM PDT')
+    end
+
+    it 'leaves seconds off the other screens' do
+      Listing.create!(
+        listing_id: 'no-seconds', title: 'Plain Bike', last_seen_at: Time.utc(2026, 6, 1, 3, 4, 5)
+      )
+
+      get '/listings'
+
+      expect(last_response.body).to include('May 31, 2026 08:04 PM PDT')
+      expect(last_response.body).not_to match(/\d{2}:\d{2}:\d{2}/)
+    end
   end
 
   describe 'GET /settings' do
