@@ -8,15 +8,14 @@ RSpec.describe Mailer do
   before do
     Mailer.instance_variable_set(:@_configured, nil)
 
-    # # Stub Config
-    # stub_const("Config", class_double(
-    #   Config,
-    #   smtp_address: 'smtp.example.com',
-    #   smtp_port: 587,
-    #   smtp_username: 'user',
-    #   smtp_password: 'pass',
-    #   email_from: 'noreply@example.com'
-    # ))
+    stub_const("Config", class_double(
+      Config,
+      smtp_address: 'smtp.example.com',
+      smtp_port: 587,
+      smtp_username: 'user',
+      smtp_password: 'pass',
+      email_from: 'noreply@example.com'
+    ))
   end
 
   describe '.send_email' do

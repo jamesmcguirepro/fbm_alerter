@@ -24,7 +24,6 @@ class Listing < ActiveRecord::Base
   validates :title, presence: true
 
   has_many :alerts
-  has_one :saved_search
 
   # @param [ListingObject] listing_object
   # @return [Listing]

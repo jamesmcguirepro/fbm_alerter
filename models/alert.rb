@@ -20,8 +20,8 @@
 #  search_id   (search_id => saved_searches.id)
 #
 class Alert < ActiveRecord::Base
-  has_one :listing
-  has_one :saved_search, foreign_key: :search_id
+  belongs_to :listing
+  belongs_to :saved_search, foreign_key: :search_id
 
   def self.record_alert(listing_id:, search_id:)
     self.create!(listing_id:, search_id:, sent_at: Time.now)

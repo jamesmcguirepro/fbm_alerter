@@ -18,7 +18,7 @@
 #
 class SavedSearch < ActiveRecord::Base
   has_many :alerts
-  has_many :listings
+  has_many :listings, through: :alerts
 
   def self.add_search(search_object:, email:)
     create!(

@@ -326,4 +326,74 @@ RSpec.describe MarketplaceMonitor do
       expect(monitor).to have_received(:execute_search).with(search_object:)
     end
   end
+
+  describe '#add_saved_search' do
+    let(:search_object) do
+      SearchObject.new(
+        query: 'bike',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        condition: nil,
+        delivery_method: nil
+      )
+    end
+
+    it 'delegates to SavedSearch.add_search' do
+      expect(SavedSearch).to receive(:add_search).with(search_object:, email: 'owner@example.com')
+
+      monitor.add_saved_search(search_object:, email: 'owner@example.com')
+    end
+  end
+
+  describe '#remove_saved_search' do
+    let!(:saved_search) do
+      SavedSearch.create!(
+        query: 'bike',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        email: 'owner@example.com'
+      )
+    end
+
+    it 'deletes the saved search' do
+      expect {
+        monitor.remove_saved_search(id: saved_search.id)
+      }.to change(SavedSearch, :count).by(-1)
+    end
+
+    it 'outputs the deleted search ID' do
+      expect { monitor.remove_saved_search(id: saved_search.id) }
+        .to output(/Deleted search ID #{saved_search.id}/).to_stdout
+    end
+
+    it 'prints the search before deleting' do
+      expect { monitor.remove_saved_search(id: saved_search.id) }
+        .to output(/ID: #{saved_search.id}/).to_stdout
+    end
+  end
+
+  describe '#list_saved_searches' do
+    let!(:saved_search) do
+      SavedSearch.create!(
+        query: 'bike',
+        lat: 40.7128,
+        long: -74.0060,
+        min_price: 100,
+        max_price: 500,
+        radius_km: 25,
+        email: 'owner@example.com'
+      )
+    end
+
+    it 'lists all saved searches' do
+      expect { monitor.list_saved_searches }
+        .to output(/ID: #{saved_search.id}/).to_stdout
+    end
+  end
 end
