@@ -236,7 +236,7 @@ RSpec.describe MarketplaceApp do
     it 'opens the run modal when Run now is clicked' do
       get '/searches'
 
-      expect(last_response.body).to include(%(hx-on::htmx:request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-#{search.id}').showModal()"))
+      expect(last_response.body).to include(%(hx-on::htmx:before-request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-#{search.id}').showModal()"))
       expect(last_response.body).to include(%(hx-on::htmx:after-request="this.disabled=false; this.textContent='Run now'"))
       # The modal must stay open so the run log is visible — it should not be
       # auto-closed when the request settles.
