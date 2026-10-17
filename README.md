@@ -58,17 +58,29 @@ Make sure the NAS share is writable by the container user (adjust share permissi
 
 ## Web GUI
 
-The app includes a Sinatra-based web GUI (no auth, intended for LAN use):
+The app includes a Sinatra-based web GUI (no auth, intended for LAN use). It reads and writes the same SQLite database as the CLI, so a search added from either place shows up in both.
 
-| Page | Description |
-|------|-------------|
-| `/dashboard` | Overview counts, last activity, recent listings, "Run all now" with live log |
-| `/searches` | Create, edit, pause/resume, delete, and run individual searches |
-| `/listings` | Paginated listing table with title/price/sold filters |
-| `/alerts` | Alert history (which search matched which listing) |
-| `/settings` | Configuration summary (secrets masked) and SMTP test email |
+![Marketplace Monitor dashboard](docs/web-dashboard.png)
 
 Start it with `docker compose up -d web` and visit `http://<nas-ip>:9292`.
+
+| Page | What it shows |
+|------|---------------|
+| `/dashboard` | At-a-glance counts, credit balance, "Run all searches now", recent listings |
+| `/searches` | Create, edit, pause/resume, delete, and run individual searches |
+| `/listings` | Paginated table of every listing seen, filterable by title and sold status |
+| `/alerts` | Alert history — which search matched which listing, and when it was sent |
+| `/settings` | Configuration summary (secrets masked), test email, email preview |
+
+A few things worth knowing:
+
+- **Time zone** — the picker in the header applies to every page and is remembered for the session (Pacific by default), so timestamps read the way you expect without the container's clock mattering.
+- **Dry run badge** — with `DRY_RUN=true` a "Dry run" badge appears in the header, and every search becomes a no-op: you can click around, run searches, and check the email layout without spending credits.
+- **Dashboard** — every card is a link. "Credits left" is read live from SociaVault (that call is free) and turns amber once the balance gets low. "Run all searches now" streams the monitor's log onto the page, so a run is visible without watching the container. In the recent-listings table the whole row opens the ad, and the Search column links back to the search that produced it.
+- **Searches** — each row can be run on its own ("Run now" shows the log inline), paused/resumed, edited, or deleted. The Calls column counts SociaVault API calls (one call = one credit) plus the date of the last run, and the Location cell shows the resolved place name with the coordinates underneath. Saving an edit forks a new search and pauses the original, so past listings keep pointing at the search that actually found them.
+- **Listings** — thumbnails, prices, the resolved location and the search each listing came from; rows link to the Facebook ad.
+- **Alerts** — send times are shown to the second, since a single run can send several alerts within the same minute.
+- **Settings** — masked API key, SMTP settings, database path and environment, plus a test email form. "Preview alert email" renders the real alert template in a new tab from listings already in the database, so the layout can be checked without sending mail or spending a credit.
 
 ## Local setup (without Docker)
 
