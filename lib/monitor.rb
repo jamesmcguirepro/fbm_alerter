@@ -25,7 +25,7 @@ class MarketplaceMonitor
 
       search_object = SearchObject.from_saved_search(saved_search:)
 
-      new_listings = execute_search(search_object:, email: saved_search.email)
+      new_listings = execute_search(search_object:, email: saved_search.email, saved_search:)
 
       send_alerts(listings: new_listings, saved_search:) if new_listings.any?
     end
@@ -59,7 +59,7 @@ class MarketplaceMonitor
 
     search_object = SearchObject.from_saved_search(saved_search:)
 
-    new_listings = execute_search(search_object:, email: saved_search.email)
+    new_listings = execute_search(search_object:, email: saved_search.email, saved_search:)
 
     send_alerts(listings: new_listings, saved_search:) if new_listings.any?
 
@@ -81,23 +81,31 @@ class MarketplaceMonitor
   # Monitor a single search query
   # @param [SearchObject] search_object
   # @param [String] email
+  # @param [SavedSearch] saved_search the search this run belongs to, when known
   # @return [Array<Listing>] new listings found during this search
-  def execute_search(search_object:, email: nil)
+  def execute_search(search_object:, email: nil, saved_search: nil)
     @io.puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
-
-    new_listings = []
 
     begin
       result = SociaVaultClient.search_from_object(search_object:)
-      new_listings = handle_result(result:, search_query: search_object.query)
     rescue StandardError => e
       @io.puts "  ✗ Error: #{e.message}"
+      # The credit is spent on the attempt, so record it even when it fails.
+      SearchRun.record(saved_search:, success: false) if saved_search
+      return []
     end
 
-    new_listings
+    run = SearchRun.record(saved_search:, success: true) if saved_search
+
+    begin
+      handle_result(result:, search_query: search_object.query, search_run: run)
+    rescue StandardError => e
+      @io.puts "  ✗ Error: #{e.message}"
+      []
+    end
   end
 
-  def handle_result(result:, search_query:)
+  def handle_result(result:, search_query:, search_run: nil)
     new_listings = []
     if result['data'] && result['data']['listings'] && result['data']['listings'].any?
       listings = result['data']['listings'].values
@@ -115,7 +123,7 @@ class MarketplaceMonitor
           next
         end
 
-        new_listings << Listing.add_listing(listing_object:)
+        new_listings << Listing.add_listing(listing_object:, search_run:)
       end
     else
       @io.puts '  No listings found or unexpected response format'

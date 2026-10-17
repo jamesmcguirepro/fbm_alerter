@@ -4,7 +4,7 @@ class MarketplaceApp < Sinatra::Base
   helpers ViewHelpers
 
   get '/listings' do
-    query = Listing.all
+    query = Listing.all.includes(:search_run)
 
     if params[:query].to_s.strip != ''
       query = query.where('title ILIKE ?', "%#{params[:query]}%")

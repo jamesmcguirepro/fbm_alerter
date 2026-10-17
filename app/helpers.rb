@@ -16,6 +16,28 @@ module ViewHelpers
     value.strftime('%b %d, %Y %I:%M %p')
   end
 
+  def format_day(value)
+    return '—' if value.nil?
+
+    value.strftime('%b %d, %Y')
+  end
+
+  def format_coordinates(lat, long)
+    return '—' if lat.nil? || long.nil?
+
+    '%.4f, %.4f' % [lat.to_f, long.to_f]
+  end
+
+  # API-call count for a saved search, rendered on its own (used inline in the
+  # table and again for the htmx out-of-band swap after a manual run).
+  def calls_cell(search)
+    count = search.search_runs.count
+    last = search.search_runs.maximum(:created_at)
+
+    %(<div class="calls-count">#{count}</div>) +
+      %(<div class="muted">#{last ? "last #{format_day(last)}" : 'never run'}</div>)
+  end
+
   def truncate(text, length: 40)
     return '' if text.nil?
 

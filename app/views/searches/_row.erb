@@ -1,9 +1,15 @@
 <tr id="search-row-<%= search.id %>">
   <td><%= search.name || '(unnamed)' %></td>
   <td><%= search.query %></td>
-  <td><%= search.location_label || '—' %></td>
+  <td>
+    <div><%= search.location_label || '—' %></div>
+    <% if search.resolved_location.present? && search.lat && search.long %>
+      <div class="coord"><%= format_coordinates(search.lat, search.long) %></div>
+    <% end %>
+  </td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
   <td><%= search.email %></td>
+  <td id="search-calls-<%= search.id %>"><%= calls_cell(search) %></td>
   <td><%= active_badge(search) %></td>
   <td class="actions">
     <button hx-post="/searches/<%= search.id %>/run"

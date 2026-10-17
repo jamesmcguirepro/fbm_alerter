@@ -3,3 +3,4 @@
 <% else %>
 <pre class="run-log"><%= @log %></pre>
 <% end %>
+<td id="search-calls-<%= @search.id %>" hx-swap-oob="true"><%= calls_cell(@search) %></td>

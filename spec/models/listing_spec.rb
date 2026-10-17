@@ -201,6 +201,32 @@ RSpec.describe Listing, type: :model do
       end
     end
 
+    context 'with a search run' do
+      let(:saved_search) do
+        SavedSearch.create!(
+          query: search_query, lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+        )
+      end
+
+      it 'stamps a newly discovered listing with the run that found it' do
+        run = SearchRun.create!(saved_search_id: saved_search.id, success: true)
+
+        listing = Listing.add_listing(listing_object: build_listing_object, search_run: run)
+
+        expect(listing.search_run_id).to eq(run.id)
+      end
+
+      it 'keeps the discovery run when the listing is seen again later' do
+        first  = SearchRun.create!(saved_search_id: saved_search.id, success: true)
+        second = SearchRun.create!(saved_search_id: saved_search.id, success: true)
+
+        Listing.add_listing(listing_object: build_listing_object, search_run: first)
+        listing = Listing.add_listing(listing_object: build_listing_object, search_run: second)
+
+        expect(listing.search_run_id).to eq(first.id)
+      end
+    end
+
     context 'timestamps' do
       it 'sets reasonable timestamps' do
         Timecop.freeze(Time.parse('2024-01-15 12:00:00')) do

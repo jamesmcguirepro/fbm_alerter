@@ -22,6 +22,7 @@
 class SavedSearch < ActiveRecord::Base
   has_many :alerts
   has_many :listings, through: :alerts
+  has_many :search_runs
 
   attribute :radius_km, default: 65
 

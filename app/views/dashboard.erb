@@ -18,6 +18,11 @@
     <h2>Last activity</h2>
     <div class="value"><%= format_date(@last_activity) %></div>
   </a>
+  <a href="/searches" class="card card--link">
+    <h2>API calls</h2>
+    <div class="value"><%= @api_call_count %></div>
+    <div style="font-size:0.85rem;color:#6b7280;"><%= @api_today_count %> today · 1 credit each</div>
+  </a>
 </div>
 
 <div class="actions">

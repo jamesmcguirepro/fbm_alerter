@@ -83,7 +83,8 @@ RSpec.describe MarketplaceMonitor do
 
       expect(monitor).to have_received(:execute_search).with(
         search_object: an_instance_of(SearchObject),
-        email: 'owner@example.com'
+        email: 'owner@example.com',
+        saved_search: saved_search
       ).at_least(:once)
     end
 
@@ -174,6 +175,34 @@ RSpec.describe MarketplaceMonitor do
     it 'outputs the number of listings found' do
       expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
         .to output(/Found 2 listing/).to_stdout
+    end
+
+    it 'records an API call against the saved search' do
+      expect {
+        monitor.send(:execute_search, search_object:, saved_search:)
+      }.to change(SearchRun, :count).by(1)
+    end
+
+    it 'links the listings it finds to that run' do
+      monitor.send(:execute_search, search_object:, saved_search:)
+
+      run = SearchRun.last
+      expect(run.listings.map(&:listing_id)).to contain_exactly('1', '2')
+    end
+
+    context 'when the API call fails' do
+      before do
+        allow(SociaVaultClient).to receive(:search_from_object)
+          .and_raise(StandardError, 'Connection timeout')
+      end
+
+      it 'still records the spent credit as a failed run' do
+        expect {
+          monitor.send(:execute_search, search_object:, saved_search:)
+        }.to change(SearchRun, :count).by(1)
+
+        expect(SearchRun.last.success).to be(false)
+      end
     end
 
     context 'when a listing already exists' do

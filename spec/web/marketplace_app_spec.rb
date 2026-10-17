@@ -107,11 +107,21 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(id="search-row-#{search.id}"))
     end
 
-    it 'shows a resolved place name instead of raw coordinates' do
+    it 'shows the resolved place name together with the raw coordinates' do
       get '/searches'
       expect(last_response.body).to include('New York')
-      expect(last_response.body).not_to include('40.7128, -74.006')
+      expect(last_response.body).to include('40.7128, -74.0060')
       expect(search.reload.resolved_location).to eq('New York')
+    end
+
+    it 'shows how many API calls each search has made' do
+      SearchRun.create!(saved_search_id: search.id, success: true)
+      SearchRun.create!(saved_search_id: search.id, success: true)
+
+      get '/searches'
+
+      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
+      expect(last_response.body).to include('<div class="calls-count">2</div>')
     end
 
     it 'hides inactive searches unless explicitly requested' do
@@ -268,6 +278,19 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include('Searching')
     end
+
+    it 'swaps in the updated call count out of band' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060,
+        min_price: 100, max_price: 500, email: 'owner@example.com'
+      )
+
+      post "/searches/#{search.id}/run"
+
+      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
+      expect(last_response.body).to include('hx-swap-oob="true"')
+      expect(search.search_runs.count).to eq(1)
+    end
   end
 
   describe 'GET /listings' do
@@ -301,6 +324,20 @@ RSpec.describe MarketplaceApp do
       get '/listings'
       expect(last_response.body).to include('Mystery Item')
       expect(last_response.body).not_to include('data-href=')
+    end
+
+    it 'shows the run that discovered the listing' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      run = SearchRun.create!(saved_search_id: search.id, success: true)
+      Listing.create!(
+        listing_id: 'run-1', title: 'Run Bike', search_query: 'bike', search_run_id: run.id
+      )
+
+      get '/listings'
+
+      expect(last_response.body).to include("found #{run.created_at.strftime('%b %d, %Y %I:%M %p')}")
     end
   end
 
@@ -361,6 +398,21 @@ RSpec.describe MarketplaceApp do
 
       post '/settings/test-email', { email: 'dest@example.com' }
       expect(last_response.status).to eq(302)
+    end
+  end
+
+  describe 'GET /dashboard' do
+    it 'shows the running API-call (credit) total' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      SearchRun.create!(saved_search_id: search.id, success: true)
+
+      get '/dashboard'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('API calls')
+      expect(last_response.body).to include('1 credit each')
     end
   end
 
