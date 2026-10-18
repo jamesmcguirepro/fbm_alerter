@@ -148,9 +148,69 @@ button:hover, .button:hover { opacity: 0.9; }
 pre.run-log {
   background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
-/* Placeholder under "Run now" that the log is swapped into. */
-.run-log-slot { margin-top: 0.35rem; }
+
+/* Run log modal */
+.run-modal {
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 640px;
+  width: 90vw;
+  max-height: 85vh;
+  z-index: 1000;
+}
+/* Only take over layout when the dialog is actually open — a bare display
+   rule here would override the UA's `dialog:not([open]) { display: none }`
+   and leave the modal visible on every page load. */
+.run-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+.run-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+.run-modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+}
+.run-modal-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #6b7280;
+}
+.run-modal-close:hover { color: #111827; }
+.run-modal-body {
+  margin-top: 0.75rem;
+  flex: 1;
+  overflow-y: auto;
+}
+.run-modal-body pre.run-log {
+  margin: 0;
+  max-height: none;
+}
+
+/* Actions column: space the buttons out inside the table cell. */
+.actions-col {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
 
 /* Pagination */
 .pagination { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1rem; }

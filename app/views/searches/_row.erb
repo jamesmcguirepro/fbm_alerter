@@ -10,14 +10,24 @@
   </td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
   <td><%= escape_html(search.email) %></td>
-  <td id="search-calls-<%= search.id %>"><%= calls_cell(search) %></td>
+  <td><div id="search-calls-<%= search.id %>"><%= calls_cell(search) %></div></td>
   <td><%= active_badge(search) %></td>
-  <td class="actions">
+  <td class="run-col">
     <button hx-post="/searches/<%= search.id %>/run"
-            hx-target="#run-log-<%= search.id %>"
+            hx-target="#run-modal-body-<%= search.id %>"
             hx-swap="innerHTML"
+            hx-on::before-request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-<%= search.id %>').showModal()"
+            hx-on::after-request="this.disabled=false; this.textContent='Run now'"
             class="button button--secondary button--small">Run now</button>
-    <div id="run-log-<%= search.id %>" class="muted run-log-slot"></div>
+    <dialog id="run-modal-<%= search.id %>" class="run-modal"
+            onclick="if (event.target === this) this.close()">
+      <div class="run-modal-content">
+        <button class="run-modal-close" onclick="this.closest('dialog').close()">✕</button>
+        <div class="run-modal-body" id="run-modal-body-<%= search.id %>"></div>
+      </div>
+    </dialog>
+  </td>
+  <td class="actions-col">
     <button hx-post="/searches/<%= search.id %>/toggle"
             hx-target="closest tr"
             hx-swap="outerHTML"

@@ -84,7 +84,9 @@ RSpec.describe SociaVaultClient do
 
     it 'returns API response' do
       response = described_class.search(**search_params)
-      expect(response).to eq(success_response)
+
+      expect(response['data']['listings']).to have_key('123456')
+      expect(response['data']['listings']['123456']['title']).to eq('Mountain Bike')
     end
 
     it 'raises error on 400 Bad Request' do
@@ -164,7 +166,7 @@ RSpec.describe SociaVaultClient do
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_including(count: 24))
+        hash_including(query: hash_including(count: 100))
       )
     end
 
@@ -175,6 +177,149 @@ RSpec.describe SociaVaultClient do
         anything,
         hash_including(query: hash_including(count: 50))
       )
+    end
+
+    it 'follows the cursor to fetch additional pages' do
+      first_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '1' => { 'id' => '1', 'title' => 'First', 'price' => { 'amount' => 100 } }
+            },
+            'next_cursor' => 'page-2'
+          }
+        },
+        success?: true
+      )
+      second_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '2' => { 'id' => '2', 'title' => 'Second', 'price' => { 'amount' => 200 } }
+            }
+          }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
+
+      result = described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).twice
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(cursor: 'page-2'))
+      )
+      expect(result['data']['listings'].keys).to contain_exactly('1', '2')
+    end
+
+    it 'de-duplicates listings returned across pages' do
+      dup_listing = { 'id' => '1', 'title' => 'Dup', 'price' => { 'amount' => 100 } }
+      first_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => { '1' => dup_listing },
+            'next_cursor' => 'page-2'
+          }
+        },
+        success?: true
+      )
+      second_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => { '1' => dup_listing }
+          }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
+
+      result = described_class.search(**search_params)
+
+      expect(result['data']['listings'].keys).to contain_exactly('1')
+    end
+
+    it 'stops paging when there is no cursor' do
+      response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '1' => { 'id' => '1', 'title' => 'Only', 'price' => { 'amount' => 100 } }
+            }
+          }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(response)
+
+      result = described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).once
+      expect(result['data']['listings'].keys).to contain_exactly('1')
+    end
+
+    it 'stops paging when a page returns no listings' do
+      first_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '1' => { 'id' => '1', 'title' => 'First', 'price' => { 'amount' => 100 } }
+            },
+            'next_cursor' => 'page-2'
+          }
+        },
+        success?: true
+      )
+      empty_response = double(
+        code: 200,
+        parsed_response: { 'data' => { 'listings' => {} } },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(first_response, empty_response)
+
+      result = described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).twice
+      expect(result['data']['listings'].keys).to contain_exactly('1')
+    end
+
+    it 'yields once per request, so callers can account for the credit spent' do
+      requests = 0
+      described_class.search(**search_params) { requests += 1 }
+
+      expect(requests).to eq(1)
+    end
+
+    it 'yields once per page fetched' do
+      first_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => { '1' => { 'id' => '1', 'title' => 'First' } },
+            'next_cursor' => 'page-2'
+          }
+        },
+        success?: true
+      )
+      second_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => { 'listings' => { '2' => { 'id' => '2', 'title' => 'Second' } } }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
+
+      requests = 0
+      described_class.search(**search_params) { requests += 1 }
+
+      expect(requests).to eq(2)
     end
 
     it 'sets timeout' do
@@ -258,7 +403,7 @@ RSpec.describe SociaVaultClient do
             radius_km: 25,
             condition: 'used_good',
             delivery_method: 'shipping',
-            count: 24
+            count: 100
           ),
           headers: hash_including('X-API-Key' => 'sk_test_key')
         )
@@ -267,7 +412,9 @@ RSpec.describe SociaVaultClient do
 
     it 'returns the API response' do
       response = described_class.search_from_object(search_object:)
-      expect(response).to eq(success_response)
+
+      expect(response['data']['listings']).to have_key('123456')
+      expect(response['data']['listings']['123456']['title']).to eq('Mountain Bike')
     end
   end
 
@@ -277,9 +424,11 @@ RSpec.describe SociaVaultClient do
     it 'never touches the network' do
       expect(HTTParty).not_to receive(:get)
 
-      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060)
+      requested = false
+      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060) { requested = true }
 
       expect(result['data']['listings']).to be_empty
+      expect(requested).to be(false)
     end
 
     it 'still reads the credit balance, because that call is free' do

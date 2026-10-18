@@ -206,6 +206,44 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(%(id="search-row-#{search.id}"))
     end
 
+    it 'renders the two column headers (Run now and Actions)' do
+      get '/searches'
+
+      expect(last_response.body).to include('<th>Run now</th>')
+      expect(last_response.body).to include('<th>Actions</th>')
+    end
+
+    it 'renders the run column with a modal dialog' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(class="run-col"))
+      expect(last_response.body).to include(%(dialog id="run-modal-#{search.id}" class="run-modal"))
+      expect(last_response.body).to include(%(id="run-modal-body-#{search.id}"))
+      # The dialog must start closed: no `open` attribute, otherwise the modal
+      # shows on every page load.
+      expect(last_response.body).not_to match(/<dialog[^>]*\bopen\b/)
+    end
+
+    it 'renders the actions column with padded buttons' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(class="actions-col"))
+      expect(last_response.body).to include(%(hx-post="/searches/#{search.id}/toggle"))
+      expect(last_response.body).to include(%(hx-delete="/searches/#{search.id}"))
+      expect(last_response.body).to include(%(href="/searches/#{search.id}/edit"))
+    end
+
+    it 'opens the run modal when Run now is clicked' do
+      get '/searches'
+
+      expect(last_response.body).to include(%(hx-on::before-request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-#{search.id}').showModal()"))
+      expect(last_response.body).to include(%(hx-on::after-request="this.disabled=false; this.textContent='Run now'"))
+      # The modal must stay open so the run log is visible — it should not be
+      # auto-closed when the request settles.
+      expect(last_response.body).not_to include(%(after-settle))
+      expect(last_response.body).not_to include("run-modal-#{search.id}').close()")
+    end
+
     it 'hides a discarded search' do
       search.discard
 
@@ -239,7 +277,7 @@ RSpec.describe MarketplaceApp do
 
       get '/searches'
 
-      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
+      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}">))
       expect(last_response.body).to include('<div class="calls-count">2</div>')
     end
 
@@ -432,8 +470,10 @@ RSpec.describe MarketplaceApp do
 
       post "/searches/#{search.id}/run"
 
-      expect(last_response.body).to include(%(id="search-calls-#{search.id}"))
-      expect(last_response.body).to include('hx-swap-oob="true"')
+      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}" hx-swap-oob="true">))
+      # A bare <td> is invalid at the top level of the fragment htmx parses, so
+      # the browser drops it and its children leak into the swap target.
+      expect(last_response.body).not_to include('<td')
       expect(search.search_runs.count).to eq(1)
     end
   end
