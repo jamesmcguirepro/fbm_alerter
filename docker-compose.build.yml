@@ -1,0 +1,11 @@
+# Local development override: build the image from this repo's Dockerfile
+# instead of pulling the published one from Docker Hub.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build web
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml run --rm marketplace-monitor exec
+services:
+  marketplace-monitor:
+    build: .
+
+  web:
+    build: .
