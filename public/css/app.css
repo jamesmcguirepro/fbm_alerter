@@ -178,7 +178,10 @@ pre.run-log {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1rem;
+  /* The close button below is absolutely positioned, so reserve a matching
+     top strip here. Otherwise the log (flush to the top of the body) runs
+     underneath the ✕. */
+  padding: 2.75rem 1rem 1rem;
   background: #fff;
   border-radius: 8px;
 }
@@ -196,7 +199,7 @@ pre.run-log {
 }
 .run-modal-close:hover { color: #111827; }
 .run-modal-body {
-  margin-top: 0.75rem;
+  margin-top: 0;
   flex: 1;
   overflow-y: auto;
 }
