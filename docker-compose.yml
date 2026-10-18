@@ -9,7 +9,7 @@ services:
       - RUBY_ENV=development
     volumes:
       # For Synology/QNAP, bind-mount a NAS share instead of a named volume:
-      #   - /volume1/docker/fbm_alerter/data:/app/storage
+      #   - /volume1/homes/docker/fbm_alerter/data:/app/storage
       - marketplace-monitor-data:/app/storage
     command: exec
 

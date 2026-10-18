@@ -84,7 +84,7 @@ DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed)
 **Container Manager GUI**
 
 1. Package Center → install **Container Manager**.
-2. File Station → create a project folder on the `docker` share, e.g. `/volume1/docker/fbm_alerter`, and copy in `docker-compose.yml`.
+2. File Station → create a project folder on a shared folder, e.g. `/volume1/homes/docker/fbm_alerter`, and copy in `docker-compose.yml`.
 3. Create a `.env` in that folder (see [Configuration](#configuration)).
 4. Container Manager → **Project** → **Create**, point it at the folder, and start it.
 5. The `marketplace-monitor` service runs once and exits — stop that container and leave `web` running.
@@ -92,7 +92,7 @@ DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed)
 **SSH / CLI** (DSM 7.2.1+ with a current Container Manager):
 
 ```bash
-cd /volume1/docker/fbm_alerter
+cd /volume1/homes/docker/fbm_alerter
 docker compose up -d web
 docker compose run --rm marketplace-monitor exec
 ```
@@ -108,7 +108,7 @@ with:
 
 ```yaml
     volumes:
-      - /volume1/docker/fbm_alerter/data:/app/storage
+      - /volume1/homes/docker/fbm_alerter/data:/app/storage
 ```
 
 Create the `data` folder first, and make sure it is writable by the container user (adjust share permissions or set `PUID`/`PGID` as needed).
@@ -120,7 +120,7 @@ Create the `data` folder first, and make sure it is writable by the container us
 Scheduling lives outside the container: point your host's scheduler at the run command. On a Synology NAS, use **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script** (run as `root`), daily, with:
 
 ```sh
-cd /volume1/docker/fbm_alerter && /usr/local/bin/docker compose run --rm marketplace-monitor exec
+cd /volume1/homes/docker/fbm_alerter && /usr/local/bin/docker compose run --rm marketplace-monitor exec
 ```
 
 On a generic Linux host, the crontab equivalent is:
