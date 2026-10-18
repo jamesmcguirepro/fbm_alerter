@@ -1,0 +1,63 @@
+<h1>Add search</h1>
+
+<%= form_errors(@search) %>
+
+<div class="form">
+  <form action="/searches" method="post">
+    <div class="field">
+      <label>Name <span class="label-hint">(optional label)</span></label>
+      <input type="text" name="name" value="<%= escape_html(@search&.name || '') %>">
+    </div>
+    <div class="field">
+      <label>Query <span class="label-hint">e.g. mountain bike</span></label>
+      <input type="text" name="query" value="<%= escape_html(@search&.query || '') %>" required>
+    </div>
+    <div class="field">
+      <label>Latitude</label>
+      <input type="number" step="any" name="lat" value="<%= escape_html(@search&.lat || '') %>" required>
+    </div>
+    <div class="field">
+      <label>Longitude</label>
+      <input type="number" step="any" name="long" value="<%= escape_html(@search&.long || '') %>" required>
+    </div>
+    <div class="field">
+      <label>Radius (km) <span class="label-hint">5–1000</span></label>
+      <input type="number" min="5" max="1000" name="radius_km" value="<%= escape_html(@search&.radius_km || 65) %>" required>
+    </div>
+    <div class="field">
+      <label>Min price</label>
+      <input type="number" name="min_price" value="<%= escape_html(@search&.min_price || '') %>">
+    </div>
+    <div class="field">
+      <label>Max price</label>
+      <input type="number" name="max_price" value="<%= escape_html(@search&.max_price || '') %>">
+    </div>
+    <div class="field">
+      <label>Condition</label>
+      <select name="condition">
+        <option value="">Any</option>
+        <option value="new" <%= @search&.condition == 'new' ? 'selected' : nil %>>New</option>
+        <option value="used_like_new" <%= @search&.condition == 'used_like_new' ? 'selected' : nil %>>Used like new</option>
+        <option value="used_good" <%= @search&.condition == 'used_good' ? 'selected' : nil %>>Used good</option>
+        <option value="used_fair" <%= @search&.condition == 'used_fair' ? 'selected' : nil %>>Used fair</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Delivery method</label>
+      <select name="delivery_method">
+        <option value="">Any</option>
+        <option value="all" <%= @search&.delivery_method == 'all' ? 'selected' : nil %>>All</option>
+        <option value="local_pickup" <%= @search&.delivery_method == 'local_pickup' ? 'selected' : nil %>>Local pickup</option>
+        <option value="shipping" <%= @search&.delivery_method == 'shipping' ? 'selected' : nil %>>Shipping</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Email address <span class="label-hint">alerts sent here</span></label>
+      <input type="email" name="email" value="<%= escape_html(@search&.email || '') %>" required>
+    </div>
+    <div class="actions">
+      <button type="submit" class="button button--primary">Save search</button>
+      <a href="/searches" class="button button--secondary">Cancel</a>
+    </div>
+  </form>
+</div>

@@ -11,10 +11,6 @@ class Config
       ENV['EMAIL_FROM'] || 'marketplace-alerts@example.com'
     end
 
-    def email_to
-      (ENV['EMAIL_TO'] || '').split(',').map(&:strip).reject(&:empty?)
-    end
-
     def smtp_address
       ENV['SMTP_ADDRESS'] || 'smtp.gmail.com'
     end
@@ -31,29 +27,18 @@ class Config
       ENV['SMTP_PASSWORD']
     end
 
-    def db_path
-      ENV['DB_PATH'] || './marketplace_monitor.db'
-    end
-
-    # Parse duration strings like "30m", "2h", "1d" into seconds
-    def parse_interval(interval_str)
-      case interval_str
-      when /^(\d+)m$/
-        Regexp.last_match(1).to_i * 60
-      when /^(\d+)h$/
-        Regexp.last_match(1).to_i * 3600
-      when /^(\d+)d$/
-        Regexp.last_match(1).to_i * 86_400
-      else
-        30 * 60 # default to 30 minutes
-      end
+    # When true, scrape calls become a no-op: the whole pipeline (UI, dashboard,
+    # alert emails) can be exercised without spending a credit. Accepts the
+    # usual truthy spellings, but `true`/`false` is the intended form. The
+    # credit balance is still read for real, since that call is free.
+    def dry_run?
+      %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
     end
 
     # Validate configuration
     def validate!
       errors = []
       errors << 'SOCIAVAULT_API_KEY not set' unless ENV['SOCIAVAULT_API_KEY']
-      errors << 'EMAIL_TO not set or empty' if email_to.empty?
 
       return unless errors.any?
 

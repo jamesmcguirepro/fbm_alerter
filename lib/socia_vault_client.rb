@@ -4,7 +4,8 @@
 class SociaVaultClient
   class << self
     # @param [SearchObject] search_object
-    def search_from_object(search_object:)
+    # @param [Proc] on_request called once per API request (see #search)
+    def search_from_object(search_object:, &on_request)
       search(
         query: search_object.query,
         lat: search_object.lat,
@@ -13,11 +14,17 @@ class SociaVaultClient
         max_price: search_object.max_price,
         radius_km: search_object.radius_km,
         condition: search_object.condition,
-        delivery_method: search_object.delivery_method
+        delivery_method: search_object.delivery_method,
+        &on_request
       )
-
     end
-    # Search Facebook Marketplace
+
+    # Search Facebook Marketplace.
+    #
+    # The API returns roughly 15 listings per page even when +count+ is
+    # higher, so pages are followed using the response cursor until no more
+    # results remain. Listings are de-duplicated by id across pages.
+    #
     # @param query [String] Search keyword
     # @param lat [Float] Latitude
     # @param long [Float] Longitude
@@ -26,27 +33,71 @@ class SociaVaultClient
     # @param radius_km [Integer] Search radius in kilometers
     # @param condition [String] Item condition (new, used_like_new, used_good, used_fair)
     # @param delivery_method [String] Delivery method (all, local_pickup, shipping)
-    # @param count [Integer] Number of results to return
-    # @return [Hash] API response containing listings
+    # @param count [Integer] Number of results to request per page
+    # @yield called once for every API request made (each spends a credit), so
+    #   callers can account for the spend as it happens
+    # @return [Hash] API response containing listings under ['data']['listings']
     def search(query:, lat:, long:, min_price: nil, max_price: nil,
-               radius_km: 65, condition: nil, delivery_method: nil, count: 24)
-      params = build_params(
-        query:,
-        lat:,
-        long:,
-        min_price:,
-        max_price:,
-        radius_km:,
-        condition:,
-        delivery_method:,
-        count:
-      )
+               radius_km: 65, condition: nil, delivery_method: nil, count: 100,
+               &on_request)
+      # No-op at the API call: spend nothing and return what an empty search
+      # would have returned. See Config.dry_run?.
+      return { 'data' => { 'listings' => {} } } if Config.dry_run?
 
+      all_listings = []
+      seen_ids = Set.new
+      cursor = nil
+
+      MAX_PAGES.times do
+        params = build_params(
+          query:,
+          lat:,
+          long:,
+          min_price:,
+          max_price:,
+          radius_km:,
+          condition:,
+          delivery_method:,
+          count:,
+          cursor:
+        )
+
+        response = HTTParty.get(
+          "#{BASE_URL}#{ENDPOINT}",
+          query: params,
+          headers: { 'X-API-Key' => Config.api_key },
+          timeout: 30
+        )
+
+        parsed = handle_response(response:)
+        on_request&.call
+
+        listings = extract_listings(parsed)
+        break if listings.nil? || listings.empty?
+
+        listings.each do |listing|
+          id = listing['id']
+          next if id.nil? || seen_ids.include?(id)
+
+          seen_ids.add(id)
+          all_listings << listing
+        end
+
+        cursor = extract_cursor(parsed)
+        break if cursor.nil?
+      end
+
+      { 'data' => { 'listings' => all_listings.index_by { |l| l['id'] } } }
+    end
+
+    # Remaining credit balance for the account behind the API key.
+    # This is an account read, not a scrape, so it spends no credits.
+    # @return [Hash] e.g. { 'credits' => 950, 'subscriptionStatus' => 'active' }
+    def credits
       response = HTTParty.get(
-        "#{BASE_URL}#{ENDPOINT}",
-        query: params,
+        "#{BASE_URL}#{CREDITS_ENDPOINT}",
         headers: { 'X-API-Key' => Config.api_key },
-        timeout: 30
+        timeout: 10
       )
 
       handle_response(response:)
@@ -56,22 +107,55 @@ class SociaVaultClient
 
     # Build request parameters
     def build_params(query:, lat:, long:, min_price: nil, max_price: nil,
-                     radius_km: 65, condition: nil, delivery_method: nil, count: 24)
+                     radius_km: 65, condition: nil, delivery_method: nil, count: 100,
+                     cursor: nil)
       params = {
         query:,
         lat:,
         lng: long,
         radius_km:,
-        count:,
-        sort_by: 'creation_time_descend'
+        count:
       }
 
+      params[:cursor] = cursor if cursor
       params[:min_price] = min_price if min_price
       params[:max_price] = max_price if max_price
       params[:condition] = condition if condition
       params[:delivery_method] = delivery_method if delivery_method
 
       params
+    end
+
+    # Extract the array of listings from a parsed response hash. The API may
+    # return listings either as a hash keyed by id or as an array.
+    def extract_listings(data)
+      return [] unless data.is_a?(Hash) && data['data'] && data['data']['listings']
+
+      raw = data['data']['listings']
+      raw = raw.values if raw.is_a?(Hash)
+      Array(raw)
+    end
+
+    # Extract a pagination cursor from a parsed response, checking the common
+    # shapes the API may use.
+    def extract_cursor(data)
+      return nil unless data.is_a?(Hash)
+
+      %w[next_cursor cursor].each do |key|
+        value = data[key]
+        return value if value.is_a?(String) && !value.empty?
+
+        value = data.dig('data', key)
+        return value if value.is_a?(String) && !value.empty?
+      end
+
+      paging = data['paging'] || data.dig('data', 'paging')
+      if paging.is_a?(Hash)
+        value = paging['next'] || paging['cursor']
+        return value if value.is_a?(String) && !value.empty?
+      end
+
+      nil
     end
 
     # Handle API response
@@ -95,6 +179,8 @@ class SociaVaultClient
 
     BASE_URL = 'https://api.sociavault.com'
     ENDPOINT = '/v1/scrape/facebook-marketplace/search'
-    private_constant :BASE_URL, :ENDPOINT
+    CREDITS_ENDPOINT = '/v1/credits'
+    MAX_PAGES = 10
+    private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT, :MAX_PAGES
   end
 end

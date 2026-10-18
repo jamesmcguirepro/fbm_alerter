@@ -1,0 +1,44 @@
+<tr id="search-row-<%= search.id %>">
+  <%# Queries, names and addresses are user input, so they are escaped here. %>
+  <td><%= escape_html(search.name || '(unnamed)') %></td>
+  <td><%= escape_html(search.query) %></td>
+  <td>
+    <div><%= escape_html(search.location_label || '—') %></div>
+    <% if search.resolved_location.present? && search.lat && search.long %>
+      <div class="coord"><%= format_coordinates(search.lat, search.long) %></div>
+    <% end %>
+  </td>
+  <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
+  <td><%= escape_html(search.email) %></td>
+  <td><div id="search-calls-<%= search.id %>"><%= calls_cell(search) %></div></td>
+  <td><%= active_badge(search) %></td>
+  <td class="run-col">
+    <button hx-post="/searches/<%= search.id %>/run"
+            hx-target="#run-modal-body-<%= search.id %>"
+            hx-swap="innerHTML"
+            hx-on::before-request="this.disabled=true; this.textContent='Running…'; document.getElementById('run-modal-<%= search.id %>').showModal()"
+            hx-on::after-request="this.disabled=false; this.textContent='Run now'"
+            class="button button--secondary button--small">Run now</button>
+    <dialog id="run-modal-<%= search.id %>" class="run-modal"
+            onclick="if (event.target === this) this.close()">
+      <div class="run-modal-content">
+        <button class="run-modal-close" onclick="this.closest('dialog').close()">✕</button>
+        <div class="run-modal-body" id="run-modal-body-<%= search.id %>"></div>
+      </div>
+    </dialog>
+  </td>
+  <td class="actions-col">
+    <button hx-post="/searches/<%= search.id %>/toggle"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            class="button button--small <%= search.active ? 'button--danger' : 'button--success' %>">
+      <%= search.active ? 'Pause' : 'Resume' %>
+    </button>
+    <a href="/searches/<%= search.id %>/edit" class="button button--small button--secondary">Edit</a>
+    <button hx-delete="/searches/<%= search.id %>"
+            hx-confirm="Remove this search? Its alerts and run history are kept."
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            class="button button--small button--danger">Delete</button>
+  </td>
+</tr>

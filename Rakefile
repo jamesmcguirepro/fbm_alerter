@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'active_record'
-require 'active_record/schema_dumper'
 require 'yaml'
 require 'erb'
 

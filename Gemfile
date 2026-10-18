@@ -3,18 +3,19 @@ source 'https://rubygems.org'
 ruby '4.0.6'
 
 gem 'activerecord' , '~> 8.1.3'
-gem 'chronic_duration', '~> 0.10.6'
+gem 'discard', '~> 2.0'
 gem 'dotenv', '~> 2.8.1'
 gem 'httparty', '~> 0.22.0'
 gem 'mail', '~> 2.8.1'
+gem 'puma', '~> 6.0'
 gem 'rake', '~> 13.1'
+gem 'sinatra', '~> 4.0'
 gem 'sqlite3', '~> 2.1.0'
 gem 'thor', '~> 1.5.0'
-gem 'whenever', '~> 1.0.0'
 gem 'zeitwerk', '~> 2.6.0'
 
 group :development, :test do
-  # Gemfile
+  gem 'rack-test', '~> 2.1'
   gem 'annotaterb', '~> 4.0'
   gem 'database_cleaner-active_record'
   gem 'rspec', '~> 3.13.0'

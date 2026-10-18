@@ -53,8 +53,7 @@ RSpec.describe 'Marketplace Monitor integration' do
           lat: '30.2677',
           lng: '-97.7475',
           radius_km: '65',
-          count: '24',
-          sort_by: 'creation_time_descend'
+          count: '100'
         ),
         headers: { 'X-API-Key' => 'sk_test_key' }
       )
@@ -134,7 +133,7 @@ RSpec.describe 'Marketplace Monitor integration' do
       expect(Mailer).to have_received(:send_email) do |args|
         expect(args[:to]).to eq('owner@example.com')
         expect(args[:from]).to eq('test@example.com')
-        expect(args[:subject]).to include('New Marketplace Listing')
+        expect(args[:subject]).to include('new listings for "bike"')
         expect(args[:html_body]).to include('Mountain Bike - Like New')
         expect(args[:html_body]).to include('Road Bike')
       end

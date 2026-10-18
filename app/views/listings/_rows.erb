@@ -1,0 +1,23 @@
+<%# Body rows for both listing tables — the dashboard's "Recent listings" and
+    /listings — so the row markup (and its escaping) lives in exactly one place.
+    Locals: listings, search_id_by_query, thumbnail (show the image column),
+    run (show which run found the listing). Both flags are passed explicitly by
+    every caller: Sinatra leaves unpassed locals undefined rather than nil. %>
+<% listings.each do |listing| %>
+<tr<% if listing.url.present? %> data-href="<%= escape_html(listing.url) %>"<% end %>>
+  <% if thumbnail %>
+  <td><% if listing.image_url %><%= external_link(listing.url, image_tag(listing.image_url, listing.title)) %><% end %></td>
+  <% end %>
+  <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
+  <td class="nowrap"><%= format_price(listing.price) %></td>
+  <td><%= escape_html(listing.location || '—') %></td>
+  <td>
+    <%= search_query_link(search_id_by_query[listing.search_query], listing.search_query) %>
+    <% if run && listing.search_run %>
+      <div class="muted">found <%= format_date(listing.search_run.created_at) %></div>
+    <% end %>
+  </td>
+  <td class="nowrap"><%= format_date(listing.last_seen_at) %></td>
+  <td><%= listing.is_sold ? '✓' : '—' %></td>
+</tr>
+<% end %>

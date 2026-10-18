@@ -1,16 +1,29 @@
 services:
+  # Runs scheduled searches (e.g. via host cron): docker compose run marketplace-monitor exec
   marketplace-monitor:
     build: .
     env_file: .env
     environment:
       - RUBY_ENV=development
-      - DB_PATH=/data/marketplace_monitor.db
     volumes:
-      - marketplace-monitor-data:/data
-    # Default command runs all saved searches once
+      # For Synology/QNAP, bind-mount a NAS share instead of a named volume:
+      #   - /volume1/docker/fbm_alerter/data:/app/storage
+      - marketplace-monitor-data:/app/storage
     command: exec
-    # For interactive CLI use:
-    # command: add -q bike -lat 30.2677 -long -97.7475 --min 100 --max 500 --email you@example.com
+
+  # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
+  web:
+    build: .
+    env_file: .env
+    environment:
+      - RUBY_ENV=development
+      - PORT=9292
+    volumes:
+      # Same data volume so the GUI reads the same SQLite database
+      - marketplace-monitor-data:/app/storage
+    ports:
+      - "9292:9292"
+    command: web
 
 volumes:
   marketplace-monitor-data:

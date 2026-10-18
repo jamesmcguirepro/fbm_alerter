@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# Wait for any dependencies (none for SQLite, but keep pattern for extensibility)
 echo "🚀 Marketplace Monitor container starting..."
 
 # Run database migrations
@@ -12,5 +11,14 @@ bundle exec rake db:migrate
 echo "✅ Validating configuration..."
 bundle exec ruby -e "require 'dotenv/load'; require_relative 'lib/config'; Config.validate!; puts 'Configuration valid'"
 
-echo "🎯 Running command: $*"
-exec bundle exec ruby main.rb "$@"
+# Dispatch command
+case "$1" in
+  web)
+    echo "🌐 Starting web GUI on port ${PORT:-9292}..."
+    exec bundle exec puma -b tcp://0.0.0.0:${PORT:-9292} -p ${PORT:-9292} config.ru
+    ;;
+  *)
+    echo "🎯 Running command: $*"
+    exec bundle exec ruby main.rb "$@"
+    ;;
+esac

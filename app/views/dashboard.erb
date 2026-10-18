@@ -1,0 +1,65 @@
+<h1>Dashboard</h1>
+
+<div class="grid">
+  <a href="/searches" class="card card--link">
+    <h2>Saved searches</h2>
+    <div class="value"><%= @search_count %></div>
+    <div class="card-note"><%= @active_count %> active</div>
+  </a>
+  <a href="/listings" class="card card--link">
+    <h2>Listings seen</h2>
+    <div class="value"><%= @listing_count %></div>
+  </a>
+  <a href="/alerts" class="card card--link">
+    <h2>Alerts sent</h2>
+    <div class="value"><%= @alert_count %></div>
+  </a>
+  <a href="/listings" class="card card--link">
+    <h2>Last activity</h2>
+    <div class="value"><%= format_date(@last_activity) %></div>
+  </a>
+  <a href="/searches" class="card card--link">
+    <h2>API calls</h2>
+    <div class="value"><%= @api_call_count %></div>
+    <div class="card-note"><%= @api_today_count %> today · 1 credit each</div>
+  </a>
+  <a class="card card--link" id="credits-card" href="https://sociavault.com/dashboard"
+     target="_blank" rel="noopener"
+     hx-get="/dashboard/credits" hx-trigger="load, refresh" hx-swap="outerHTML"
+     title="Open your SociaVault dashboard">
+    <h2>Credits left</h2>
+    <div class="value">…</div>
+    <div class="card-note">checking SociaVault…</div>
+  </a>
+</div>
+
+<div class="actions">
+  <button hx-post="/dashboard/run-all" hx-target="main" hx-swap="innerHTML" class="button button--primary">
+    ▶ Run all searches now
+  </button>
+</div>
+
+<div id="run-all-log">
+  <% unless @log.to_s.strip.empty? %>
+    <pre class="run-log"><%= escape_html(@log) %></pre>
+  <% end %>
+</div>
+
+<h2>Recent listings</h2>
+<% if @recent_listings.any? %>
+<table>
+  <thead>
+    <tr>
+      <th>Title</th><th>Price</th><th>Location</th><th>Search</th><th>Last seen</th><th>Sold</th>
+    </tr>
+  </thead>
+  <tbody>
+    <%= erb :'listings/_rows', layout: false, locals: {
+      listings: @recent_listings, search_id_by_query: @search_id_by_query,
+      thumbnail: false, run: false
+    } %>
+  </tbody>
+</table>
+<% else %>
+<div class="empty">No listings yet. Add a search and run it to start collecting.</div>
+<% end %>

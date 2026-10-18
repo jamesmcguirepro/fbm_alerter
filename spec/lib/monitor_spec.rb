@@ -46,7 +46,12 @@ RSpec.describe MarketplaceMonitor do
 
   before do
     allow(Config).to receive(:validate!)
-    allow(SociaVaultClient).to receive(:search_from_object).and_return(search_result)
+    # The real client yields once per API request so the caller can record the
+    # credit; the stub does the same (one request).
+    allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
+      on_request.call
+      search_result
+    end
     allow(EmailService).to receive(:send_alerts)
     allow(Alert).to receive(:record_alert)
   end
@@ -83,7 +88,8 @@ RSpec.describe MarketplaceMonitor do
 
       expect(monitor).to have_received(:execute_search).with(
         search_object: an_instance_of(SearchObject),
-        email: 'owner@example.com'
+        email: 'owner@example.com',
+        saved_search: saved_search
       ).at_least(:once)
     end
 
@@ -112,6 +118,16 @@ RSpec.describe MarketplaceMonitor do
 
       monitor.execute_saved_searches
 
+      expect(SociaVaultClient).not_to have_received(:search_from_object)
+    end
+
+    it 'skips saved searches with invalid coordinates' do
+      SavedSearch.delete_all
+      bad = SavedSearch.new(query: 'bad', lat: 34.4, long: -11971922006451092, email: 'owner@example.com')
+      bad.save!(validate: false)
+
+      expect { monitor.execute_saved_searches }
+        .to output(/Skipping 'bad'.*invalid coordinates/).to_stdout
       expect(SociaVaultClient).not_to have_received(:search_from_object)
     end
 
@@ -164,6 +180,82 @@ RSpec.describe MarketplaceMonitor do
     it 'outputs the number of listings found' do
       expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
         .to output(/Found 2 listing/).to_stdout
+    end
+
+    it 'records an API call against the saved search' do
+      expect {
+        monitor.send(:execute_search, search_object:, saved_search:)
+      }.to change(SearchRun, :count).by(1)
+    end
+
+    it 'links the listings it finds to that run' do
+      monitor.send(:execute_search, search_object:, saved_search:)
+
+      run = SearchRun.last
+      expect(run.listings.map(&:listing_id)).to contain_exactly('1', '2')
+    end
+
+    it 'records one run per API request the client made' do
+      allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
+        3.times { on_request.call }
+        search_result
+      end
+
+      expect {
+        monitor.send(:execute_search, search_object:, saved_search:)
+      }.to change(SearchRun, :count).by(3)
+    end
+
+    it 'does not return a listing already alerted for this search' do
+      seen = Listing.create!(listing_id: '1', title: 'Seen', search_query: 'apartment')
+      Alert.create!(listing_id: seen.id, search_id: saved_search.id, sent_at: Time.now)
+
+      result = monitor.send(:execute_search, search_object:, saved_search:)
+
+      expect(result.map(&:listing_id)).to contain_exactly('2')
+    end
+
+    it 'returns a listing that was only alerted for a different search' do
+      other = SavedSearch.create!(
+        query: 'other', lat: 40.7, long: -74.0, email: 'other@example.com'
+      )
+      seen = Listing.create!(listing_id: '1', title: 'Seen', search_query: 'other')
+      Alert.create!(listing_id: seen.id, search_id: other.id, sent_at: Time.now)
+
+      result = monitor.send(:execute_search, search_object:, saved_search:)
+
+      expect(result.map(&:listing_id)).to contain_exactly('1', '2')
+    end
+
+    context 'in dry run' do
+      before { allow(Config).to receive(:dry_run?).and_return(true) }
+
+      it 'skips the API call and records no credit' do
+        expect(SociaVaultClient).not_to receive(:search_from_object)
+
+        result = nil
+        expect {
+          result = monitor.send(:execute_search, search_object:, saved_search:)
+        }.to output(/DRY RUN/).to_stdout
+
+        expect(result).to eq([])
+        expect(SearchRun.count).to eq(0)
+      end
+    end
+
+    context 'when the API call fails' do
+      before do
+        allow(SociaVaultClient).to receive(:search_from_object)
+          .and_raise(StandardError, 'Connection timeout')
+      end
+
+      it 'still records the spent credit as a failed run' do
+        expect {
+          monitor.send(:execute_search, search_object:, saved_search:)
+        }.to change(SearchRun, :count).by(1)
+
+        expect(SearchRun.last.success).to be(false)
+      end
     end
 
     context 'when a listing already exists' do
@@ -267,7 +359,8 @@ RSpec.describe MarketplaceMonitor do
 
       expect(EmailService).to have_received(:send_alerts).with(
         listings: [new_listing],
-        emails: ['owner@example.com']
+        emails: ['owner@example.com'],
+        query: 'apartment'
       )
     end
 
@@ -364,10 +457,25 @@ RSpec.describe MarketplaceMonitor do
       )
     end
 
-    it 'deletes the saved search' do
+    it 'soft deletes the saved search' do
       expect {
         monitor.remove_saved_search(id: saved_search.id)
-      }.to change(SavedSearch, :count).by(-1)
+      }.to change { SavedSearch.kept.count }.by(-1)
+
+      expect(saved_search.reload).to be_discarded
+    end
+
+    it 'keeps the row and its alert and run history' do
+      listing = Listing.create!(listing_id: 'kept-1', title: 'Kept Bike')
+      # Alert.record_alert is stubbed for this file, so insert the alert directly.
+      Alert.create!(listing_id: listing.id, search_id: saved_search.id, sent_at: Time.now)
+      SearchRun.create!(saved_search_id: saved_search.id, success: true)
+
+      monitor.remove_saved_search(id: saved_search.id)
+
+      expect(SavedSearch.count).to eq(1)
+      expect(Alert.count).to eq(1)
+      expect(SearchRun.count).to eq(1)
     end
 
     it 'outputs the deleted search ID' do

@@ -35,7 +35,7 @@ if [ ! -f .env ]; then
     echo ""
     echo "Required settings:"
     echo "  - SOCIAVAULT_API_KEY (from https://sociavault.com/dashboard)"
-    echo "  - EMAIL_FROM and EMAIL_TO"
+    echo "  - EMAIL_FROM"
     echo "  - SMTP settings (Gmail recommended)"
     echo ""
     echo "Opening .env in editor..."

@@ -27,30 +27,6 @@ RSpec.describe Config do
     end
   end
 
-  describe '.email_to' do
-    it 'returns array of recipients' do
-      expect(described_class.email_to).to eq(['recipient@example.com'])
-    end
-
-    it 'handles multiple recipients' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com, b@example.com, c@example.com')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com', 'c@example.com'])
-    end
-
-    it 'strips whitespace' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com , b@example.com ')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com'])
-    end
-
-    it 'filters empty strings' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('a@example.com,,b@example.com')
-      expect(described_class.email_to).to eq(['a@example.com', 'b@example.com'])
-    end
-  end
-
   describe '.smtp_address' do
     it 'returns SMTP address from environment' do
       expect(described_class.smtp_address).to eq('smtp.gmail.com')
@@ -81,39 +57,40 @@ RSpec.describe Config do
     end
   end
 
-  describe '.db_path' do
-    it 'returns database path from environment' do
-      expect(described_class.db_path).to eq('test_marketplace_monitor.db')
+  describe '.dry_run?' do
+    after { ENV.delete('DRY_RUN') }
+
+    it 'is off when unset' do
+      ENV.delete('DRY_RUN')
+      expect(described_class.dry_run?).to be(false)
     end
 
-    it 'returns default when not set' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('DB_PATH').and_return(nil)
-      expect(described_class.db_path).to eq('./marketplace_monitor.db')
-    end
-  end
-
-  describe '.parse_interval' do
-    it 'parses minutes' do
-      expect(described_class.parse_interval('30m')).to eq(1800)
+    it 'turns on for true' do
+      ENV['DRY_RUN'] = 'true'
+      expect(described_class.dry_run?).to be(true)
     end
 
-    it 'parses hours' do
-      expect(described_class.parse_interval('2h')).to eq(7200)
+    it 'turns on for TRUE too' do
+      ENV['DRY_RUN'] = 'TRUE'
+      expect(described_class.dry_run?).to be(true)
     end
 
-    it 'parses days' do
-      expect(described_class.parse_interval('1d')).to eq(86_400)
+    it 'is off for false' do
+      ENV['DRY_RUN'] = 'false'
+      expect(described_class.dry_run?).to be(false)
     end
 
-    it 'returns default for invalid format' do
-      expect(described_class.parse_interval('invalid')).to eq(1800)
+    it 'tolerates 1 and 0 as well' do
+      ENV['DRY_RUN'] = '1'
+      expect(described_class.dry_run?).to be(true)
+
+      ENV['DRY_RUN'] = '0'
+      expect(described_class.dry_run?).to be(false)
     end
 
-    it 'handles single digit times' do
-      expect(described_class.parse_interval('1m')).to eq(60)
-      expect(described_class.parse_interval('1h')).to eq(3600)
-      expect(described_class.parse_interval('1d')).to eq(86_400)
+    it 'treats anything else as off' do
+      ENV['DRY_RUN'] = 'maybe'
+      expect(described_class.dry_run?).to be(false)
     end
   end
 
@@ -125,12 +102,6 @@ RSpec.describe Config do
     it 'raises error when API key is missing' do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with('SOCIAVAULT_API_KEY').and_return(nil)
-      expect { described_class.validate! }.to raise_error
-    end
-
-    it 'raises error when EMAIL_TO is missing' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('EMAIL_TO').and_return('')
       expect { described_class.validate! }.to raise_error
     end
   end

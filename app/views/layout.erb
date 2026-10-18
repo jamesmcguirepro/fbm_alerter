@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace Monitor</title>
+  <link rel="stylesheet" href="/css/app.css?v=5">
+  <script src="/js/htmx.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header__bar">
+      <a href="/" class="logo">🔔 Marketplace Monitor</a>
+      <% if Config.dry_run? %>
+        <span class="badge badge--dry-run"
+              title="DRY_RUN is on: searches are not sent to SociaVault and spend no credits.">Dry run</span>
+      <% end %>
+      <nav>
+        <a href="/dashboard"<%= ' class="active"' if request.path_info == '/dashboard' %>>Dashboard</a>
+        <a href="/searches"<%= ' class="active"' if request.path_info.start_with?('/searches') %>>Searches</a>
+        <a href="/listings"<%= ' class="active"' if request.path_info == '/listings' %>>Listings</a>
+        <a href="/alerts"<%= ' class="active"' if request.path_info == '/alerts' %>>Alerts</a>
+        <a href="/settings"<%= ' class="active"' if request.path_info == '/settings' %>>Settings</a>
+      </nav>
+      <form method="post" action="/dashboard/timezone" class="tz-form">
+        <input type="hidden" name="return_to" value="<%= escape_html(request.fullpath) %>">
+        <label for="tz">Time zone</label>
+        <select id="tz" name="tz" data-autosubmit>
+          <% TIME_ZONES.each do |zone, label| %>
+            <option value="<%= zone %>"<%= ' selected' if zone == active_time_zone %>><%= label %></option>
+          <% end %>
+        </select>
+        <noscript><button type="submit" class="button button--secondary button--small">Apply</button></noscript>
+      </form>
+    </div>
+  </header>
+
+  <main class="container">
+    <% if session[:flash] %>
+      <div class="flash flash--success"><%= escape_html(session.delete(:flash)) %></div>
+    <% end %>
+    <% if session[:flash_error] %>
+      <div class="flash flash--error"><%= escape_html(session.delete(:flash_error)) %></div>
+    <% end %>
+
+    <%= yield %>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <small>Marketplace Monitor v<%= defined?(VERSION) ? VERSION : '1.0.0' %></small>
+    </div>
+  </footer>
+
+  <script>
+    // Clear an input via a [data-clear="#selector"] button (event-delegated).
+    document.addEventListener('click', function (event) {
+      var btn = event.target.closest('[data-clear]');
+      if (!btn) return;
+      var input = document.querySelector(btn.getAttribute('data-clear'));
+      if (input) { input.value = ''; input.focus(); }
+    });
+
+    // Open a row's link (tr[data-href]) in a new tab unless a link/button was clicked.
+    document.addEventListener('click', function (event) {
+      var row = event.target.closest('tr[data-href]');
+      if (!row || event.target.closest('a, button')) return;
+      var url = row.getAttribute('data-href');
+      if (url) window.open(url, '_blank', 'noopener');
+    });
+
+    // Submit the form when a [data-autosubmit] select changes.
+    document.addEventListener('change', function (event) {
+      var select = event.target.closest('select[data-autosubmit]');
+      if (select && select.form) select.form.submit();
+    });
+  </script>
+</body>
+</html>

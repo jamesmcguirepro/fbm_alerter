@@ -38,21 +38,5 @@ RSpec.describe CLI do
 
       expect(search_object.radius_km).to be_nil
     end
-
-    it 'uses radius_km when both radius and radius_km are present' do
-      options = {
-        query: 'bike',
-        lat: 40.7128,
-        long: -74.0060,
-        radius: 10,
-        radius_km: 25,
-        min: 100,
-        max: 500
-      }
-
-      search_object = cli.send(:search_object, options:)
-
-      expect(search_object.radius_km).to eq(25)
-    end
   end
 end
