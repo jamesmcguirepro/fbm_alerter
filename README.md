@@ -44,7 +44,7 @@ Data persists in a Docker named volume (`marketplace-monitor-data`) mounted at `
 
 ### Choosing an image tag
 
-`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.0}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
+`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.1}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
 
 ```bash
 IMAGE_TAG=latest
@@ -70,7 +70,7 @@ docker login
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
-  -t trailstack/fbm_alerter:1.0.0 \
+  -t trailstack/fbm_alerter:1.0.1 \
   -t trailstack/fbm_alerter:latest \
   --push .
 ```
@@ -189,7 +189,7 @@ Create a `.env` file (copy from `.env.example`). Required settings:
 Optional:
 
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
-- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.0`).
+- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.1`).
 - `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for scheduling and "today" counts.
 
 ### Saved searches

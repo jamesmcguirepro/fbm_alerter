@@ -15,7 +15,7 @@ bundle exec ruby -e "require 'dotenv/load'; require_relative 'lib/config'; Confi
 case "$1" in
   web)
     echo "🌐 Starting web GUI on port ${PORT:-9292}..."
-    exec bundle exec puma -b tcp://0.0.0.0:${PORT:-9292} -p ${PORT:-9292} config.ru
+    exec bundle exec puma -b tcp://0.0.0.0:${PORT:-9292} config.ru
     ;;
   *)
     echo "🎯 Running command: $*"
