@@ -1,9 +1,12 @@
 services:
-  # Runs scheduled searches (e.g. via host cron / DSM Task Scheduler):
+  # One-shot job: runs all saved searches and exits.
   #   docker compose run --rm marketplace-monitor exec
+  # The "tools" profile keeps it out of a plain `up` / Container Manager
+  # project start, so its normal exit isn't reported as an unexpected stop.
   # Pulls the published image; use docker-compose.build.yml to build locally.
   marketplace-monitor:
     image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
+    profiles: ["tools"]
     env_file: .env
     environment:
       - RUBY_ENV=development

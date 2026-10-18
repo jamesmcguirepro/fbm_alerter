@@ -42,6 +42,8 @@ Both services share one SQLite database in a named volume, so a run triggered fr
 
 Data persists in a Docker named volume (`marketplace-monitor-data`) mounted at `/app/storage` (SQLite file: `storage/development.sqlite3`).
 
+> `marketplace-monitor` is a one-shot job (it runs the searches, then exits) and lives in the optional `tools` profile, so `docker compose up` and Container Manager's project start skip it. Run it explicitly with `docker compose run --rm marketplace-monitor exec` — which is also what the scheduler uses. Without the profile, its normal exit would be reported by Container Manager as an unexpected stop.
+
 ### Choosing an image tag
 
 `docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
@@ -87,7 +89,7 @@ DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed)
 2. File Station → create a project folder on a shared folder, e.g. `/volume1/homes/docker/fbm_alerter`, and copy in `docker-compose.yml`.
 3. Create a `.env` in that folder (see [Configuration](#configuration)).
 4. Container Manager → **Project** → **Create**, point it at the folder, and start it.
-5. The `marketplace-monitor` service runs once and exits — stop that container and leave `web` running.
+5. Only `web` starts — `marketplace-monitor` is a one-shot job in the optional `tools` profile, so the project start leaves it alone and its normal exit is not reported as an unexpected stop.
 
 **SSH / CLI** (DSM 7.2.1+ with a current Container Manager):
 
