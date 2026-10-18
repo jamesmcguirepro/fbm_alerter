@@ -16,6 +16,11 @@ class MarketplaceApp < Sinatra::Base
   use Rack::MethodOverride
   # LAN-only, single-user tool: no CSRF token burden for htmx forms.
   set :protection, except: :authenticity_token
+  # Sinatra 4 only accepts localhost and literal-IP Host headers, so reaching
+  # the GUI by the NAS hostname (or through a reverse proxy) fails with
+  # "Host not permitted". This is a LAN-only tool, so permit any Host by
+  # default; set PERMITTED_HOSTS to a comma-separated list to restrict it.
+  set :host_authorization, permitted_hosts: ENV['PERMITTED_HOSTS'].to_s.split(',').map(&:strip).reject(&:empty?)
   set :session_secret, ENV.fetch('SESSION_SECRET', '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
   set :views, File.expand_path(File.join(__dir__, 'views'))
   set :public_folder, File.expand_path(File.join(__dir__, '..', 'public'))

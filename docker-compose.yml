@@ -3,7 +3,7 @@ services:
   #   docker compose run --rm marketplace-monitor exec
   # Pulls the published image; use docker-compose.build.yml to build locally.
   marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.1}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
     env_file: .env
     environment:
       - RUBY_ENV=development
@@ -15,7 +15,7 @@ services:
 
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
   web:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.1}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
     env_file: .env
     environment:
       - RUBY_ENV=development
