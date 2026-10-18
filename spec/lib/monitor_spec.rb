@@ -46,7 +46,12 @@ RSpec.describe MarketplaceMonitor do
 
   before do
     allow(Config).to receive(:validate!)
-    allow(SociaVaultClient).to receive(:search_from_object).and_return(search_result)
+    # The real client yields once per API request so the caller can record the
+    # credit; the stub does the same (one request).
+    allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
+      on_request.call
+      search_result
+    end
     allow(EmailService).to receive(:send_alerts)
     allow(Alert).to receive(:record_alert)
   end
@@ -188,6 +193,38 @@ RSpec.describe MarketplaceMonitor do
 
       run = SearchRun.last
       expect(run.listings.map(&:listing_id)).to contain_exactly('1', '2')
+    end
+
+    it 'records one run per API request the client made' do
+      allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
+        3.times { on_request.call }
+        search_result
+      end
+
+      expect {
+        monitor.send(:execute_search, search_object:, saved_search:)
+      }.to change(SearchRun, :count).by(3)
+    end
+
+    it 'does not return a listing already alerted for this search' do
+      seen = Listing.create!(listing_id: '1', title: 'Seen', search_query: 'apartment')
+      Alert.create!(listing_id: seen.id, search_id: saved_search.id, sent_at: Time.now)
+
+      result = monitor.send(:execute_search, search_object:, saved_search:)
+
+      expect(result.map(&:listing_id)).to contain_exactly('2')
+    end
+
+    it 'returns a listing that was only alerted for a different search' do
+      other = SavedSearch.create!(
+        query: 'other', lat: 40.7, long: -74.0, email: 'other@example.com'
+      )
+      seen = Listing.create!(listing_id: '1', title: 'Seen', search_query: 'other')
+      Alert.create!(listing_id: seen.id, search_id: other.id, sent_at: Time.now)
+
+      result = monitor.send(:execute_search, search_object:, saved_search:)
+
+      expect(result.map(&:listing_id)).to contain_exactly('1', '2')
     end
 
     context 'in dry run' do

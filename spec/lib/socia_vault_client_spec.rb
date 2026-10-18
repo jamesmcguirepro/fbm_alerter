@@ -289,6 +289,39 @@ RSpec.describe SociaVaultClient do
       expect(result['data']['listings'].keys).to contain_exactly('1')
     end
 
+    it 'yields once per request, so callers can account for the credit spent' do
+      requests = 0
+      described_class.search(**search_params) { requests += 1 }
+
+      expect(requests).to eq(1)
+    end
+
+    it 'yields once per page fetched' do
+      first_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => { '1' => { 'id' => '1', 'title' => 'First' } },
+            'next_cursor' => 'page-2'
+          }
+        },
+        success?: true
+      )
+      second_response = double(
+        code: 200,
+        parsed_response: {
+          'data' => { 'listings' => { '2' => { 'id' => '2', 'title' => 'Second' } } }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
+
+      requests = 0
+      described_class.search(**search_params) { requests += 1 }
+
+      expect(requests).to eq(2)
+    end
+
     it 'sets timeout' do
       described_class.search(**search_params)
 
@@ -391,9 +424,11 @@ RSpec.describe SociaVaultClient do
     it 'never touches the network' do
       expect(HTTParty).not_to receive(:get)
 
-      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060)
+      requested = false
+      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060) { requested = true }
 
       expect(result['data']['listings']).to be_empty
+      expect(requested).to be(false)
     end
 
     it 'still reads the credit balance, because that call is free' do

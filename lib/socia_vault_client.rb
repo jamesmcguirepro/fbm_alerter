@@ -4,7 +4,8 @@
 class SociaVaultClient
   class << self
     # @param [SearchObject] search_object
-    def search_from_object(search_object:)
+    # @param [Proc] on_request called once per API request (see #search)
+    def search_from_object(search_object:, &on_request)
       search(
         query: search_object.query,
         lat: search_object.lat,
@@ -13,7 +14,8 @@ class SociaVaultClient
         max_price: search_object.max_price,
         radius_km: search_object.radius_km,
         condition: search_object.condition,
-        delivery_method: search_object.delivery_method
+        delivery_method: search_object.delivery_method,
+        &on_request
       )
     end
 
@@ -32,9 +34,12 @@ class SociaVaultClient
     # @param condition [String] Item condition (new, used_like_new, used_good, used_fair)
     # @param delivery_method [String] Delivery method (all, local_pickup, shipping)
     # @param count [Integer] Number of results to request per page
+    # @yield called once for every API request made (each spends a credit), so
+    #   callers can account for the spend as it happens
     # @return [Hash] API response containing listings under ['data']['listings']
     def search(query:, lat:, long:, min_price: nil, max_price: nil,
-               radius_km: 65, condition: nil, delivery_method: nil, count: 100)
+               radius_km: 65, condition: nil, delivery_method: nil, count: 100,
+               &on_request)
       # No-op at the API call: spend nothing and return what an empty search
       # would have returned. See Config.dry_run?.
       return { 'data' => { 'listings' => {} } } if Config.dry_run?
@@ -65,6 +70,7 @@ class SociaVaultClient
         )
 
         parsed = handle_response(response:)
+        on_request&.call
 
         listings = extract_listings(parsed)
         break if listings.nil? || listings.empty?

@@ -94,26 +94,35 @@ class MarketplaceMonitor
       return []
     end
 
-    begin
-      result = SociaVaultClient.search_from_object(search_object:)
-    rescue StandardError => e
-      @io.puts "  ✗ Error: #{e.message}"
-      # The credit is spent on the attempt, so record it even when it fails.
-      SearchRun.record(saved_search:, success: false) if saved_search
-      return []
-    end
+    fetched = api_search(search_object:, saved_search:)
+    return [] if fetched.nil?
 
-    run = SearchRun.record(saved_search:, success: true) if saved_search
-
-    begin
-      handle_result(result:, search_query: search_object.query, search_run: run)
-    rescue StandardError => e
-      @io.puts "  ✗ Error: #{e.message}"
-      []
-    end
+    result, discovery_run = fetched
+    handle_result(result:, search_query: search_object.query,
+                  search_run: discovery_run, saved_search:)
+  rescue StandardError => e
+    @io.puts "  ✗ Error: #{e.message}"
+    []
   end
 
-  def handle_result(result:, search_query:, search_run: nil)
+  # Run the (possibly paged) search, recording one SearchRun per API request —
+  # each request spends a credit. Returns [response, discovery_run], or nil if
+  # the search failed, having first recorded the failed request.
+  def api_search(search_object:, saved_search:)
+    runs = []
+    result = SociaVaultClient.search_from_object(search_object:) do
+      runs << SearchRun.record(saved_search:) if saved_search
+    end
+
+    [result, runs.first]
+  rescue StandardError => e
+    @io.puts "  ✗ Error: #{e.message}"
+    # The attempt still spent a credit.
+    SearchRun.record(saved_search:, success: false) if saved_search
+    nil
+  end
+
+  def handle_result(result:, search_query:, search_run: nil, saved_search: nil)
     new_listings = []
     if result['data'] && result['data']['listings'] && result['data']['listings'].any?
       listings = result['data']['listings'].values
@@ -122,12 +131,14 @@ class MarketplaceMonitor
       listings.each do |listing|
         listing_object = ListingObject.from_listing_response(response: listing, search_query: search_query)
 
-        # add_listing upserts, so one call both stores the listing and says
-        # whether it is new: only a first sighting is worth alerting on.
+        # add_listing upserts, so a listing is stored once globally (by its
+        # Facebook id) no matter which search saw it first.
         saved = Listing.add_listing(listing_object:, search_run:)
 
-        if saved.previously_new_record?
+        if new_for_search?(saved, saved_search)
           new_listings << saved
+        elsif saved_search
+          @io.puts "Listing #{saved.title} already alerted for this search"
         else
           @io.puts "Listing #{saved.title} already exists"
         end
@@ -137,6 +148,16 @@ class MarketplaceMonitor
     end
 
     new_listings
+  end
+
+  # Whether this search still needs to be alerted about a listing. Dedup is per
+  # saved search: the same listing can alert each search that matches it, but
+  # only once. Without a saved search (ad-hoc CLI run) there is nothing to
+  # dedup against, so fall back to first-ever sighting.
+  def new_for_search?(listing, saved_search)
+    return listing.previously_new_record? if saved_search.nil?
+
+    !Alert.exists?(listing_id: listing.id, search_id: saved_search.id)
   end
 
   # Send alerts for new listings
