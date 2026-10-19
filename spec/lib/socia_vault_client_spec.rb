@@ -64,12 +64,23 @@ RSpec.describe SociaVaultClient do
       )
     end
 
-    it 'does not send a sort order' do
+    it 'limits results to the recency window' do
       described_class.search(**search_params)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_not_including(sort_by: 'creation_time_descend'))
+        hash_including(query: hash_including(date_listed: 'last_24_hours'))
+      )
+    end
+
+    it 'does not send a sort order' do
+      # creation_time_descend makes Facebook ignore the query and return the
+      # newest listings anywhere, not the newest matches.
+      described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_not_including(:sort_by))
       )
     end
 
@@ -240,6 +251,28 @@ RSpec.describe SociaVaultClient do
 
       result = described_class.search(**search_params)
 
+      expect(result['data']['listings'].keys).to contain_exactly('1')
+    end
+
+    it 'stops paging when the response reports no next page' do
+      response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '1' => { 'id' => '1', 'title' => 'Only', 'price' => { 'amount' => 100 } }
+            },
+            'next_cursor' => 'page-2',
+            'has_next_page' => false
+          }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(response)
+
+      result = described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).once
       expect(result['data']['listings'].keys).to contain_exactly('1')
     end
 
