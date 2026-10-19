@@ -9,7 +9,7 @@ bundle exec rake db:migrate
 
 # Validate configuration
 echo "✅ Validating configuration..."
-bundle exec ruby -e "require 'dotenv/load'; require_relative 'lib/config'; Config.validate!; puts 'Configuration valid'"
+bundle exec ruby -e "require 'dotenv/load'; require_relative 'lib/config'; Config.validate!; puts \"Configuration valid (date_listed=#{Config.date_listed})\""
 
 # Dispatch command
 case "$1" in
