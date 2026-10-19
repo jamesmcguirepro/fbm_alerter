@@ -234,7 +234,8 @@ class SociaVaultClient
     # to the last 7 days): enough to survive a skipped run (a single day's
     # window loses anything that appeared while the host was down), and
     # per-search dedup means only genuinely new ads alert after the first run.
-    # Costs the same single credit as a narrower window.
+    # It doubles as a cost knob: a wider window returns more pages and every
+    # page costs a credit, so the last 24 hours normally stays on one.
     private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT, :MAX_PAGES
   end
 end

@@ -128,6 +128,30 @@ RSpec.describe Config do
     end
   end
 
+  describe '.instance_name' do
+    after { ENV.delete('INSTANCE_NAME') }
+
+    it 'uses INSTANCE_NAME when set' do
+      ENV['INSTANCE_NAME'] = 'james-nas'
+      expect(described_class.instance_name).to eq('james-nas')
+    end
+
+    it 'ignores surrounding whitespace' do
+      ENV['INSTANCE_NAME'] = '  james-nas  '
+      expect(described_class.instance_name).to eq('james-nas')
+    end
+
+    it 'treats a blank name as unset' do
+      ENV['INSTANCE_NAME'] = '   '
+      expect(described_class.instance_name).to eq(Socket.gethostname)
+    end
+
+    it 'falls back to the machine hostname' do
+      ENV.delete('INSTANCE_NAME')
+      expect(described_class.instance_name).to eq(Socket.gethostname)
+    end
+  end
+
   describe '.validate!' do
     it 'passes when all required vars are set' do
       expect { described_class.validate! }.not_to raise_error

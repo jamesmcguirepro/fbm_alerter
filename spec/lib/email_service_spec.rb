@@ -131,6 +131,26 @@ RSpec.describe EmailService do
         once
     end
 
+    it 'names the deployment that sent it' do
+      allow(Config).to receive(:instance_name).and_return('james-nas')
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('Sent by james-nas')
+      end
+    end
+
+    it 'escapes the deployment name' do
+      allow(Config).to receive(:instance_name).and_return('nas & <b>nas</b>')
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('Sent by nas &amp; &lt;b&gt;nas&lt;/b&gt;')
+      end
+    end
+
     it 'includes all listing details in HTML body' do
       call
 
