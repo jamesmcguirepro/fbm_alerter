@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'socket'
-
 # Configuration management from environment variables
 class Config
   class << self
@@ -35,18 +33,6 @@ class Config
     # credit balance is still read for real, since that call is free.
     def dry_run?
       %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
-    end
-
-    # Names the deployment, and appears in the footer of every alert email so a
-    # message sent by the NAS is distinguishable from one sent by a local run.
-    # INSTANCE_NAME names it explicitly; otherwise the machine's own hostname is
-    # used, which inside a container is the container id unless the service sets
-    # a hostname of its own.
-    def instance_name
-      value = ENV['INSTANCE_NAME'].to_s.strip
-      return value unless value.empty?
-
-      Socket.gethostname
     end
 
     # Windows SociaVault accepts for date_listed, from its Marketplace search

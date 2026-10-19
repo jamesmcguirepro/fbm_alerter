@@ -131,8 +131,8 @@ RSpec.describe EmailService do
         once
     end
 
-    it 'names the deployment that sent it' do
-      allow(Config).to receive(:instance_name).and_return('james-nas')
+    it 'names the host that sent it' do
+      allow(Socket).to receive(:gethostname).and_return('james-nas')
 
       call
 
@@ -141,8 +141,8 @@ RSpec.describe EmailService do
       end
     end
 
-    it 'escapes the deployment name' do
-      allow(Config).to receive(:instance_name).and_return('nas & <b>nas</b>')
+    it 'escapes the host name' do
+      allow(Socket).to receive(:gethostname).and_return('nas & <b>nas</b>')
 
       call
 

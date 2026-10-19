@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'cgi'
+require 'socket'
 
 # Email service for sending alert notifications
 class EmailService
@@ -124,13 +125,15 @@ class EmailService
       %(<div class="listed">First seen: #{seen}</div>)
     end
 
-    # Email footer HTML, ending with the deployment that sent it so alerts from
-    # different machines can be told apart.
+    # Email footer HTML, ending with the host that sent it so alerts from
+    # different machines can be told apart. The name comes from the container's
+    # hostname, which compose sets (`hostname:`); a container's default hostname
+    # is its container id, which changes on every recreate.
     def footer
       <<~HTML
               <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
                 <p>Marketplace Monitor • Automated Email Alert</p>
-                <p>Sent by #{escape(Config.instance_name)}</p>
+                <p>Sent by #{escape(Socket.gethostname)}</p>
               </div>
             </div>
           </body>
