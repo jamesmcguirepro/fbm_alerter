@@ -94,6 +94,40 @@ RSpec.describe Config do
     end
   end
 
+  describe '.date_listed' do
+    after { ENV.delete('DATE_LISTED') }
+
+    it 'defaults to the last 7 days when unset' do
+      ENV.delete('DATE_LISTED')
+      expect(described_class.date_listed).to eq('last_7_days')
+    end
+
+    it 'defaults when set to blank' do
+      ENV['DATE_LISTED'] = '  '
+      expect(described_class.date_listed).to eq('last_7_days')
+    end
+
+    it 'accepts every window SociaVault documents' do
+      %w[all 1 7 30 last_24_hours last_7_days last_30_days].each do |value|
+        ENV['DATE_LISTED'] = value
+        expect(described_class.date_listed).to eq(value)
+      end
+    end
+
+    it 'ignores surrounding whitespace' do
+      ENV['DATE_LISTED'] = ' last_30_days '
+      expect(described_class.date_listed).to eq('last_30_days')
+    end
+
+    it 'warns and falls back when the window is not one the API knows' do
+      ENV['DATE_LISTED'] = 'last_2_days'
+
+      expect { described_class.date_listed }
+        .to output(/DATE_LISTED="last_2_days" is not a SociaVault window/).to_stderr
+      expect(described_class.date_listed).to eq('last_7_days')
+    end
+  end
+
   describe '.validate!' do
     it 'passes when all required vars are set' do
       expect { described_class.validate! }.not_to raise_error

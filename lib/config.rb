@@ -35,6 +35,25 @@ class Config
       %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
     end
 
+    # Windows SociaVault accepts for date_listed, from its Marketplace search
+    # endpoint. These are the API's documented values, not our own scheme.
+    DATE_LISTED_VALUES = %w[all 1 7 30 last_24_hours last_7_days last_30_days].freeze
+    DATE_LISTED_DEFAULT = 'last_7_days'
+
+    # How far back each search looks. Unset means DATE_LISTED_DEFAULT; a typo
+    # warns and falls back rather than failing a run, since the API rejects
+    # unknown windows and a bad value here would break every search.
+    def date_listed
+      value = ENV['DATE_LISTED'].to_s.strip
+      return DATE_LISTED_DEFAULT if value.empty?
+      return value if DATE_LISTED_VALUES.include?(value)
+
+      warn "⚠ DATE_LISTED=#{value.inspect} is not a SociaVault window. " \
+           "Expected one of: #{DATE_LISTED_VALUES.join(', ')} (or leave it unset). " \
+           "Using #{DATE_LISTED_DEFAULT}."
+      DATE_LISTED_DEFAULT
+    end
+
     # Validate configuration
     def validate!
       errors = []

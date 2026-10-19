@@ -23,9 +23,9 @@ class SociaVaultClient
 
     # Search Facebook Marketplace.
     #
-    # Results are limited to the DATE_LISTED window and left in the API's
-    # default relevance order, then ordered newest-first locally from each
-    # listing's own +creation_time+.
+    # Results are limited to the recency window (Config.date_listed, i.e. the
+    # DATE_LISTED env var) and left in the API's default relevance order, then
+    # ordered newest-first locally from each listing's own +creation_time+.
     #
     # Deliberately no +sort_by+: Facebook's creation_time_descend order returns
     # the newest listings *regardless of the query*, so asking for "husqvarna te
@@ -46,13 +46,13 @@ class SociaVaultClient
     # @param condition [String] Item condition (new, used_like_new, used_good, used_fair)
     # @param delivery_method [String] Delivery method (all, local_pickup, shipping)
     # @param count [Integer] Number of results to request per page
-    # @param date_listed [String] Recency window (defaults to the last 7 days)
+    # @param date_listed [String] Recency window (defaults to Config.date_listed)
     # @yield called once for every API request made (each spends a credit), so
     #   callers can account for the spend as it happens
     # @return [Hash] API response containing listings under ['data']['listings']
     def search(query:, lat:, long:, min_price: nil, max_price: nil,
                radius_km: 65, condition: nil, delivery_method: nil, count: 100,
-               date_listed: DATE_LISTED, &on_request)
+               date_listed: Config.date_listed, &on_request)
       # No-op at the API call: spend nothing and return what an empty search
       # would have returned. See Config.dry_run?.
       return { 'data' => { 'listings' => {} } } if Config.dry_run?
@@ -122,7 +122,7 @@ class SociaVaultClient
     # Build request parameters
     def build_params(query:, lat:, long:, min_price: nil, max_price: nil,
                      radius_km: 65, condition: nil, delivery_method: nil, count: 100,
-                     date_listed: DATE_LISTED, cursor: nil)
+                     date_listed: Config.date_listed, cursor: nil)
       params = {
         query:,
         lat:,
@@ -230,12 +230,11 @@ class SociaVaultClient
     # Credit safety net: the API reports has_next_page even when the pool is
     # tiny, so paging is bounded rather than trusted (see more_pages?).
     MAX_PAGES = 3
-    # Ads listed within the last week: enough to survive a skipped run (a
-    # single day's window loses anything that appeared while the host was
-    # down), and per-search dedup means only genuinely new ads alert after the
-    # first run. Costs the same single credit as a narrower window.
-    DATE_LISTED = 'last_7_days'
-    private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT, :MAX_PAGES,
-                     :DATE_LISTED
+    # The recency window lives in Config (the DATE_LISTED env var, defaulting
+    # to the last 7 days): enough to survive a skipped run (a single day's
+    # window loses anything that appeared while the host was down), and
+    # per-search dedup means only genuinely new ads alert after the first run.
+    # Costs the same single credit as a narrower window.
+    private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT, :MAX_PAGES
   end
 end

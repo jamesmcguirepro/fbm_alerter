@@ -73,6 +73,19 @@ RSpec.describe SociaVaultClient do
       )
     end
 
+    it 'uses the window given by DATE_LISTED' do
+      ENV['DATE_LISTED'] = 'last_30_days'
+
+      described_class.search(**search_params)
+
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(date_listed: 'last_30_days'))
+      )
+    ensure
+      ENV.delete('DATE_LISTED')
+    end
+
     it 'orders results newest first by creation_time' do
       response = double(
         code: 200,

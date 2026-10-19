@@ -14,6 +14,10 @@ ENV['DRY_RUN'] = 'false'
 
 require 'database_cleaner/active_record'
 require 'dotenv/load'
+# A developer's .env may set DATE_LISTED; clear it after .env loads so specs
+# exercise the shipped default rather than one machine's preference. Specs that
+# cover other windows set it themselves.
+ENV.delete('DATE_LISTED')
 require 'rspec'
 require 'timecop'
 require 'webmock/rspec'

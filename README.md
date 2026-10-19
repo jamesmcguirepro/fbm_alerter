@@ -48,7 +48,7 @@ Data persists in the `data` folder next to the compose file, bind-mounted at `/a
 
 ### Choosing an image tag
 
-`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.5}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
+`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.6}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
 
 ```bash
 IMAGE_TAG=latest
@@ -74,7 +74,7 @@ docker login
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
-  -t trailstack/fbm_alerter:1.0.5 \
+  -t trailstack/fbm_alerter:1.0.6 \
   -t trailstack/fbm_alerter:latest \
   --push .
 ```
@@ -156,7 +156,7 @@ A few things worth knowing:
 
 - **Time zone** — the picker in the header applies to every page and is remembered for the session (Pacific by default), so timestamps read the way you expect without the container's clock mattering.
 - **Dry run badge** — with `DRY_RUN=true` a "Dry run" badge appears in the header, and every search becomes a no-op: you can click around, run searches, and check the email layout without spending credits.
-- **Fresh, relevant results** — each search asks for ads from the **last 7 days**, in SociaVault's default relevance order, then lists them newest-first using each ad's own `creation_time`. It deliberately avoids SociaVault's `sort_by`: that order makes Facebook ignore the query and hand back the newest listings anywhere, so "husqvarna te 300" returns Camrys. Duplicates are deduped per search, so a daily run only alerts on genuinely new ads — normally one page, **1 credit per search** instead of 10.
+- **Fresh, relevant results** — each search asks for ads from the **last 7 days** (`DATE_LISTED`, configurable), in SociaVault's default relevance order, then lists them newest-first using each ad's own `creation_time`. It deliberately avoids SociaVault's `sort_by`: that order makes Facebook ignore the query and hand back the newest listings anywhere, so "husqvarna te 300" returns Camrys. Duplicates are deduped per search, so a daily run only alerts on genuinely new ads — normally one page, **1 credit per search** instead of 10.
 - **Dashboard** — every card is a link. "Credits left" is read live from SociaVault (that call is free) and turns amber once the balance gets low. "Run all searches now" streams the monitor's log into a modal, so a run is visible without watching the container. In the recent-listings table the whole row opens the ad, and the Search column links back to the search that produced it.
 - **Searches** — each row can be run on its own ("Run now" opens the log in a modal), paused/resumed, edited, or deleted. The Calls column counts SociaVault API calls (one call = one credit) plus the date of the last run, and the Location cell shows the resolved place name with the coordinates underneath. Saving an edit forks a new search and pauses the original, so past listings keep pointing at the search that actually found them; deleting removes a search from the lists but keeps its alert and run history, so the Alerts page stays complete.
 - **Listings** — thumbnails, prices, the resolved location and the search each listing came from; rows link to the Facebook ad.
@@ -194,8 +194,9 @@ Create a `.env` file (copy from `.env.example`). Required settings:
 
 Optional:
 
+- `DATE_LISTED` — how far back each search looks, sent to SociaVault as `date_listed`: one of `all`, `1`, `7`, `30`, `last_24_hours`, `last_7_days`, `last_30_days`. Unset means `last_7_days`, which survives a skipped day; a search costs 1 credit whatever the window. An unrecognised value warns at startup and falls back to the default. Changing it needs the containers recreated.
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
-- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.5`).
+- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.6`).
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
 - `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for scheduling and "today" counts.
 
