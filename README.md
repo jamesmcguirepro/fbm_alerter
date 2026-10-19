@@ -18,31 +18,33 @@ The image is published on Docker Hub as [`trailstack/fbm_alerter`](https://hub.d
 cp .env.example .env
 # Edit .env with your SOCIAVAULT_API_KEY and SMTP settings
 
-# 2. Start the web GUI (http://localhost:9292)
-docker compose up -d web
+# 2. Start the web GUI (http://localhost:9292) and the daily scheduler
+docker compose up -d
 
-# 3. Run all saved searches once (migrates the DB, then sends any alerts)
+# 3. (optional) run the searches now instead of waiting for the scheduler
 docker compose run --rm marketplace-monitor exec
 ```
 
-Both services share one SQLite database in a named volume, so a run triggered from the CLI shows up in the GUI straight away.
+`web` and `scheduler` share one SQLite database, so a run triggered from the CLI shows up in the GUI straight away.
 
 ### Docker commands
 
 | Command | Description |
 |---------|-------------|
 | `docker compose pull` | Pull the published image |
-| `docker compose up -d web` | Start the web GUI (http://localhost:9292) |
+| `docker compose up -d` | Start the web GUI and the daily scheduler |
+| `docker compose up -d web` | Start just the web GUI |
 | `docker compose run --rm marketplace-monitor exec` | Migrate the DB and run all saved searches once |
 | `docker compose run --rm marketplace-monitor list` | List saved searches |
 | `docker compose run --rm marketplace-monitor add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com` | Add a new saved search |
 | `docker compose run --rm marketplace-monitor delete 3` | Delete a saved search by ID |
-| `docker compose down` | Stop the containers (the data volume is kept) |
+| `docker compose logs -f scheduler` | Watch the scheduler (results of each run) |
+| `docker compose down` | Stop the containers (data is kept) |
 | `docker compose down -v` | Stop and remove the data volume (deletes the SQLite database) |
 
-Data persists in a Docker named volume (`marketplace-monitor-data`) mounted at `/app/storage` (SQLite file: `storage/development.sqlite3`).
+Data persists in the `data` folder next to the compose file, bind-mounted at `/app/storage` (SQLite file: `data/development.sqlite3`).
 
-> `marketplace-monitor` is a one-shot job (it runs the searches, then exits) and lives in the optional `tools` profile, so `docker compose up` and Container Manager's project start skip it. Run it explicitly with `docker compose run --rm marketplace-monitor exec` — which is also what the scheduler uses. Without the profile, its normal exit would be reported by Container Manager as an unexpected stop.
+> `marketplace-monitor` is a one-shot job (it runs the searches, then exits) and lives in the optional `tools` profile, so `docker compose up` and Container Manager's project start skip it. Run it explicitly with `docker compose run --rm marketplace-monitor exec` for a manual run — its normal exit would otherwise be reported by Container Manager as an unexpected stop.
 
 ### Choosing an image tag
 
@@ -57,7 +59,7 @@ IMAGE_TAG=latest
 To run your own changes instead of the published image, use the build override (it swaps the `image:` back to a local `build: .`):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build web
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.build.yml run --rm marketplace-monitor exec
 ```
 
@@ -86,52 +88,51 @@ DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed)
 **Container Manager GUI**
 
 1. Package Center → install **Container Manager**.
-2. File Station → create a project folder on a shared folder, e.g. `/volume1/homes/docker/fbm_alerter`, and copy in `docker-compose.yml`.
+2. File Station → create a project folder on a shared folder, e.g. `/volume1/docker/fbm_alerter`, and copy in `docker-compose.yml`.
 3. Create a `.env` in that folder (see [Configuration](#configuration)).
 4. Container Manager → **Project** → **Create**, point it at the folder, and start it.
-5. Only `web` starts — `marketplace-monitor` is a one-shot job in the optional `tools` profile, so the project start leaves it alone and its normal exit is not reported as an unexpected stop.
+5. The project starts `web` and `scheduler`. `marketplace-monitor` is a one-shot job in the optional `tools` profile, so the project start leaves it alone and its normal exit is not reported as an unexpected stop.
 
 **SSH / CLI** (DSM 7.2.1+ with a current Container Manager):
 
 ```bash
-cd /volume1/homes/docker/fbm_alerter
-docker compose up -d web
-docker compose run --rm marketplace-monitor exec
+cd /volume1/docker/fbm_alerter
+docker compose up -d          # web + scheduler
 ```
 
-To keep the database on a NAS share you can back up, bind-mount it instead of the named volume — replace, in *both* services:
+The compose file bind-mounts the database into a `data` folder next to it, so it is easy to back up:
 
 ```yaml
     volumes:
-      - marketplace-monitor-data:/app/storage
+      - /volume1/docker/fbm_alerter/data:/app/storage
 ```
 
-with:
-
-```yaml
-    volumes:
-      - /volume1/homes/docker/fbm_alerter/data:/app/storage
-```
-
-Create the `data` folder first, and make sure it is writable by the container user (adjust share permissions or set `PUID`/`PGID` as needed).
-
-> **Keep the compose project name consistent.** Container Manager names the project after the name you give it, and the volume becomes `<project>_marketplace-monitor-data`. Running `docker compose` from the CLI under a different project name creates a *different, empty* database. If in doubt, pass `-p <project-name>`.
+Create that `data` folder first (File Station). Every service must mount the **same** host folder, or they will each see a different, empty database.
 
 ### Scheduling (run once a day)
 
-Scheduling lives outside the container: point your host's scheduler at the run command. On a Synology NAS, use **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script** (run as `root`), daily, with:
+The `scheduler` service runs the searches itself: on start it migrates the database, runs all saved searches, then sleeps 24h and repeats. Nothing external is needed — no host cron, no Docker socket access.
+
+It uses the same code path as `docker compose run --rm marketplace-monitor exec`, so results match a manual run.
+
+To change the cadence, edit the `sleep` in the `scheduler` service (in seconds). Two things to be careful about in that block:
+
+- Keep `command` a **single list item**. Compose splits a plain string command into argv words, which breaks the loop.
+- Don't use a bare `$` in it. Compose substitutes `$name`, `${name}` and `$(...)` when it reads `docker-compose.yml`; write `$$` to escape (e.g. `$$(date)`), or the value silently becomes empty.
+
+Prefer an external scheduler? Point your host at the run command and drop the `scheduler` service. On a Synology NAS: **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script** (run as `root`), daily:
 
 ```sh
-cd /volume1/homes/docker/fbm_alerter && /usr/local/bin/docker compose run --rm marketplace-monitor exec
+cd /volume1/docker/fbm_alerter && /usr/local/bin/docker compose run --rm marketplace-monitor exec
 ```
 
-On a generic Linux host, the crontab equivalent is:
+On a generic Linux host:
 
 ```cron
 0 8 * * * cd /path/to/fbm_alerter && docker compose run --rm marketplace-monitor exec >> /path/to/fbm_alerter/cron.log 2>&1
 ```
 
-Set `TZ` in `.env` so the schedule and the container's timestamps line up.
+Set `TZ` in `.env` so the container's timestamps and "today" counts line up.
 
 ## Web GUI
 

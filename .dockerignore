@@ -4,6 +4,7 @@
 .ruby-lsp
 .env
 storage/*.sqlite3*
+data
 .bundle
 vendor
 spec

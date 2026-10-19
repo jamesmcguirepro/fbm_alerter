@@ -1,20 +1,4 @@
 services:
-  # One-shot job: runs all saved searches and exits.
-  #   docker compose run --rm marketplace-monitor exec
-  # The "tools" profile keeps it out of a plain `up` / Container Manager
-  # project start, so its normal exit isn't reported as an unexpected stop.
-  # Pulls the published image; use docker-compose.build.yml to build locally.
-  marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
-    profiles: ["tools"]
-    env_file: .env
-    environment:
-      - RUBY_ENV=development
-    volumes:
-      # For Synology/QNAP, bind-mount a NAS share instead of a named volume:
-      - /volume1/homes/docker/fbm_alerter/data:/app/storage
-    command: exec
-
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
   web:
     image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
@@ -22,11 +6,51 @@ services:
     environment:
       - RUBY_ENV=development
       - PORT=9292
+      - TZ=${TZ:-UTC}
     volumes:
-      - /volume1/homes/docker/fbm_alerter/data:/app/storage
+      # All services must mount the SAME host folder, or they see different databases.
+      - /volume1/docker/fbm_alerter/data:/app/storage
     ports:
       - "9292:9292"
     command: web
+    restart: unless-stopped
 
-volumes:
-  marketplace-monitor-data:
+  # Runs the searches every 24h from inside this container: no host cron and no
+  # Docker socket access, it just sleeps between runs. Starts a run as soon as
+  # it comes up, then every 24h after that. Change the interval with `sleep`.
+  #
+  # Keep `command` a single list item, and avoid `$` in it: Compose substitutes
+  # `$name`, `${name}` and `$(...)` in this file (use `$$` to escape), and it
+  # splits a plain string command into argv words, either of which breaks the loop.
+  scheduler:
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
+    env_file: .env
+    environment:
+      - RUBY_ENV=development
+      - TZ=${TZ:-UTC}
+    volumes:
+      - /volume1/docker/fbm_alerter/data:/app/storage
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        bundle exec rake db:migrate
+        while true; do
+          bundle exec ruby main.rb exec || true
+          sleep 86400
+        done
+
+  # Ad-hoc CLI runs, not started by `up`:
+  #   docker compose run --rm marketplace-monitor exec
+  #   docker compose run --rm marketplace-monitor list
+  # Pulls the published image; use docker-compose.build.yml to build locally.
+  marketplace-monitor:
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.2}
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      - RUBY_ENV=development
+      - TZ=${TZ:-UTC}
+    volumes:
+      - /volume1/docker/fbm_alerter/data:/app/storage
+    command: exec
