@@ -12,8 +12,7 @@ services:
       - RUBY_ENV=development
     volumes:
       # For Synology/QNAP, bind-mount a NAS share instead of a named volume:
-      #   - /volume1/homes/docker/fbm_alerter/data:/app/storage
-      - marketplace-monitor-data:/app/storage
+      - /volume1/homes/docker/fbm_alerter/data:/app/storage
     command: exec
 
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
@@ -24,8 +23,7 @@ services:
       - RUBY_ENV=development
       - PORT=9292
     volumes:
-      # Same data volume so the GUI reads the same SQLite database
-      - marketplace-monitor-data:/app/storage
+      - /volume1/homes/docker/fbm_alerter/data:/app/storage
     ports:
       - "9292:9292"
     command: web
