@@ -111,11 +111,17 @@ class EmailService
       %(<div class="location">📍 #{escape(listing.location)}</div>)
     end
 
+    # When the ad was listed on Marketplace, falling back to when we first saw
+    # it for rows stored before listed_at existed. The label says which, so the
+    # email never claims a listing date we don't actually know.
     def listed_html(listing)
-      date = format_time(listing.first_seen_at)
-      return '' if date.nil?
+      listed = format_time(listing.listed_at)
+      return %(<div class="listed">Listed: #{listed}</div>) if listed
 
-      %(<div class="listed">Listed: #{date}</div>)
+      seen = format_time(listing.first_seen_at)
+      return '' unless seen
+
+      %(<div class="listed">First seen: #{seen}</div>)
     end
 
     # Email footer HTML

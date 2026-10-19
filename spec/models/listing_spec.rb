@@ -20,7 +20,7 @@ RSpec.describe Listing, type: :model do
     }
   end
 
-  def build_listing_object(data = listing_data, query = search_query)
+  def build_listing_object(data = listing_data, query = search_query, listed_at: nil)
     ListingObject.new(
       title: data['title'],
       price: data['price']&.dig('amount'),
@@ -28,6 +28,7 @@ RSpec.describe Listing, type: :model do
       url: data['url'],
       image_url: data['primary_photo']&.dig('url'),
       search_query: query,
+      listed_at: listed_at,
       first_seen_at: nil,
       last_seen_at: nil,
       is_sold: false,
@@ -76,6 +77,14 @@ RSpec.describe Listing, type: :model do
 
         expect(listing.last_seen_at).to be_present
       end
+
+      it 'stores the listed time reported by the API' do
+        listed_at = Time.utc(2026, 10, 16, 20, 8, 38)
+        Listing.add_listing(listing_object: build_listing_object(listed_at:))
+        listing = Listing.find_by(listing_id: listing_data['id'])
+
+        expect(listing.listed_at).to eq(listed_at)
+      end
     end
 
     context 'updating an existing listing' do
@@ -122,6 +131,24 @@ RSpec.describe Listing, type: :model do
 
           expect(existing_listing.last_seen_at).to be_within(1).of(Time.now)
         end
+      end
+
+      it 'keeps the listed time when a later run reports it' do
+        listed_at = Time.utc(2026, 10, 16, 20, 8, 38)
+        Listing.add_listing(listing_object: build_listing_object(listed_at:))
+        existing_listing.reload
+
+        expect(existing_listing.listed_at).to eq(listed_at)
+      end
+
+      it 'keeps a known listed time when a later run omits it' do
+        listed_at = Time.utc(2026, 10, 16, 20, 8, 38)
+        Listing.add_listing(listing_object: build_listing_object(listed_at:))
+
+        Listing.add_listing(listing_object: build_listing_object)
+        existing_listing.reload
+
+        expect(existing_listing.listed_at).to eq(listed_at)
       end
     end
 

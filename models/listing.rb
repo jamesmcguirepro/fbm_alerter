@@ -9,6 +9,7 @@
 #  image_url     :string
 #  is_sold       :boolean          default(FALSE)
 #  last_seen_at  :datetime
+#  listed_at     :datetime
 #  location      :string
 #  price         :float
 #  search_query  :string
@@ -59,6 +60,9 @@ class Listing < ActiveRecord::Base
     listing.search_run = search_run if listing.new_record? && search_run
     listing.first_seen_at ||= now
     listing.last_seen_at = now
+    # When the ad was listed on Marketplace, as reported by the API. Kept once
+    # known, so a later run that omits it cannot blank a good value.
+    listing.listed_at ||= listing_object.listed_at
     listing.save!
 
     listing

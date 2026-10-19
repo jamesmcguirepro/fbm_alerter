@@ -24,6 +24,7 @@ RSpec.describe EmailService do
           url: 'https://facebook.com/marketplace/item/123/',
           image_url: 'https://example.com/photo.jpg',
           search_query: 'bike',
+          listed_at: Time.now,
           first_seen_at: Time.now
         )
       ]
@@ -70,6 +71,7 @@ RSpec.describe EmailService do
             url: 'https://facebook.com/marketplace/item/123/',
             image_url: 'https://example.com/photo.jpg',
             search_query: 'bike',
+            listed_at: Time.now,
             first_seen_at: Time.now
           ),
           instance_double(
@@ -80,6 +82,7 @@ RSpec.describe EmailService do
             url: 'https://facebook.com/marketplace/item/123/',
             image_url: 'https://example.com/photo.jpg',
             search_query: 'bike',
+            listed_at: Time.now,
             first_seen_at: Time.now
           )
         ]
@@ -189,13 +192,25 @@ RSpec.describe EmailService do
       end
     end
 
-    it 'formats the listed date' do
-      allow(listings.first).to receive(:first_seen_at).and_return(Time.new(2026, 10, 16, 9, 30))
+    it 'shows when the ad was listed' do
+      allow(listings.first).to receive(:listed_at).and_return(Time.new(2026, 10, 16, 9, 30))
 
       call
 
       expect(mailer).to have_received(:send_email) do |args|
         expect(args[:html_body]).to include('Listed: Oct 16, 2026')
+      end
+    end
+
+    it 'labels the first-seen date when the listing date is unknown' do
+      allow(listings.first).to receive(:listed_at).and_return(nil)
+      allow(listings.first).to receive(:first_seen_at).and_return(Time.new(2026, 10, 16, 9, 30))
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('First seen: Oct 16, 2026')
+        expect(args[:html_body]).not_to include('Listed:')
       end
     end
 
