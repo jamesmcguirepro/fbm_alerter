@@ -115,6 +115,8 @@ The `scheduler` service runs the searches itself: on start it migrates the datab
 
 It uses the same code path as `docker compose run --rm marketplace-monitor exec`, so results match a manual run.
 
+The image carries a healthcheck for the web GUI (port 9292), and Docker applies it to every container from the image. Since only `web` serves that port, `scheduler` and `marketplace-monitor` override it with `healthcheck: test: ["NONE"]` — otherwise they get reported as unhealthy for no reason.
+
 To change the cadence, edit the `sleep` in the `scheduler` service (in seconds). Two things to be careful about in that block:
 
 - Keep `command` a **single list item**. Compose splits a plain string command into argv words, which breaks the loop.

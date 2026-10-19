@@ -30,6 +30,10 @@ services:
       - TZ=${TZ:-UTC}
     volumes:
       - /volume1/docker/fbm_alerter/data:/app/storage
+    # Only `web` serves port 9292. The image's healthcheck is inherited by every
+    # container, so disable it here or this one is reported unhealthy.
+    healthcheck:
+      test: ["NONE"]
     restart: unless-stopped
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -53,4 +57,7 @@ services:
       - TZ=${TZ:-UTC}
     volumes:
       - /volume1/docker/fbm_alerter/data:/app/storage
+    # Same reason as `scheduler`: this container doesn't serve 9292.
+    healthcheck:
+      test: ["NONE"]
     command: exec
