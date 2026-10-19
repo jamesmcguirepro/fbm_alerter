@@ -69,8 +69,29 @@ RSpec.describe SociaVaultClient do
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_including(date_listed: 'last_24_hours'))
+        hash_including(query: hash_including(date_listed: 'last_7_days'))
       )
+    end
+
+    it 'orders results newest first by creation_time' do
+      response = double(
+        code: 200,
+        parsed_response: {
+          'data' => {
+            'listings' => {
+              '1' => { 'id' => '1', 'title' => 'Oldest', 'creation_time' => '2026-10-01T10:00:00.000Z' },
+              '2' => { 'id' => '2', 'title' => 'Newest', 'creation_time' => '2026-10-18T10:00:00.000Z' },
+              '3' => { 'id' => '3', 'title' => 'Middle', 'creation_time' => '2026-10-10T10:00:00.000Z' }
+            }
+          }
+        },
+        success?: true
+      )
+      allow(HTTParty).to receive(:get).and_return(response)
+
+      result = described_class.search(**search_params)
+
+      expect(result['data']['listings'].keys).to eq(%w[2 3 1])
     end
 
     it 'does not send a sort order' do

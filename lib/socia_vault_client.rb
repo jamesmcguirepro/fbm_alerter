@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'time'
+
 # SociaVault API client for Facebook Marketplace searches
 class SociaVaultClient
   class << self
@@ -21,13 +23,15 @@ class SociaVaultClient
 
     # Search Facebook Marketplace.
     #
-    # Results are limited to the DATE_LISTED window (the last day) and left in
-    # the API's default relevance order.
+    # Results are limited to the DATE_LISTED window and left in the API's
+    # default relevance order, then ordered newest-first locally from each
+    # listing's own +creation_time+.
     #
     # Deliberately no +sort_by+: Facebook's creation_time_descend order returns
     # the newest listings *regardless of the query*, so asking for "husqvarna te
     # 300" that way returns Camrys and Teslas. The default order is what keeps
-    # the query meaningful; the date window is what keeps the results current.
+    # the query meaningful; the date window keeps it current, and sorting on
+    # +creation_time+ here makes it newest-first without losing the match.
     #
     # The API returns roughly 15 listings per page even when +count+ is
     # higher, so pages are followed using the response cursor until the
@@ -42,7 +46,7 @@ class SociaVaultClient
     # @param condition [String] Item condition (new, used_like_new, used_good, used_fair)
     # @param delivery_method [String] Delivery method (all, local_pickup, shipping)
     # @param count [Integer] Number of results to request per page
-    # @param date_listed [String] Recency window (defaults to the last 24h)
+    # @param date_listed [String] Recency window (defaults to the last 7 days)
     # @yield called once for every API request made (each spends a credit), so
     #   callers can account for the spend as it happens
     # @return [Hash] API response containing listings under ['data']['listings']
@@ -97,7 +101,7 @@ class SociaVaultClient
         break if cursor.nil? || !more_pages?(parsed)
       end
 
-      { 'data' => { 'listings' => all_listings.index_by { |l| l['id'] } } }
+      { 'data' => { 'listings' => sort_newest_first(all_listings).index_by { |l| l['id'] } } }
     end
 
     # Remaining credit balance for the account behind the API key.
@@ -169,6 +173,24 @@ class SociaVaultClient
       nil
     end
 
+    # Newest first, using each listing's own creation_time. The API's default
+    # order is relevance-based — which is what we want for matching — so the
+    # recency ordering has to be applied here. Listings without a usable
+    # timestamp keep their relative order at the end.
+    def sort_newest_first(listings)
+      listings.each_with_index
+              .sort_by { |listing, index| [-timestamp(listing), index] }
+              .map(&:first)
+    end
+
+    # creation_time as a float for sorting; unparseable or missing values sort
+    # last rather than blowing up the run.
+    def timestamp(listing)
+      Time.parse(listing['creation_time'].to_s).to_f
+    rescue ArgumentError, TypeError
+      -Float::INFINITY
+    end
+
     # Whether the API reports another page of results. Responses include
     # +data.has_next_page+ alongside the cursor; without checking it the loop
     # keeps spending credits on ever-looser results. Older responses omit the
@@ -208,10 +230,11 @@ class SociaVaultClient
     # Credit safety net: the API reports has_next_page even when the pool is
     # tiny, so paging is bounded rather than trusted (see more_pages?).
     MAX_PAGES = 3
-    # Only ads listed in the last 24 hours: an alerter wants what just
-    # appeared. Widen to 'last_7_days' if the host ever skips a run — the
-    # window costs the same one credit, it just sees more.
-    DATE_LISTED = 'last_24_hours'
+    # Ads listed within the last week: enough to survive a skipped run (a
+    # single day's window loses anything that appeared while the host was
+    # down), and per-search dedup means only genuinely new ads alert after the
+    # first run. Costs the same single credit as a narrower window.
+    DATE_LISTED = 'last_7_days'
     private_constant :BASE_URL, :ENDPOINT, :CREDITS_ENDPOINT, :MAX_PAGES,
                      :DATE_LISTED
   end
