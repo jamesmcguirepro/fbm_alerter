@@ -9,7 +9,7 @@ class MarketplaceApp < Sinatra::Base
 
   post '/dashboard/run-all' do
     @log = run_monitor_capture do |monitor|
-      monitor.execute_saved_searches
+      monitor.execute_saved_searches(initiated_by: 'gui')
     end
 
     load_dashboard

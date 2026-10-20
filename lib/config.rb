@@ -54,6 +54,23 @@ class Config
       DATE_LISTED_DEFAULT
     end
 
+    # Daily run time for the scheduler, in the container's time zone. 24-hour
+    # HH:MM; a typo falls back to the default rather than stopping the scheduler.
+    SCHEDULE_AT_DEFAULT = '20:00'
+    SCHEDULE_AT_PATTERN = /\A([01]?\d|2[0-3]):([0-5]\d)\z/
+
+    def schedule_at
+      value = ENV['SCHEDULE_AT'].to_s.strip
+      return SCHEDULE_AT_DEFAULT if value.empty?
+
+      match = SCHEDULE_AT_PATTERN.match(value)
+      return format('%02d:%02d', match[1].to_i, match[2].to_i) if match
+
+      warn "⚠ SCHEDULE_AT=#{value.inspect} is not a valid HH:MM time. " \
+           "Using #{SCHEDULE_AT_DEFAULT}."
+      SCHEDULE_AT_DEFAULT
+    end
+
     # Validate configuration
     def validate!
       errors = []

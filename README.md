@@ -48,7 +48,7 @@ Data persists in the `data` folder next to the compose file, bind-mounted at `/a
 
 ### Choosing an image tag
 
-`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
+`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.10}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
 
 ```bash
 IMAGE_TAG=latest
@@ -74,7 +74,7 @@ docker login
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
-  -t trailstack/fbm_alerter:1.0.9 \
+  -t trailstack/fbm_alerter:1.0.10 \
   -t trailstack/fbm_alerter:latest \
   --push .
 ```
@@ -111,16 +111,21 @@ Create that `data` folder first (File Station). Every service must mount the **s
 
 ### Scheduling (run once a day)
 
-The `scheduler` service runs the searches itself: on start it migrates the database, runs all saved searches, then sleeps 24h and repeats. Nothing external is needed — no host cron, no Docker socket access.
+The `scheduler` service runs the searches itself once a day at `SCHEDULE_AT` (default `20:00`) in the container's `TZ`. Nothing external is needed — no host cron, no Docker socket access.
+
+It does **not** run just because the container started. Before each pass it checks the `monitor_runs` table for a full run already made today:
+
+- already ran today → wait for tomorrow's scheduled time
+- no run today, before the scheduled time → wait for today's time
+- no run today, past the scheduled time → run immediately (catch-up)
+
+That means restarting or recreating the container costs nothing unless a scheduled run was genuinely missed. A manual “Run all searches now”, or `docker compose run --rm marketplace-monitor exec`, also counts as today's full run, so the scheduler won't repeat it. A single-search “Run now” does not count.
+
+To change the time, set `SCHEDULE_AT` in `.env` (24-hour `HH:MM`) and recreate the container. The value is interpreted in `TZ`.
 
 It uses the same code path as `docker compose run --rm marketplace-monitor exec`, so results match a manual run.
 
 The image carries a healthcheck for the web GUI (port 9292), and Docker applies it to every container from the image. Since only `web` serves that port, `scheduler` and `marketplace-monitor` override it with `healthcheck: test: ["NONE"]` — otherwise they get reported as unhealthy for no reason.
-
-To change the cadence, edit the `sleep` in the `scheduler` service (in seconds). Two things to be careful about in that block:
-
-- Keep `command` a **single list item**. Compose splits a plain string command into argv words, which breaks the loop.
-- Don't use a bare `$` in it. Compose substitutes `$name`, `${name}` and `$(...)` when it reads `docker-compose.yml`; write `$$` to escape (e.g. `$$(date)`), or the value silently becomes empty.
 
 Prefer an external scheduler? Point your host at the run command and drop the `scheduler` service. On a Synology NAS: **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script** (run as `root`), daily:
 
@@ -134,7 +139,7 @@ On a generic Linux host:
 0 8 * * * cd /path/to/fbm_alerter && docker compose run --rm marketplace-monitor exec >> /path/to/fbm_alerter/cron.log 2>&1
 ```
 
-Set `TZ` in `.env` so the container's timestamps and "today" counts line up.
+Set `TZ` in `.env` so the container's timestamps, "today" counts, and the scheduler's run time line up.
 
 ## Web GUI
 
@@ -196,9 +201,10 @@ Optional:
 
 - `DATE_LISTED` — how far back each search looks, sent to SociaVault as `date_listed`: one of `all`, `1`, `7`, `30`, `last_24_hours`, `last_7_days`, `last_30_days`. Unset means `last_7_days`, which survives a skipped day. Every page fetched costs a credit, so a narrow window is cheapest — but with a daily run it also has no margin, and ads posted while a run was skipped are never seen. An unrecognised value warns at startup and falls back to the default. Changing it needs the containers recreated.
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
-- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.9`).
+- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.10`).
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
-- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, and the listing dates in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
+- `SCHEDULE_AT` — daily full-run time for the `scheduler`, as 24-hour `HH:MM` in the container's `TZ` (default `20:00`). Restarting the container does not trigger a run; if today's scheduled pass was missed, the next start catches up. An invalid value warns and falls back to the default.
+- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, the scheduler's `SCHEDULE_AT`, and the listing dates in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
 
 ### Saved searches
 

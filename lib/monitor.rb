@@ -16,8 +16,10 @@ class MarketplaceMonitor
     nil
   end
 
-  # Run a complete search cycle over all saved searches in the DB
-  def execute_saved_searches
+  # Run a complete search cycle over all saved searches in the DB.
+  # @param initiated_by [String] scheduler, gui or cli; recorded in monitor_runs
+  def execute_saved_searches(initiated_by: 'cli')
+    run = MonitorRun.start!(initiated_by:)
     @io.puts "\n🔍 Starting marketplace search at #{Time.now}..."
 
     SavedSearch.kept.where(active: true).each do |saved_search|
@@ -29,6 +31,8 @@ class MarketplaceMonitor
 
       send_alerts(listings: new_listings, saved_search:) if new_listings.any?
     end
+  ensure
+    run&.finish!
   end
 
   def list_saved_searches

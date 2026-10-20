@@ -1,7 +1,7 @@
 services:
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
   web:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.10}
     # Names this container in the alert footer ("Sent by ..."), so an alert from
     # the NAS is distinguishable from one sent by a local run. A container's
     # hostname is otherwise its container id, which changes on every recreate.
@@ -19,15 +19,12 @@ services:
     command: web
     restart: unless-stopped
 
-  # Runs the searches every 24h from inside this container: no host cron and no
-  # Docker socket access, it just sleeps between runs. Starts a run as soon as
-  # it comes up, then every 24h after that. Change the interval with `sleep`.
-  #
-  # Keep `command` a single list item, and avoid `$` in it: Compose substitutes
-  # `$name`, `${name}` and `$(...)` in this file (use `$$` to escape), and it
-  # splits a plain string command into argv words, either of which breaks the loop.
+  # Runs the searches once a day at SCHEDULE_AT (default 20:00) in TZ: no host
+  # cron and no Docker socket access. It checks monitor_runs before starting,
+  # so a container restart does not burn credits; if today's pass was missed,
+  # it catches up on the next start.
   scheduler:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.10}
     hostname: james-nas
     env_file: .env
     environment:
@@ -40,21 +37,14 @@ services:
     healthcheck:
       test: ["NONE"]
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        bundle exec rake db:migrate
-        while true; do
-          bundle exec ruby main.rb exec || true
-          sleep 86400
-        done
+    command: schedule
 
   # Ad-hoc CLI runs, not started by `up`:
   #   docker compose run --rm marketplace-monitor exec
   #   docker compose run --rm marketplace-monitor list
   # Pulls the published image; use docker-compose.build.yml to build locally.
   marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.10}
     profiles: ["tools"]
     hostname: james-nas
     env_file: .env

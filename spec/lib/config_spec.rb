@@ -128,6 +128,51 @@ RSpec.describe Config do
     end
   end
 
+  describe '.schedule_at' do
+    after { ENV.delete('SCHEDULE_AT') }
+
+    it 'defaults to 20:00 when unset' do
+      ENV.delete('SCHEDULE_AT')
+      expect(described_class.schedule_at).to eq('20:00')
+    end
+
+    it 'defaults when set to blank' do
+      ENV['SCHEDULE_AT'] = '  '
+      expect(described_class.schedule_at).to eq('20:00')
+    end
+
+    it 'accepts a 24-hour time' do
+      ENV['SCHEDULE_AT'] = '23:59'
+      expect(described_class.schedule_at).to eq('23:59')
+    end
+
+    it 'normalizes a single-digit hour' do
+      ENV['SCHEDULE_AT'] = '8:05'
+      expect(described_class.schedule_at).to eq('08:05')
+    end
+
+    it 'ignores surrounding whitespace' do
+      ENV['SCHEDULE_AT'] = ' 07:30 '
+      expect(described_class.schedule_at).to eq('07:30')
+    end
+
+    it 'warns and falls back for an invalid time' do
+      ENV['SCHEDULE_AT'] = '8pm'
+
+      expect { @result = described_class.schedule_at }
+        .to output(/SCHEDULE_AT="8pm" is not a valid HH:MM time/).to_stderr
+      expect(@result).to eq('20:00')
+    end
+
+    it 'warns and falls back for an out-of-range time' do
+      ENV['SCHEDULE_AT'] = '24:00'
+
+      expect { @result = described_class.schedule_at }
+        .to output(/SCHEDULE_AT="24:00" is not a valid HH:MM time/).to_stderr
+      expect(@result).to eq('20:00')
+    end
+  end
+
   describe '.validate!' do
     it 'passes when all required vars are set' do
       expect { described_class.validate! }.not_to raise_error

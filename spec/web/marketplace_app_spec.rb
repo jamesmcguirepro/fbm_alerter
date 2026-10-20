@@ -176,6 +176,7 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include('id="run-all-log"')
       expect(last_response.body).to include('Searching: bike')
       expect(last_response.body).to include('Recent listings')
+      expect(MonitorRun.last.initiated_by).to eq('gui')
     end
   end
 

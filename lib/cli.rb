@@ -31,7 +31,12 @@ class CLI < Thor
   desc 'exec', 'Execute all saved searches'
   def exec
     puts "Executing saved searches"
-    monitor.execute_saved_searches
+    monitor.execute_saved_searches(initiated_by: 'cli')
+  end
+
+  desc 'schedule', 'Run all saved searches daily at SCHEDULE_AT'
+  def schedule
+    Scheduler.new.run
   end
 
   desc 'list', 'List all items'

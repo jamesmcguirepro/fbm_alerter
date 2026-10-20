@@ -135,6 +135,27 @@ RSpec.describe MarketplaceMonitor do
       expect { monitor.execute_saved_searches }
         .to output(/🔍 Starting marketplace search/).to_stdout
     end
+
+    it 'records one full run for the pass' do
+      expect { monitor.execute_saved_searches }.to change(MonitorRun, :count).by(1)
+
+      run = MonitorRun.last
+      expect(run.started_at).not_to be_nil
+      expect(run.finished_at).not_to be_nil
+    end
+
+    it 'records who initiated the pass' do
+      monitor.execute_saved_searches(initiated_by: 'scheduler')
+
+      expect(MonitorRun.last.initiated_by).to eq('scheduler')
+    end
+
+    it 'finishes the run even when a search raises' do
+      allow(monitor).to receive(:execute_search).and_raise(StandardError, 'boom')
+
+      expect { monitor.execute_saved_searches }.to raise_error(StandardError, 'boom')
+      expect(MonitorRun.last.finished_at).not_to be_nil
+    end
   end
 
   describe '#execute_search' do

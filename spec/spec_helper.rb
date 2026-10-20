@@ -18,6 +18,8 @@ require 'dotenv/load'
 # exercise the shipped default rather than one machine's preference. Specs that
 # cover other windows set it themselves.
 ENV.delete('DATE_LISTED')
+# Same for the scheduler's daily time, so specs exercise the shipped default.
+ENV.delete('SCHEDULE_AT')
 require 'rspec'
 require 'timecop'
 require 'webmock/rspec'
