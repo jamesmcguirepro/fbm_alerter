@@ -48,7 +48,7 @@ Data persists in the `data` folder next to the compose file, bind-mounted at `/a
 
 ### Choosing an image tag
 
-`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.8}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
+`docker-compose.yml` runs `trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}` — pinned to a version by default, so redeploys are reproducible and a rollback is a one-line change. Override it in `.env` if you want a different tag:
 
 ```bash
 IMAGE_TAG=latest
@@ -74,7 +74,7 @@ docker login
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
-  -t trailstack/fbm_alerter:1.0.8 \
+  -t trailstack/fbm_alerter:1.0.9 \
   -t trailstack/fbm_alerter:latest \
   --push .
 ```
@@ -196,7 +196,7 @@ Optional:
 
 - `DATE_LISTED` — how far back each search looks, sent to SociaVault as `date_listed`: one of `all`, `1`, `7`, `30`, `last_24_hours`, `last_7_days`, `last_30_days`. Unset means `last_7_days`, which survives a skipped day. Every page fetched costs a credit, so a narrow window is cheapest — but with a daily run it also has no margin, and ads posted while a run was skipped are never seen. An unrecognised value warns at startup and falls back to the default. Changing it needs the containers recreated.
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
-- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.8`).
+- `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.9`).
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
 - `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, and the listing dates in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
 

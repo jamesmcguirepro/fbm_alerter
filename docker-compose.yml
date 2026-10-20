@@ -1,7 +1,7 @@
 services:
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
   web:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.8}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
     # Names this container in the alert footer ("Sent by ..."), so an alert from
     # the NAS is distinguishable from one sent by a local run. A container's
     # hostname is otherwise its container id, which changes on every recreate.
@@ -27,7 +27,7 @@ services:
   # `$name`, `${name}` and `$(...)` in this file (use `$$` to escape), and it
   # splits a plain string command into argv words, either of which breaks the loop.
   scheduler:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.8}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
     hostname: james-nas
     env_file: .env
     environment:
@@ -54,7 +54,7 @@ services:
   #   docker compose run --rm marketplace-monitor list
   # Pulls the published image; use docker-compose.build.yml to build locally.
   marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.8}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.9}
     profiles: ["tools"]
     hostname: james-nas
     env_file: .env
