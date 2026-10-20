@@ -222,6 +222,22 @@ RSpec.describe EmailService do
       end
     end
 
+    it 'shows the listing date in the configured local time zone' do
+      original_tz = ENV.fetch('TZ', nil)
+      ENV['TZ'] = 'America/Los_Angeles'
+      # 02:30 UTC is still the evening of Oct 16 in Pacific time.
+      allow(listings.first).to receive(:listed_at).and_return(Time.utc(2026, 10, 17, 2, 30))
+
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('Listed: Oct 16, 2026')
+        expect(args[:html_body]).not_to include('Listed: Oct 17, 2026')
+      end
+    ensure
+      ENV['TZ'] = original_tz
+    end
+
     it 'labels the first-seen date when the listing date is unknown' do
       allow(listings.first).to receive(:listed_at).and_return(nil)
       allow(listings.first).to receive(:first_seen_at).and_return(Time.new(2026, 10, 16, 9, 30))

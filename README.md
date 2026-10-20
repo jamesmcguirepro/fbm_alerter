@@ -198,7 +198,7 @@ Optional:
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
 - `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.8`).
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
-- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for scheduling and "today" counts.
+- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, and the listing dates in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
 
 ### Saved searches
 

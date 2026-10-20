@@ -145,11 +145,15 @@ class EmailService
       CGI.escapeHTML(text.to_s)
     end
 
+    # Listing times come back from the API (and out of the database) as UTC.
+    # `getlocal` converts them to the process time zone, which is set from TZ
+    # in .env (and passed to the containers by docker-compose.yml), so the
+    # date shown in the email matches the reader's local date.
     def format_time(value)
       return nil if value.nil?
-      return value.strftime('%b %d, %Y') if value.respond_to?(:strftime)
+      return value.to_s unless value.respond_to?(:getlocal)
 
-      value.to_s
+      value.getlocal.strftime('%b %d, %Y')
     end
   end
 end
