@@ -3,9 +3,12 @@ set -e
 
 echo "🚀 Marketplace Monitor container starting..."
 
-# Run database migrations
-echo "📦 Running database migrations..."
-bundle exec rake db:migrate
+# Only the web service migrates the database. The scheduler and one-shot tools
+# wait for web to be healthy, so two containers never race on schema_migrations.
+if [ "$1" = "web" ]; then
+  echo "📦 Running database migrations..."
+  bundle exec rake db:migrate
+fi
 
 # Validate configuration
 echo "✅ Validating configuration..."
