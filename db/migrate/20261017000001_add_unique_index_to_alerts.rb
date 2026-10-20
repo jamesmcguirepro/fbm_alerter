@@ -1,5 +1,7 @@
 class AddUniqueIndexToAlerts < ActiveRecord::Migration[8.1]
   def up
+    return if index_exists?(:alerts, %i[listing_id search_id], unique: true)
+
     # Collapse any pre-existing duplicate (listing, search) alerts, keeping the
     # earliest, so the unique index below can be created.
     execute <<~SQL
@@ -9,10 +11,10 @@ class AddUniqueIndexToAlerts < ActiveRecord::Migration[8.1]
       )
     SQL
 
-    add_index :alerts, %i[listing_id search_id], unique: true
+    add_index :alerts, %i[listing_id search_id], unique: true, if_not_exists: true
   end
 
   def down
-    remove_index :alerts, %i[listing_id search_id]
+    remove_index :alerts, %i[listing_id search_id], if_exists: true
   end
 end

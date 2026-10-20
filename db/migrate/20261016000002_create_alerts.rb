@@ -1,6 +1,6 @@
 class CreateAlerts < ActiveRecord::Migration[8.1]
-  def change
-    create_table :alerts do |t|
+  def up
+    create_table :alerts, if_not_exists: true do |t|
       t.integer :listing_id, null: false
       t.integer :search_id, null: false
       t.datetime :sent_at
@@ -11,7 +11,11 @@ class CreateAlerts < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :alerts, :listing_id
-    add_index :alerts, :search_id
+    add_index :alerts, :listing_id, if_not_exists: true
+    add_index :alerts, :search_id, if_not_exists: true
+  end
+
+  def down
+    drop_table :alerts, if_exists: true
   end
 end
