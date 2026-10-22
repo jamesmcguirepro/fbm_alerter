@@ -17,30 +17,30 @@ RSpec.describe MarketplaceMonitor do
     )
   end
 
-  let(:search_result) do
+  let(:search_page) do
     {
-      'data' => {
-        'listings' => {
-          '1' => {
-            'id' => '1',
-            'title' => 'Cozy Apt',
-            'price' => { 'amount' => 200 },
-            'location' => { 'display_name' => 'NYC' },
-            'url' => 'https://example.com/1',
-            'primary_photo' => { 'url' => 'https://example.com/photo.jpg' },
-            'is_sold' => false
-          },
-          '2' => {
-            'id' => '2',
-            'title' => 'Spacious House',
-            'price' => { 'amount' => 400 },
-            'location' => { 'display_name' => 'Brooklyn, NY' },
-            'url' => 'https://example.com/2',
-            'primary_photo' => { 'url' => 'https://example.com/photo2.jpg' },
-            'is_sold' => false
-          }
+      listings: [
+        {
+          'id' => '1',
+          'title' => 'Cozy Apartment',
+          'price' => { 'amount' => 200 },
+          'location' => { 'display_name' => 'NYC' },
+          'url' => 'https://example.com/1',
+          'primary_photo' => { 'url' => 'https://example.com/photo.jpg' },
+          'is_sold' => false
+        },
+        {
+          'id' => '2',
+          'title' => 'Spacious Apartment',
+          'price' => { 'amount' => 400 },
+          'location' => { 'display_name' => 'Brooklyn, NY' },
+          'url' => 'https://example.com/2',
+          'primary_photo' => { 'url' => 'https://example.com/photo2.jpg' },
+          'is_sold' => false
         }
-      }
+      ],
+      cursor: nil,
+      has_next_page: false
     }
   end
 
@@ -48,9 +48,9 @@ RSpec.describe MarketplaceMonitor do
     allow(Config).to receive(:validate!)
     # The real client yields once per API request so the caller can record the
     # credit; the stub does the same (one request).
-    allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
-      on_request.call
-      search_result
+    allow(SociaVaultClient).to receive(:search_page) do |&on_request|
+      on_request&.call
+      search_page
     end
     allow(EmailService).to receive(:send_alerts)
     allow(Alert).to receive(:record_alert)
@@ -77,7 +77,7 @@ RSpec.describe MarketplaceMonitor do
 
       monitor.execute_saved_searches
 
-      expect(SociaVaultClient).to have_received(:search_from_object).twice
+      expect(SociaVaultClient).to have_received(:search_page).twice
     end
 
     it 'calls execute_search for each saved search' do
@@ -118,7 +118,7 @@ RSpec.describe MarketplaceMonitor do
 
       monitor.execute_saved_searches
 
-      expect(SociaVaultClient).not_to have_received(:search_from_object)
+      expect(SociaVaultClient).not_to have_received(:search_page)
     end
 
     it 'skips saved searches with invalid coordinates' do
@@ -128,7 +128,7 @@ RSpec.describe MarketplaceMonitor do
 
       expect { monitor.execute_saved_searches }
         .to output(/Skipping 'bad'.*invalid coordinates/).to_stdout
-      expect(SociaVaultClient).not_to have_received(:search_from_object)
+      expect(SociaVaultClient).not_to have_received(:search_page)
     end
 
     it 'outputs the start message' do
@@ -176,7 +176,7 @@ RSpec.describe MarketplaceMonitor do
     it 'calls SociaVaultClient with the search object' do
       monitor.send(:execute_search, search_object:, email: 'test@example.com')
 
-      expect(SociaVaultClient).to have_received(:search_from_object).with(search_object:)
+      expect(SociaVaultClient).to have_received(:search_page).with(hash_including(search_object:))
     end
 
     it 'adds each new listing to the database' do
@@ -200,7 +200,7 @@ RSpec.describe MarketplaceMonitor do
 
     it 'outputs the number of listings found' do
       expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
-        .to output(/Found 2 listing/).to_stdout
+        .to output(/Found 2 matching listing/).to_stdout
     end
 
     it 'records an API call against the saved search' do
@@ -217,9 +217,9 @@ RSpec.describe MarketplaceMonitor do
     end
 
     it 'records one run per API request the client made' do
-      allow(SociaVaultClient).to receive(:search_from_object) do |&on_request|
-        3.times { on_request.call }
-        search_result
+      allow(SociaVaultClient).to receive(:search_page) do |&on_request|
+        3.times { on_request&.call }
+        search_page
       end
 
       expect {
@@ -252,7 +252,7 @@ RSpec.describe MarketplaceMonitor do
       before { allow(Config).to receive(:dry_run?).and_return(true) }
 
       it 'skips the API call and records no credit' do
-        expect(SociaVaultClient).not_to receive(:search_from_object)
+        expect(SociaVaultClient).not_to receive(:search_page)
 
         result = nil
         expect {
@@ -266,7 +266,7 @@ RSpec.describe MarketplaceMonitor do
 
     context 'when the API call fails' do
       before do
-        allow(SociaVaultClient).to receive(:search_from_object)
+        allow(SociaVaultClient).to receive(:search_page)
           .and_raise(StandardError, 'Connection timeout')
       end
 
@@ -306,7 +306,7 @@ RSpec.describe MarketplaceMonitor do
 
     context 'when API returns empty listings' do
       before do
-        allow(SociaVaultClient).to receive(:search_from_object)
+        allow(SociaVaultClient).to receive(:search_page)
           .and_return({ 'data' => { 'listings' => {} } })
       end
 
@@ -318,13 +318,13 @@ RSpec.describe MarketplaceMonitor do
 
       it 'outputs appropriate message' do
         expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
-          .to output(/No listings found/).to_stdout
+          .to output(/No title-matching listings found/).to_stdout
       end
     end
 
     context 'when API returns unexpected format' do
       before do
-        allow(SociaVaultClient).to receive(:search_from_object).and_return({})
+        allow(SociaVaultClient).to receive(:search_page).and_return({})
       end
 
       it 'does not add listings' do
@@ -333,15 +333,15 @@ RSpec.describe MarketplaceMonitor do
         }.not_to change(Listing, :count)
       end
 
-      it 'outputs the unexpected response message' do
+      it 'outputs the no-match message' do
         expect { monitor.send(:execute_search, search_object:, email: 'test@example.com') }
-          .to output(/No listings found or unexpected response format/).to_stdout
+          .to output(/No title-matching listings found/).to_stdout
       end
     end
 
     context 'when API call raises an error' do
       before do
-        allow(SociaVaultClient).to receive(:search_from_object)
+        allow(SociaVaultClient).to receive(:search_page)
           .and_raise(StandardError, 'Connection timeout')
       end
 

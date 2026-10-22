@@ -5,40 +5,44 @@ require 'httparty'
 require_relative '../../lib/socia_vault_client'
 
 RSpec.describe SociaVaultClient do
-  describe '.search' do
-    let(:search_params) do
-      {
-        query: 'bike',
-        lat: 40.7128,
-        long: -74.0060,
-        min_price: 100,
-        max_price: 500
-      }
-    end
+  let(:search_object) do
+    SearchObject.new(
+      id: nil,
+      query: 'bike',
+      lat: 40.7128,
+      long: -74.0060,
+      min_price: 100,
+      max_price: 500,
+      radius_km: 25,
+      condition: nil,
+      delivery_method: nil
+    )
+  end
 
-    let(:success_response) do
-      {
-        'data' => {
-          'listings' => {
-            '0' => {
-              'id' => '123456',
-              'title' => 'Mountain Bike',
-              'price' => { 'amount' => 250 },
-              'location' => { 'display_name' => 'New York, NY' },
-              'url' => 'https://facebook.com/marketplace/item/123456/',
-              'primary_photo' => { 'url' => 'https://example.com/photo.jpg' }
-            }
+  let(:success_response) do
+    {
+      'data' => {
+        'listings' => {
+          '0' => {
+            'id' => '123456',
+            'title' => 'Mountain Bike',
+            'price' => { 'amount' => 250 },
+            'location' => { 'display_name' => 'New York, NY' },
+            'url' => 'https://facebook.com/marketplace/item/123456/',
+            'primary_photo' => { 'url' => 'https://example.com/photo.jpg' }
           }
         }
       }
-    end
+    }
+  end
 
-    before do
-      allow(HTTParty).to receive(:get).and_return(double(code: 200, parsed_response: success_response, success?: true))
-    end
+  before do
+    allow(HTTParty).to receive(:get).and_return(double(code: 200, parsed_response: success_response, success?: true))
+  end
 
+  describe '.search_page' do
     it 'calls API with correct endpoint' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         'https://api.sociavault.com/v1/scrape/facebook-marketplace/search',
@@ -47,7 +51,7 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'includes required parameters' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -56,7 +60,7 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'includes optional price filters' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -65,7 +69,7 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'limits results to the recency window' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -76,7 +80,7 @@ RSpec.describe SociaVaultClient do
     it 'uses the window given by DATE_LISTED' do
       ENV['DATE_LISTED'] = 'last_30_days'
 
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -86,31 +90,10 @@ RSpec.describe SociaVaultClient do
       ENV.delete('DATE_LISTED')
     end
 
-    it 'orders results newest first by creation_time' do
-      response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '1' => { 'id' => '1', 'title' => 'Oldest', 'creation_time' => '2026-10-01T10:00:00.000Z' },
-              '2' => { 'id' => '2', 'title' => 'Newest', 'creation_time' => '2026-10-18T10:00:00.000Z' },
-              '3' => { 'id' => '3', 'title' => 'Middle', 'creation_time' => '2026-10-10T10:00:00.000Z' }
-            }
-          }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(response)
-
-      result = described_class.search(**search_params)
-
-      expect(result['data']['listings'].keys).to eq(%w[2 3 1])
-    end
-
     it 'does not send a sort order' do
       # creation_time_descend makes Facebook ignore the query and return the
       # newest listings anywhere, not the newest matches.
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -119,7 +102,7 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'includes API key in headers' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -127,25 +110,74 @@ RSpec.describe SociaVaultClient do
       )
     end
 
-    it 'returns API response' do
-      response = described_class.search(**search_params)
+    it 'returns the listings for the page' do
+      result = described_class.search_page(search_object:)
 
-      expect(response['data']['listings']).to have_key('123456')
-      expect(response['data']['listings']['123456']['title']).to eq('Mountain Bike')
+      expect(result[:listings].map { |l| l['id'] }).to eq(['123456'])
+      expect(result[:listings].first['title']).to eq('Mountain Bike')
+    end
+
+    it 'returns a nil cursor and assumes another page when the flag is missing' do
+      result = described_class.search_page(search_object:)
+
+      expect(result[:cursor]).to be_nil
+      expect(result[:has_next_page]).to be(true)
+    end
+
+    it 'returns the cursor and next-page flag when present' do
+      allow(HTTParty).to receive(:get).and_return(
+        double(
+          code: 200,
+          parsed_response: {
+            'data' => {
+              'listings' => { '1' => { 'id' => '1', 'title' => 'Bike' } },
+              'next_cursor' => 'page-2',
+              'has_next_page' => false
+            }
+          },
+          success?: true
+        )
+      )
+
+      result = described_class.search_page(search_object:)
+
+      expect(result[:cursor]).to eq('page-2')
+      expect(result[:has_next_page]).to be(false)
+    end
+
+    it 'sends the cursor when given' do
+      described_class.search_page(search_object:, cursor: 'page-2')
+
+      expect(HTTParty).to have_received(:get).with(
+        anything,
+        hash_including(query: hash_including(cursor: 'page-2'))
+      )
+    end
+
+    it 'accepts listings returned as an array' do
+      allow(HTTParty).to receive(:get).and_return(
+        double(
+          code: 200,
+          parsed_response: { 'data' => { 'listings' => [{ 'id' => '1', 'title' => 'Bike' }] } },
+          success?: true
+        )
+      )
+
+      expect(described_class.search_page(search_object:)[:listings].length).to eq(1)
     end
 
     it 'raises error on 400 Bad Request' do
       bad_response = double(code: 400, parsed_response: { 'error' => 'Invalid parameters' }, success?: false)
       allow(HTTParty).to receive(:get).and_return(bad_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/Bad Request/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/Bad Request/)
     end
 
     it 'raises error on 401 Unauthorized' do
       auth_response = double(code: 401, parsed_response: { 'error' => 'Invalid API key' }, success?: false)
       allow(HTTParty).to receive(:get).and_return(auth_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/Authentication Error/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/Authentication Error/)
     end
 
     it 'raises error on 402 insufficient credits' do
@@ -156,27 +188,29 @@ RSpec.describe SociaVaultClient do
       )
       allow(HTTParty).to receive(:get).and_return(credit_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/Insufficient Credits/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/Insufficient Credits/)
     end
 
     it 'raises error on 500 Server Error' do
       server_response = double(code: 500, parsed_response: { 'error' => 'Internal server error' }, success?: false)
       allow(HTTParty).to receive(:get).and_return(server_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/Server Error/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/Server Error/)
     end
 
     it 'includes radius_km in request' do
-      described_class.search(**search_params, radius_km: 50)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_including(radius_km: 50))
+        hash_including(query: hash_including(radius_km: 25))
       )
     end
 
     it 'includes condition filter when provided' do
-      described_class.search(**search_params, condition: 'used_good')
+      search_object = build_search_object(condition: 'used_good')
+
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -185,7 +219,9 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'includes delivery_method filter when provided' do
-      described_class.search(**search_params, delivery_method: 'shipping')
+      search_object = build_search_object(delivery_method: 'shipping')
+
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -194,20 +230,23 @@ RSpec.describe SociaVaultClient do
     end
 
     it 'excludes optional params when not provided' do
+      search_object = build_search_object(min_price: nil, max_price: nil)
       passed_opts = nil
       allow(HTTParty).to receive(:get) do |_url, opts|
         passed_opts = opts
         double(code: 200, parsed_response: success_response, success?: true)
       end
 
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(passed_opts[:query]).not_to have_key(:condition)
       expect(passed_opts[:query]).not_to have_key(:delivery_method)
+      expect(passed_opts[:query]).not_to have_key(:min_price)
+      expect(passed_opts[:query]).not_to have_key(:max_price)
     end
 
-    it 'uses default count when not provided' do
-      described_class.search(**search_params)
+    it 'uses default count' do
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -215,182 +254,15 @@ RSpec.describe SociaVaultClient do
       )
     end
 
-    it 'allows custom count' do
-      described_class.search(**search_params, count: 50)
-
-      expect(HTTParty).to have_received(:get).with(
-        anything,
-        hash_including(query: hash_including(count: 50))
-      )
-    end
-
-    it 'follows the cursor to fetch additional pages' do
-      first_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '1' => { 'id' => '1', 'title' => 'First', 'price' => { 'amount' => 100 } }
-            },
-            'next_cursor' => 'page-2'
-          }
-        },
-        success?: true
-      )
-      second_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '2' => { 'id' => '2', 'title' => 'Second', 'price' => { 'amount' => 200 } }
-            }
-          }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
-
-      result = described_class.search(**search_params)
-
-      expect(HTTParty).to have_received(:get).twice
-      expect(HTTParty).to have_received(:get).with(
-        anything,
-        hash_including(query: hash_including(cursor: 'page-2'))
-      )
-      expect(result['data']['listings'].keys).to contain_exactly('1', '2')
-    end
-
-    it 'de-duplicates listings returned across pages' do
-      dup_listing = { 'id' => '1', 'title' => 'Dup', 'price' => { 'amount' => 100 } }
-      first_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => { '1' => dup_listing },
-            'next_cursor' => 'page-2'
-          }
-        },
-        success?: true
-      )
-      second_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => { '1' => dup_listing }
-          }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
-
-      result = described_class.search(**search_params)
-
-      expect(result['data']['listings'].keys).to contain_exactly('1')
-    end
-
-    it 'stops paging when the response reports no next page' do
-      response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '1' => { 'id' => '1', 'title' => 'Only', 'price' => { 'amount' => 100 } }
-            },
-            'next_cursor' => 'page-2',
-            'has_next_page' => false
-          }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(response)
-
-      result = described_class.search(**search_params)
-
-      expect(HTTParty).to have_received(:get).once
-      expect(result['data']['listings'].keys).to contain_exactly('1')
-    end
-
-    it 'stops paging when there is no cursor' do
-      response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '1' => { 'id' => '1', 'title' => 'Only', 'price' => { 'amount' => 100 } }
-            }
-          }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(response)
-
-      result = described_class.search(**search_params)
-
-      expect(HTTParty).to have_received(:get).once
-      expect(result['data']['listings'].keys).to contain_exactly('1')
-    end
-
-    it 'stops paging when a page returns no listings' do
-      first_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => {
-              '1' => { 'id' => '1', 'title' => 'First', 'price' => { 'amount' => 100 } }
-            },
-            'next_cursor' => 'page-2'
-          }
-        },
-        success?: true
-      )
-      empty_response = double(
-        code: 200,
-        parsed_response: { 'data' => { 'listings' => {} } },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(first_response, empty_response)
-
-      result = described_class.search(**search_params)
-
-      expect(HTTParty).to have_received(:get).twice
-      expect(result['data']['listings'].keys).to contain_exactly('1')
-    end
-
     it 'yields once per request, so callers can account for the credit spent' do
       requests = 0
-      described_class.search(**search_params) { requests += 1 }
+      described_class.search_page(search_object:) { requests += 1 }
 
       expect(requests).to eq(1)
     end
 
-    it 'yields once per page fetched' do
-      first_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => {
-            'listings' => { '1' => { 'id' => '1', 'title' => 'First' } },
-            'next_cursor' => 'page-2'
-          }
-        },
-        success?: true
-      )
-      second_response = double(
-        code: 200,
-        parsed_response: {
-          'data' => { 'listings' => { '2' => { 'id' => '2', 'title' => 'Second' } } }
-        },
-        success?: true
-      )
-      allow(HTTParty).to receive(:get).and_return(first_response, second_response)
-
-      requests = 0
-      described_class.search(**search_params) { requests += 1 }
-
-      expect(requests).to eq(2)
-    end
-
     it 'sets timeout' do
-      described_class.search(**search_params)
+      described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
@@ -400,101 +272,31 @@ RSpec.describe SociaVaultClient do
   end
 
   describe 'error handling' do
-    let(:search_params) { { query: 'test', lat: 40.0, long: -74.0 } }
-
     it 'raises error for unknown status code' do
       unknown_response = double(code: 999, parsed_response: { 'error' => 'Unknown error' }, success?: false)
       allow(HTTParty).to receive(:get).and_return(unknown_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/API Error/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/API Error/)
     end
 
     it 'includes response code in error message' do
       error_response = double(code: 500, parsed_response: { 'error' => 'Server error' }, success?: false)
       allow(HTTParty).to receive(:get).and_return(error_response)
 
-      expect { described_class.search(**search_params) }.to raise_error(/500/)
+      expect { described_class.search_page(search_object:) }.to raise_error(/500/)
     end
   end
 
-  describe '.search_from_object' do
-    let(:search_object) do
-      SearchObject.new(
-        id: nil,
-        query: 'bike',
-        lat: 40.7128,
-        long: -74.0060,
-        min_price: 100,
-        max_price: 500,
-        radius_km: 25,
-        condition: 'used_good',
-        delivery_method: 'shipping'
-      )
-    end
-
-    let(:success_response) do
-      {
-        'data' => {
-          'listings' => {
-            '1' => {
-              'id' => '123456',
-              'title' => 'Mountain Bike',
-              'price' => { 'amount' => 250 },
-              'location' => { 'display_name' => 'New York, NY' },
-              'url' => 'https://facebook.com/marketplace/item/123456/',
-              'primary_photo' => { 'url' => 'https://example.com/photo.jpg' }
-            }
-          }
-        }
-      }
-    end
-
-    before do
-      allow(HTTParty).to receive(:get).and_return(
-        double(code: 200, parsed_response: success_response, success?: true)
-      )
-    end
-
-    it 'delegates to .search with search object attributes' do
-      described_class.search_from_object(search_object:)
-
-      expect(HTTParty).to have_received(:get).with(
-        anything,
-        hash_including(
-          query: hash_including(
-            query: 'bike',
-            lat: 40.7128,
-            lng: -74.0060,
-            min_price: 100,
-            max_price: 500,
-            radius_km: 25,
-            condition: 'used_good',
-            delivery_method: 'shipping',
-            count: 100
-          ),
-          headers: hash_including('X-API-Key' => 'sk_test_key')
-        )
-      )
-    end
-
-    it 'returns the API response' do
-      response = described_class.search_from_object(search_object:)
-
-      expect(response['data']['listings']).to have_key('123456')
-      expect(response['data']['listings']['123456']['title']).to eq('Mountain Bike')
-    end
-  end
-
-  describe '.search in dry run' do
+  describe '.search_page in dry run' do
     before { allow(Config).to receive(:dry_run?).and_return(true) }
 
     it 'never touches the network' do
       expect(HTTParty).not_to receive(:get)
 
       requested = false
-      result = described_class.search(query: 'bike', lat: 40.7128, long: -74.0060) { requested = true }
+      result = described_class.search_page(search_object:) { requested = true }
 
-      expect(result['data']['listings']).to be_empty
+      expect(result).to eq(listings: [], cursor: nil, has_next_page: false)
       expect(requested).to be(false)
     end
 
@@ -541,5 +343,21 @@ RSpec.describe SociaVaultClient do
 
       expect { described_class.credits }.to raise_error(/Authentication Error/)
     end
+  end
+
+  def build_search_object(**overrides)
+    defaults = {
+      id: nil,
+      query: 'bike',
+      lat: 40.7128,
+      long: -74.0060,
+      min_price: 100,
+      max_price: 500,
+      radius_km: 25,
+      condition: nil,
+      delivery_method: nil
+    }
+
+    SearchObject.new(**defaults.merge(overrides))
   end
 end
