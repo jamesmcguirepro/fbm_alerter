@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+#
+# script/release <major|minor|patch>
+#
+# Bumps the semantic version across the repo, commits, tags, pushes, and
+# builds/publishes the multi-arch Docker image.
+#
+# Versions are kept in:
+#   config/boot.rb          -> VERSION constant
+#   README.md               -> image tag examples & defaults
+#   .env.example            -> IMAGE_TAG default (commented)
+#   app/views/layout.erb    -> footer fallback version
+#
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 <major|minor|patch>" >&2
+  exit 1
+fi
+
+BUMP="$1"
+case "$BUMP" in
+  major|minor|patch) ;;
+  *)
+    echo "Error: argument must be major, minor, or patch (got '$BUMP')" >&2
+    exit 1
+    ;;
+esac
+
+# --- Sanity checks ------------------------------------------------------------
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: not inside a git repository" >&2
+  exit 1
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Error: working tree is not clean. Commit or stash your changes first." >&2
+  git status --short >&2
+  exit 1
+fi
+
+CURRENT_BRANCH="$(git branch --show-current)"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+  echo "Warning: you are on branch '$CURRENT_BRANCH', not 'main'."
+  read -r -p "Continue anyway? [y/N] " -n 1 REPLY
+  echo
+  [[ "$REPLY" =~ ^[Yy]$ ]] || exit 1
+fi
+
+# --- Compute new version ------------------------------------------------------
+
+# Read the current VERSION from config/boot.rb using Ruby (the source of truth).
+CURRENT_VERSION="$(ruby -e 'require_relative "./config/boot"; puts VERSION')"
+echo "Current version: $CURRENT_VERSION"
+
+if [[ ! "$CURRENT_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  echo "Error: current version '$CURRENT_VERSION' is not semver (X.Y.Z)" >&2
+  exit 1
+fi
+
+MAJOR="${BASH_REMATCH[1]}"
+MINOR="${BASH_REMATCH[2]}"
+PATCH="${BASH_REMATCH[3]}"
+
+case "$BUMP" in
+  major) NEW_MAJOR=$((MAJOR + 1)); NEW_MINOR=0; NEW_PATCH=0 ;;
+  minor) NEW_MAJOR=$MAJOR; NEW_MINOR=$((MINOR + 1)); NEW_PATCH=0 ;;
+  patch) NEW_MAJOR=$MAJOR; NEW_MINOR=$MINOR; NEW_PATCH=$((PATCH + 1)) ;;
+esac
+
+NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
+echo "New version:   $NEW_VERSION"
+
+TAG="v$NEW_VERSION"
+
+# --- Update version across the repo ------------------------------------------
+
+# Use Ruby for text replacement so it works identically on macOS (BSD sed) and
+# Linux (GNU sed), and so we can validate the result loads.
+ruby - "$NEW_VERSION" <<'RUBY'
+new_version = ARGV[0]
+
+# config/boot.rb -> VERSION constant
+boot = File.read("config/boot.rb")
+boot.sub!(/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'\.freeze/, "VERSION = '#{new_version}'.freeze")
+File.write("config/boot.rb", boot)
+
+# README.md -> image tag examples and the default fallback
+readme = File.read("README.md")
+readme.gsub!(/trailstack\/fbm_alerter:[0-9]+\.[0-9]+\.[0-9]+/, "trailstack/fbm_alerter:#{new_version}")
+readme.gsub!(/\$\{IMAGE_TAG:- [0-9]+\.[0-9]+\.[0-9]+\}/, "${IMAGE_TAG:-#{new_version}}")
+readme.gsub!(/IMAGE_TAG:-1\.0\.[0-9]+/, "IMAGE_TAG:-#{new_version}")
+File.write("README.md", readme)
+
+# .env.example -> IMAGE_TAG default (commented)
+env_example = File.read(".env.example")
+env_example.gsub!(/# IMAGE_TAG=[0-9]+\.[0-9]+\.[0-9]+/, "# IMAGE_TAG=#{new_version}")
+File.write(".env.example", env_example)
+
+# app/views/layout.erb -> footer fallback version
+layout = File.read("app/views/layout.erb")
+layout.sub!(/defined\?\(VERSION\) \? VERSION : '[0-9]+\.[0-9]+\.[0-9]+'/, "defined?(VERSION) ? VERSION : '#{new_version}'")
+File.write("app/views/layout.erb", layout)
+
+puts "Updated version strings for #{new_version}"
+RUBY
+
+# Verify the boot file still loads and VERSION is correct.
+ruby -c config/boot.rb >/dev/null
+ACTUAL="$(ruby -e 'require_relative "./config/boot"; puts VERSION')"
+if [[ "$ACTUAL" != "$NEW_VERSION" ]]; then
+  echo "Error: VERSION did not update correctly (expected $NEW_VERSION, got $ACTUAL)" >&2
+  exit 1
+fi
+
+# --- Commit -------------------------------------------------------------------
+
+git add config/boot.rb README.md .env.example app/views/layout.erb
+git commit -m "chore: release v$NEW_VERSION"
+
+# --- Tag ----------------------------------------------------------------------
+
+git tag "$TAG"
+echo "Tagged $TAG"
+
+# --- Push ---------------------------------------------------------------------
+
+echo "Pushing $CURRENT_BRANCH and tags to origin..."
+git push origin "$CURRENT_BRANCH" --tags
+
+# --- Build --------------------------------------------------------------------
+
+echo "Building and pushing multi-arch image trailstack/fbm_alerter:$NEW_VERSION ..."
+
+# Ensure a buildx builder exists for multi-arch builds.
+if ! docker buildx inspect multiarch >/dev/null 2>&1; then
+  docker buildx create --use --name multiarch
+else
+  docker buildx use multiarch
+fi
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --provenance=false \
+  -t "trailstack/fbm_alerter:$NEW_VERSION" \
+  -t "trailstack/fbm_alerter:latest" \
+  --push .
+
+echo "Release v$NEW_VERSION complete: committed, tagged, pushed, and built."
