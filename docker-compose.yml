@@ -1,7 +1,7 @@
 services:
   # Web GUI: docker compose up -d web   → http://<nas-ip>:9292
   web:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.12}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.13}
     # Names this container in the alert footer ("Sent by ..."), so an alert from
     # the NAS is distinguishable from one sent by a local run. A container's
     # hostname is otherwise its container id, which changes on every recreate.
@@ -24,7 +24,7 @@ services:
   # so a container restart does not burn credits; if today's pass was missed,
   # it catches up on the next start.
   scheduler:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.12}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.13}
     # `web` is the only service that runs migrations, and it migrates before
     # Puma starts. Waiting for web to be healthy therefore also means the
     # schema is ready, so the scheduler never writes schema_migrations.
@@ -50,7 +50,7 @@ services:
   #   docker compose run --rm marketplace-monitor list
   # Pulls the published image; use docker-compose.build.yml to build locally.
   marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.12}
+    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.13}
     profiles: ["tools"]
     # Same startup guarantee as the scheduler: web has finished migrating.
     depends_on:
