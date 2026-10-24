@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'uri'
+
 # == Schema Information
 #
 # Table name: saved_searches
@@ -23,6 +25,8 @@
 #
 class SavedSearch < ActiveRecord::Base
   include Discard::Model
+
+  FACEBOOK_MARKETPLACE_URL = 'https://www.facebook.com/marketplace'
 
   has_many :alerts
   has_many :search_runs
@@ -92,11 +96,41 @@ class SavedSearch < ActiveRecord::Base
     "#{lat}, #{long}"
   end
 
+  # Public Marketplace search URL that reproduces this saved search as closely
+  # as the web UI allows. Facebook ignores latitude/longitude query parameters,
+  # so a resolved city name is what actually targets the search; without one
+  # the link still opens the right query at the viewer's default location.
+  # Radius is interpreted in kilometres, matching the saved search.
+  # @return [String, nil]
+  def marketplace_url
+    return nil if query.to_s.strip.empty?
+
+    slug = marketplace_location_slug
+    path = slug ? "/#{slug}/search/" : '/search/'
+    params = { query: }
+    params[:radius] = radius_km if radius_km
+    params[:minPrice] = min_price.to_i if min_price
+    params[:maxPrice] = max_price.to_i if max_price
+
+    "#{FACEBOOK_MARKETPLACE_URL}#{path}?#{URI.encode_www_form(params)}"
+  end
+
   def print_search(io: $stdout)
     io.puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
   end
 
   private
+
+  # Facebook city slugs are the locality, lowercased with dashes: "Santa
+  # Barbara, California" becomes "santa-barbara".
+  def marketplace_location_slug
+    return nil if resolved_location.blank?
+
+    locality = resolved_location.to_s.split(',').first.to_s.strip
+    return nil if locality.empty?
+
+    locality.parameterize
+  end
 
   def round_coordinates
     self.lat = lat.round(4) if lat

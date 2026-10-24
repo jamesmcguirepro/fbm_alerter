@@ -10,10 +10,12 @@ class EmailService
     # @param listings [Array<ListingObject>] listings matched by this search
     # @param emails [Array<String>] recipient addresses
     # @param query [String] the search query these listings matched
-    def send_alerts(listings:, emails:, query:)
+    # @param stats [Hash, nil] api_results, filtered and credits_used
+    # @param search_url [String, nil] link that reruns the search on Marketplace
+    def send_alerts(listings:, emails:, query:, stats: nil, search_url: nil)
       return if listings.empty?
 
-      html_body = render(listings:, query:)
+      html_body = render(listings:, query:, stats:, search_url:)
       subject = subject_line(count: listings.length, query:)
 
       emails.each do |recipient|
@@ -25,13 +27,15 @@ class EmailService
     # preview without sending (and without spending any API credits).
     # @param listings [Array<ListingObject>]
     # @param query [String] the search query the listings matched
+    # @param stats [Hash, nil] api_results, filtered and credits_used
+    # @param search_url [String, nil] link that reruns the search on Marketplace
     # @return [String]
-    def render(listings:, query:)
-      html = header(count: listings.length, query:)
+    def render(listings:, query:, stats: nil, search_url: nil)
+      html = header(count: listings.length, query:, stats:, search_url:)
       listings.each_with_index do |listing, index|
         html += listing_section(listing:, alternate: index.odd?)
       end
-      html + footer
+      html + footer(stats:)
     end
 
     # Subject line naming the search query and the number of matches.
@@ -52,7 +56,7 @@ class EmailService
     end
 
     # Email header HTML, led by the search query and match count
-    def header(count:, query:)
+    def header(count:, query:, stats: nil, search_url: nil)
       <<~HTML
         <!DOCTYPE html>
         <html>
@@ -64,9 +68,12 @@ class EmailService
               .header { color: #111827; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 12px; }
               .header h1 { margin: 0 0 6px; font-size: 22px; }
               .header p { margin: 0; color: #6b7280; }
+              .header .results { margin-top: 4px; font-size: 13px; }
+              .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
               .listing.alt { background: #f1f3f5; }
               .thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; float: left; margin-right: 14px; }
+              .listing-body--with-thumb { margin-left: 110px; }
               .title { font-size: 17px; font-weight: bold; color: #111827; }
               .location { color: #4b5563; font-size: 15px; margin-top: 4px; }
               .price { font-size: 18px; font-weight: bold; color: #16a34a; margin-top: 6px; }
@@ -79,18 +86,44 @@ class EmailService
               <div class="header">
                 <h1>#{escape(query)}</h1>
                 <p>#{count} new listing#{'s' if count != 1}</p>
+                #{results_html(stats:)}
+                #{search_link_html(search_url:)}
               </div>
       HTML
+    end
+
+    # How many raw results the API returned and how many the search discarded,
+    # so the reader can see that the alert is a filtered subset.
+    def results_html(stats:)
+      return '' if stats.nil? || stats[:api_results].nil?
+
+      results = stats[:api_results].to_i
+      filtered = stats[:filtered].to_i
+      %(<p class="results">Marketplace returned #{results} #{results == 1 ? 'result' : 'results'} · #{filtered} filtered out</p>)
+    end
+
+    # Link that opens the same query, place and filters on Facebook Marketplace.
+    def search_link_html(search_url:)
+      return '' if search_url.to_s.strip.empty?
+
+      %(<a class="search-link" href="#{escape(search_url)}" target="_blank">View this search on Facebook Marketplace →</a>)
     end
 
     # Build HTML for a single listing. The whole card links to the ad.
     def listing_section(listing:, alternate: false)
       classes = "listing#{' alt' if alternate}"
-      body = image_html(listing) +
+      image = image_html(listing)
+      # Keep every text row in its own column beside the thumbnail. Without
+      # this, a title tall enough to pass the floated image lets the metadata
+      # (including the listed date) drop to the card's left edge underneath it.
+      body_class = image.empty? ? 'listing-body' : 'listing-body listing-body--with-thumb'
+      body = image +
+             %(<div class="#{body_class}">) +
              %(<div class="title">#{escape(listing.title)}</div>) +
              location_html(listing) +
              %(<div class="price">#{PriceFormatter.format(listing.price)}</div>) +
              listed_html(listing) +
+             %(</div>) +
              %(<div class="clear"></div>)
 
       if listing.url.to_s.strip.empty?
@@ -129,10 +162,18 @@ class EmailService
     # different machines can be told apart. The name comes from the container's
     # hostname, which compose sets (`hostname:`); a container's default hostname
     # is its container id, which changes on every recreate.
-    def footer
+    def footer(stats: nil)
+      credits = stats && stats[:credits_used]
+      credit_line = if credits.nil?
+                      ''
+                    else
+                      count = credits.to_i
+                      "\n        <p>#{count} API credit#{'s' if count != 1} used for this search</p>"
+                    end
+
       <<~HTML
               <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
-                <p>Marketplace Monitor • Automated Email Alert</p>
+                <p>Marketplace Monitor • Automated Email Alert</p>#{credit_line}
                 <p>Sent by #{escape(Socket.gethostname)}</p>
               </div>
             </div>
@@ -148,12 +189,12 @@ class EmailService
     # Listing times come back from the API (and out of the database) as UTC.
     # `getlocal` converts them to the process time zone, which is set from TZ
     # in .env (and passed to the containers by docker-compose.yml), so the
-    # date shown in the email matches the reader's local date.
+    # date and time shown in the email match the reader's local clock.
     def format_time(value)
       return nil if value.nil?
       return value.to_s unless value.respond_to?(:getlocal)
 
-      value.getlocal.strftime('%b %d, %Y')
+      value.getlocal.strftime('%b %-d, %Y at %-l:%M %p')
     end
   end
 end

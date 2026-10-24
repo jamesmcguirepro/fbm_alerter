@@ -81,7 +81,7 @@ RSpec.describe MarketplaceMonitor do
     end
 
     it 'calls execute_search for each saved search' do
-      allow(monitor).to receive(:execute_search).and_return([])
+      allow(monitor).to receive(:execute_search).and_return(SearchResult.empty)
       allow(monitor).to receive(:send_alerts)
 
       monitor.execute_saved_searches
@@ -102,14 +102,16 @@ RSpec.describe MarketplaceMonitor do
         url: 'https://example.com/new-1',
         search_query: 'apartment'
       )
-      allow(monitor).to receive(:execute_search).and_return([new_listing])
+      result = SearchResult.build(listings: [new_listing], api_results: 4, credits_used: 1)
+      allow(monitor).to receive(:execute_search).and_return(result)
       allow(monitor).to receive(:send_alerts)
 
       monitor.execute_saved_searches
 
       expect(monitor).to have_received(:send_alerts).with(
         listings: [new_listing],
-        saved_search: saved_search
+        saved_search: saved_search,
+        stats: { api_results: 4, filtered: 3, credits_used: 1 }
       )
     end
 
@@ -189,8 +191,16 @@ RSpec.describe MarketplaceMonitor do
     it 'returns the new listings' do
       result = monitor.send(:execute_search, search_object:, email: 'test@example.com')
 
-      expect(result.length).to eq(2)
-      expect(result.first).to be_a(Listing)
+      expect(result.listings.length).to eq(2)
+      expect(result.listings.first).to be_a(Listing)
+    end
+
+    it 'reports the API result and credit counts' do
+      result = monitor.send(:execute_search, search_object:, saved_search:)
+
+      expect(result.api_results).to eq(2)
+      expect(result.filtered).to eq(0)
+      expect(result.credits_used).to eq(1)
     end
 
     it 'outputs the search query and location' do
@@ -233,7 +243,9 @@ RSpec.describe MarketplaceMonitor do
 
       result = monitor.send(:execute_search, search_object:, saved_search:)
 
-      expect(result.map(&:listing_id)).to contain_exactly('2')
+      expect(result.listings.map(&:listing_id)).to contain_exactly('2')
+      expect(result.api_results).to eq(2)
+      expect(result.filtered).to eq(1)
     end
 
     it 'returns a listing that was only alerted for a different search' do
@@ -245,7 +257,7 @@ RSpec.describe MarketplaceMonitor do
 
       result = monitor.send(:execute_search, search_object:, saved_search:)
 
-      expect(result.map(&:listing_id)).to contain_exactly('1', '2')
+      expect(result.listings.map(&:listing_id)).to contain_exactly('1', '2')
     end
 
     context 'in dry run' do
@@ -259,7 +271,7 @@ RSpec.describe MarketplaceMonitor do
           result = monitor.send(:execute_search, search_object:, saved_search:)
         }.to output(/DRY RUN/).to_stdout
 
-        expect(result).to eq([])
+        expect(result).to eq(SearchResult.empty)
         expect(SearchRun.count).to eq(0)
       end
     end
@@ -381,7 +393,19 @@ RSpec.describe MarketplaceMonitor do
       expect(EmailService).to have_received(:send_alerts).with(
         listings: [new_listing],
         emails: ['owner@example.com'],
-        query: 'apartment'
+        query: 'apartment',
+        stats: {},
+        search_url: saved_search.marketplace_url
+      )
+    end
+
+    it 'forwards the search stats and Marketplace link' do
+      stats = { api_results: 10, filtered: 9, credits_used: 1 }
+
+      monitor.send(:send_alerts, listings: [new_listing], saved_search:, stats:)
+
+      expect(EmailService).to have_received(:send_alerts).with(
+        hash_including(stats:, search_url: saved_search.marketplace_url)
       )
     end
 
@@ -435,7 +459,7 @@ RSpec.describe MarketplaceMonitor do
     end
 
     it 'calls execute_search with the search object' do
-      allow(monitor).to receive(:execute_search).and_return([])
+      allow(monitor).to receive(:execute_search).and_return(SearchResult.empty)
 
       monitor.search(search_object:)
 

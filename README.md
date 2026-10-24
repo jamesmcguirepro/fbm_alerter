@@ -170,6 +170,7 @@ A few things worth knowing:
 - **Searches** — each row can be run on its own ("Run now" opens the log in a modal), paused/resumed, edited, or deleted. The Calls column counts SociaVault API calls (one call = one credit) plus the date of the last run, and the Location cell shows the resolved place name with the coordinates underneath. Saving an edit forks a new search and pauses the original, so past listings keep pointing at the search that actually found them; deleting removes a search from the lists but keeps its alert and run history, so the Alerts page stays complete.
 - **Listings** — thumbnails, prices, the resolved location and the search each listing came from; rows link to the Facebook ad.
 - **Alerts** — send times are shown to the second, since a single run can send several alerts within the same minute. Each alert ends with the host that sent it, taken from the container's `hostname:` in `docker-compose.yml`.
+- **Alert emails** — each listing shows when the ad was posted, the header reports how many results Marketplace returned and how many were filtered out, a link reruns the same search on Marketplace, and the footer reports the API credits the search spent.
 - **Settings** — masked API key, SMTP settings, database path and environment, plus a test email form. "Preview alert email" renders the real alert template in a new tab from listings already in the database, so the layout can be checked without sending mail or spending a credit.
 
 ## Local setup (without Docker)
@@ -208,7 +209,7 @@ Optional:
 - `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.13`).
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
 - `SCHEDULE_AT` — daily full-run time for the `scheduler`, as 24-hour `HH:MM` in the container's `TZ` (default `20:00`). Restarting the container does not trigger a run; if today's scheduled pass was missed, the next start catches up. An invalid value warns and falls back to the default.
-- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, the scheduler's `SCHEDULE_AT`, and the listing dates in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
+- `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, the scheduler's `SCHEDULE_AT`, and the listing dates and times in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
 
 ### Saved searches
 

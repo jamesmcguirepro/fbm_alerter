@@ -17,6 +17,10 @@ class SearchService
   # trusted.
   MAX_PAGES = 3
 
+  # Raw listings returned by the API and API requests (credits) made, filled in
+  # by #run. The alert email reports both.
+  attr_reader :stats
+
   # @param search_object [SearchObject]
   # @param client [Class] thing that responds to search_page
   # @param matcher [ListingMatcher, nil]
@@ -24,6 +28,7 @@ class SearchService
     @search_object = search_object
     @client = client
     @matcher = matcher || ListingMatcher.new(query: search_object.query)
+    @stats = { api_results: 0, pages_fetched: 0 }
   end
 
   # @yield called once per API request made (each one spends a credit)
@@ -32,10 +37,15 @@ class SearchService
     matches = []
     seen_ids = Set.new
     cursor = nil
+    @stats = { api_results: 0, pages_fetched: 0 }
 
     MAX_PAGES.times do
+      # Count the attempt before making it: a request that fails still spends
+      # a credit.
+      @stats[:pages_fetched] += 1
       page = @client.search_page(search_object: @search_object, cursor:, &on_request)
       listings = Array(page[:listings])
+      @stats[:api_results] += listings.length
       break if listings.empty?
 
       page_matches = listings.select { |listing| @matcher.title_match?(title: listing['title']) }

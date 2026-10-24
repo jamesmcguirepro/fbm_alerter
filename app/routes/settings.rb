@@ -7,14 +7,30 @@ class MarketplaceApp < Sinatra::Base
     # external API is called, so previewing never spends SociaVault credits.
     def preview_email
       recent = Listing.order(last_seen_at: :desc).first
-      return { listings: sample_listings, query: 'road bike' } if recent.nil?
+      return preview_payload(listings: sample_listings, query: 'road bike') if recent.nil?
 
       listings = Listing.where(search_query: recent.search_query)
                         .order(last_seen_at: :desc)
                         .limit(4)
                         .map { |listing| to_listing_object(listing) }
+      query = recent.search_query.presence || 'your search'
 
-      { listings: listings, query: recent.search_query.presence || 'your search' }
+      preview_payload(
+        listings:,
+        query:,
+        saved_search: SavedSearch.kept.find_by(query: recent.search_query)
+      )
+    end
+
+    # Adds sample API counts and a real (or representative) Marketplace link so
+    # the preview shows every part of the alert email.
+    def preview_payload(listings:, query:, saved_search: nil)
+      {
+        listings:,
+        query:,
+        stats: { api_results: listings.length + 15, filtered: 15, credits_used: 1 },
+        search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url
+      }
     end
 
     def to_listing_object(listing)

@@ -151,6 +151,28 @@ RSpec.describe SearchService do
     expect(service.run).to eq([])
   end
 
+  it 'counts raw API results and the credits spent across pages' do
+    stub_pages(
+      page(listings: [
+             listing(id: '1', title: 'Husqvarna TE 300'),
+             listing(id: '2', title: 'Toyota Camry')
+           ], cursor: 'page-2'),
+      page(listings: [listing(id: '3', title: 'Husqvarna FE 350')], has_next_page: false)
+    )
+
+    service.run
+
+    expect(service.stats).to eq(api_results: 3, pages_fetched: 2)
+  end
+
+  it 'counts the credit spent when the first page is empty' do
+    stub_pages(page(listings: [], has_next_page: false))
+
+    service.run
+
+    expect(service.stats).to eq(api_results: 0, pages_fetched: 1)
+  end
+
   it 'tolerates a malformed page response' do
     stub_pages({})
 

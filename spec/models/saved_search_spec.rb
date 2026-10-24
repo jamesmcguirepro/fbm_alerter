@@ -158,6 +158,40 @@ RSpec.describe SavedSearch, type: :model do
     end
   end
 
+  describe '#marketplace_url' do
+    let(:attrs) { { query: 'mountain bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com' } }
+
+    it 'builds a city-scoped search URL with radius and price filters' do
+      search = described_class.new(
+        attrs.merge(resolved_location: 'Austin, Texas', radius_km: 25, min_price: 100, max_price: 500)
+      )
+
+      expect(search.marketplace_url).to eq(
+        'https://www.facebook.com/marketplace/austin/search/?query=mountain+bike&radius=25&minPrice=100&maxPrice=500'
+      )
+    end
+
+    it 'slugifies multi-word city names' do
+      search = described_class.new(attrs.merge(resolved_location: 'Santa Barbara, California'))
+
+      expect(search.marketplace_url).to start_with(
+        'https://www.facebook.com/marketplace/santa-barbara/search/?query=mountain+bike'
+      )
+    end
+
+    it 'falls back to the generic search URL without a resolved location' do
+      search = described_class.new(attrs)
+
+      expect(search.marketplace_url).to eq(
+        'https://www.facebook.com/marketplace/search/?query=mountain+bike&radius=65'
+      )
+    end
+
+    it 'returns nil for a blank query' do
+      expect(described_class.new(attrs.merge(query: ' ')).marketplace_url).to be_nil
+    end
+  end
+
   describe 'coordinate precision' do
     it 'rounds coordinates to 4 decimals on save' do
       search = described_class.create!(

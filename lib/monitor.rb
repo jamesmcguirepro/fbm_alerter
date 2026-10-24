@@ -27,9 +27,9 @@ class MarketplaceMonitor
 
       search_object = SearchObject.from_saved_search(saved_search:)
 
-      new_listings = execute_search(search_object:, email: saved_search.email, saved_search:)
+      result = execute_search(search_object:, email: saved_search.email, saved_search:)
 
-      send_alerts(listings: new_listings, saved_search:) if new_listings.any?
+      send_alerts(listings: result.listings, saved_search:, stats: result.stats) if result.listings.any?
     end
   ensure
     run&.finish!
@@ -64,11 +64,11 @@ class MarketplaceMonitor
 
     search_object = SearchObject.from_saved_search(saved_search:)
 
-    new_listings = execute_search(search_object:, email: saved_search.email, saved_search:)
+    result = execute_search(search_object:, email: saved_search.email, saved_search:)
 
-    send_alerts(listings: new_listings, saved_search:) if new_listings.any?
+    send_alerts(listings: result.listings, saved_search:, stats: result.stats) if result.listings.any?
 
-    new_listings
+    result.listings
   end
 
   private
@@ -87,7 +87,7 @@ class MarketplaceMonitor
   # @param [SearchObject] search_object
   # @param [String] email
   # @param [SavedSearch] saved_search the search this run belongs to, when known
-  # @return [Array<Listing>] new listings found during this search
+  # @return [SearchResult] new listings plus the API counts for this search
   def execute_search(search_object:, email: nil, saved_search: nil)
     @io.puts "\n  Searching: #{search_object.query} (#{search_object.lat}, #{search_object.long})"
 
@@ -95,25 +95,32 @@ class MarketplaceMonitor
     # credit was actually spent.
     if Config.dry_run?
       @io.puts '  ⃠ DRY RUN — API call skipped, no credit spent'
-      return []
+      return SearchResult.empty
     end
 
     # One SearchRun per API request (each page spends a credit), with the first
     # successful run recorded as the discovery run for the listings it returns.
     discovery_run = nil
-    listings = SearchService.new(search_object:).run do
+    service = SearchService.new(search_object:)
+    listings = service.run do
       next unless saved_search
 
       run = SearchRun.record(saved_search:)
       discovery_run ||= run
     end
 
-    handle_listings(listings:, search_run: discovery_run, saved_search:)
+    new_listings = handle_listings(listings:, search_run: discovery_run, saved_search:)
+
+    SearchResult.build(
+      listings: new_listings,
+      api_results: service.stats[:api_results],
+      credits_used: service.stats[:pages_fetched]
+    )
   rescue StandardError => e
     @io.puts "  ✗ Error: #{e.message}"
     # The attempt still spent a credit.
     SearchRun.record(saved_search:, success: false) if saved_search
-    []
+    SearchResult.empty
   end
 
   # Store confirmed title matches and return the ones this search has not
@@ -156,10 +163,16 @@ class MarketplaceMonitor
   end
 
   # Send alerts for new listings
-  def send_alerts(listings:, saved_search:)
+  def send_alerts(listings:, saved_search:, stats: {})
     if listings.any?
       @io.puts "\n📧 Sending alerts for #{listings.length} new listing(s)..."
-      EmailService.send_alerts(listings:, emails: [saved_search.email], query: saved_search.query)
+      EmailService.send_alerts(
+        listings:,
+        emails: [saved_search.email],
+        query: saved_search.query,
+        stats:,
+        search_url: saved_search.marketplace_url
+      )
       listings.each { |listing| Alert.record_alert(listing_id: listing.id, search_id: saved_search.id) }
     else
       @io.puts "\n✓ No new listings to alert"

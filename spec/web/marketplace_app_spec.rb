@@ -840,6 +840,9 @@ RSpec.describe MarketplaceApp do
       expect(last_response.content_type).to include('text/html')
       expect(last_response.body).to include('Preview Bike')
       expect(last_response.body).to include('<h1>bike</h1>')
+      expect(last_response.body).to include('Marketplace returned')
+      expect(last_response.body).to include('1 API credit used for this search')
+      expect(last_response.body).to include('View this search on Facebook Marketplace')
     end
 
     it 'falls back to sample listings when the database is empty' do

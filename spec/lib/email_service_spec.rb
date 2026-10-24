@@ -177,6 +177,14 @@ RSpec.describe EmailService do
       end
     end
 
+    it 'keeps listing text in a column beside the thumbnail' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('<div class="listing-body listing-body--with-thumb">')
+      end
+    end
+
     it 'shows the search query in the header' do
       call
 
@@ -218,11 +226,11 @@ RSpec.describe EmailService do
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('Listed: Oct 16, 2026')
+        expect(args[:html_body]).to include('Listed: Oct 16, 2026 at 9:30 AM')
       end
     end
 
-    it 'shows the listing date in the configured local time zone' do
+    it 'shows the listing date and time in the configured local time zone' do
       original_tz = ENV.fetch('TZ', nil)
       ENV['TZ'] = 'America/Los_Angeles'
       # 02:30 UTC is still the evening of Oct 16 in Pacific time.
@@ -231,21 +239,21 @@ RSpec.describe EmailService do
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('Listed: Oct 16, 2026')
-        expect(args[:html_body]).not_to include('Listed: Oct 17, 2026')
+        expect(args[:html_body]).to include('Listed: Oct 16, 2026 at 7:30 PM')
+        expect(args[:html_body]).not_to include('Oct 17, 2026')
       end
     ensure
       ENV['TZ'] = original_tz
     end
 
-    it 'labels the first-seen date when the listing date is unknown' do
+    it 'labels the first-seen date and time when the listing date is unknown' do
       allow(listings.first).to receive(:listed_at).and_return(nil)
       allow(listings.first).to receive(:first_seen_at).and_return(Time.new(2026, 10, 16, 9, 30))
 
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('First seen: Oct 16, 2026')
+        expect(args[:html_body]).to include('First seen: Oct 16, 2026 at 9:30 AM')
         expect(args[:html_body]).not_to include('Listed:')
       end
     end
@@ -270,6 +278,14 @@ RSpec.describe EmailService do
 
         expect(mailer).to have_received(:send_email) do |args|
           expect(args[:html_body]).not_to include('<img')
+        end
+      end
+
+      it 'does not offset the text column' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).to include('<div class="listing-body">')
         end
       end
     end
@@ -307,6 +323,39 @@ RSpec.describe EmailService do
       expect(html).to start_with('<!DOCTYPE html>')
       expect(html.strip).to end_with('</html>')
       expect(mailer).not_to have_received(:send_email)
+    end
+
+    it 'shows the API result, filtered and credit counts when given' do
+      html = described_class.render(
+        listings: [],
+        query: 'bike',
+        stats: { api_results: 10, filtered: 9, credits_used: 2 },
+        search_url: 'https://www.facebook.com/marketplace/austin/search/?query=bike&radius=65'
+      )
+
+      expect(html).to include('Marketplace returned 10 results · 9 filtered out')
+      expect(html).to include('2 API credits used for this search')
+      expect(html).to include(
+        '<a class="search-link" href="https://www.facebook.com/marketplace/austin/search/?query=bike&amp;radius=65" target="_blank">'
+      )
+    end
+
+    it 'uses the singular for one result and one credit' do
+      html = described_class.render(
+        listings: [], query: 'bike',
+        stats: { api_results: 1, filtered: 0, credits_used: 1 }
+      )
+
+      expect(html).to include('Marketplace returned 1 result ·')
+      expect(html).to include('1 API credit used for this search')
+    end
+
+    it 'omits the stats and credit lines when none are given' do
+      html = described_class.render(listings: [], query: 'bike')
+
+      expect(html).not_to include('Marketplace returned')
+      expect(html).not_to include('API credit')
+      expect(html).not_to include('View this search on Facebook Marketplace')
     end
   end
 end
