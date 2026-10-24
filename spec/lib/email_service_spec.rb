@@ -314,6 +314,39 @@ RSpec.describe EmailService do
         expect { call }.not_to raise_error
       end
     end
+
+    context 'with search details' do
+      let(:call) do
+        described_class.send_alerts(
+          listings:, emails:, query: 'bike',
+          location_label: 'Austin, TX', price_range: '$100 - $500', radius_km: 65
+        )
+      end
+
+      it 'shows the location below the query' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).to include('📍 Austin, TX')
+        end
+      end
+
+      it 'shows the price range below the query' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).to include('💰 $100 - $500')
+        end
+      end
+
+      it 'shows the search radius below the query' do
+        call
+
+        expect(mailer).to have_received(:send_email) do |args|
+          expect(args[:html_body]).to include('📏 65 km radius')
+        end
+      end
+    end
   end
 
   describe '.render' do

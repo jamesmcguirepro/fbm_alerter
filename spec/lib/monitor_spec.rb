@@ -395,7 +395,10 @@ RSpec.describe MarketplaceMonitor do
         emails: ['owner@example.com'],
         query: 'apartment',
         stats: {},
-        search_url: saved_search.marketplace_url
+        search_url: saved_search.marketplace_url,
+        location_label: saved_search.location_label,
+        price_range: '$100 - $500',
+        radius_km: 25
       )
     end
 

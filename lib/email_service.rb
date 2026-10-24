@@ -12,10 +12,17 @@ class EmailService
     # @param query [String] the search query these listings matched
     # @param stats [Hash, nil] api_results, filtered and credits_used
     # @param search_url [String, nil] link that reruns the search on Marketplace
-    def send_alerts(listings:, emails:, query:, stats: nil, search_url: nil)
+    # @param location_label [String, nil] place name or coordinates searched
+    # @param price_range [String, nil] e.g. "$100 - $500"
+    # @param radius_km [Integer, nil] search radius in kilometres
+    def send_alerts(listings:, emails:, query:, stats: nil, search_url: nil,
+                    location_label: nil, price_range: nil, radius_km: nil)
       return if listings.empty?
 
-      html_body = render(listings:, query:, stats:, search_url:)
+      html_body = render(
+        listings:, query:, stats:, search_url:,
+        location_label:, price_range:, radius_km:
+      )
       subject = subject_line(count: listings.length, query:)
 
       emails.each do |recipient|
@@ -29,9 +36,16 @@ class EmailService
     # @param query [String] the search query the listings matched
     # @param stats [Hash, nil] api_results, filtered and credits_used
     # @param search_url [String, nil] link that reruns the search on Marketplace
+    # @param location_label [String, nil] place name or coordinates searched
+    # @param price_range [String, nil] e.g. "$100 - $500"
+    # @param radius_km [Integer, nil] search radius in kilometres
     # @return [String]
-    def render(listings:, query:, stats: nil, search_url: nil)
-      html = header(count: listings.length, query:, stats:, search_url:)
+    def render(listings:, query:, stats: nil, search_url: nil,
+               location_label: nil, price_range: nil, radius_km: nil)
+      html = header(
+        count: listings.length, query:, stats:, search_url:,
+        location_label:, price_range:, radius_km:
+      )
       listings.each_with_index do |listing, index|
         html += listing_section(listing:, alternate: index.odd?)
       end
@@ -56,7 +70,16 @@ class EmailService
     end
 
     # Email header HTML, led by the search query and match count
-    def header(count:, query:, stats: nil, search_url: nil)
+    def header(count:, query:, stats: nil, search_url: nil,
+               location_label: nil, price_range: nil, radius_km: nil)
+      details = [
+        location_label && "📍 #{escape(location_label)}",
+        price_range && "💰 #{escape(price_range)}",
+        radius_km && "📏 #{radius_km} km radius"
+      ].compact.join('  ·  ')
+
+      details_html = details.empty? ? '' : %(<p class="search-details">#{details}</p>)
+
       <<~HTML
         <!DOCTYPE html>
         <html>
@@ -68,6 +91,7 @@ class EmailService
               .header { color: #111827; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 12px; }
               .header h1 { margin: 0 0 6px; font-size: 22px; }
               .header p { margin: 0; color: #6b7280; }
+              .header .search-details { margin-top: 4px; font-size: 13px; color: #6b7280; }
               .header .results { margin-top: 4px; font-size: 13px; }
               .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
@@ -85,6 +109,7 @@ class EmailService
             <div class="container">
               <div class="header">
                 <h1>#{escape(query)}</h1>
+                #{details_html}
                 <p>#{count} new listing#{'s' if count != 1}</p>
                 #{results_html(stats:)}
                 #{search_link_html(search_url:)}

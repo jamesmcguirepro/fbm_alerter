@@ -25,11 +25,21 @@ class MarketplaceApp < Sinatra::Base
     # Adds sample API counts and a real (or representative) Marketplace link so
     # the preview shows every part of the alert email.
     def preview_payload(listings:, query:, saved_search: nil)
+      price_range = if saved_search&.min_price || saved_search&.max_price
+                      parts = []
+                      parts << "$#{saved_search.min_price.to_i}" if saved_search.min_price
+                      parts << "$#{saved_search.max_price.to_i}" if saved_search.max_price
+                      parts.join(' - ')
+                    end
+
       {
         listings:,
         query:,
         stats: { api_results: listings.length + 15, filtered: 15, credits_used: 1 },
-        search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url
+        search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url,
+        location_label: saved_search&.location_label,
+        price_range:,
+        radius_km: saved_search&.radius_km || 65
       }
     end
 
