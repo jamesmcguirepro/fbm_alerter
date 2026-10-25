@@ -86,7 +86,7 @@ new_version = ARGV[0]
 
 # config/boot.rb -> VERSION constant
 boot = File.read("config/boot.rb")
-boot.sub!(/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'(\.freeze)?/, "VERSION = '#{new_version}'.freeze")
+boot.sub!(/VERSION = '[0-9]+\.[0-9]+\.[0-9]+'(\.freeze)?/, "VERSION = '#{new_version}'")
 File.write("config/boot.rb", boot)
 
 # README.md -> image tag examples and the default fallback
