@@ -111,7 +111,7 @@ RSpec.describe MarketplaceMonitor do
       expect(monitor).to have_received(:send_alerts).with(
         listings: [new_listing],
         saved_search: saved_search,
-        stats: { api_results: 4, filtered: 3, credits_used: 1 }
+        stats: { api_results: 4, filtered: 3, credits_used: 1, exact_matches: 0 }
       )
     end
 
@@ -395,6 +395,7 @@ RSpec.describe MarketplaceMonitor do
         emails: ['owner@example.com'],
         query: 'apartment',
         stats: {},
+        exact_count: nil,
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
         price_range: '$100 - $500',

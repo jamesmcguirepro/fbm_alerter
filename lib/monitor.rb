@@ -111,10 +111,14 @@ class MarketplaceMonitor
 
     new_listings = handle_listings(listings:, search_run: discovery_run, saved_search:)
 
+    matcher = ListingMatcher.new(query: search_object.query)
+    exact_matches = new_listings.count { |listing| matcher.exact_match?(title: listing.title) }
+
     SearchResult.build(
       listings: new_listings,
       api_results: service.stats[:api_results],
-      credits_used: service.stats[:pages_fetched]
+      credits_used: service.stats[:pages_fetched],
+      exact_matches:
     )
   rescue StandardError => e
     @io.puts "  ✗ Error: #{e.message}"
@@ -171,6 +175,7 @@ class MarketplaceMonitor
         emails: [saved_search.email],
         query: saved_search.query,
         stats:,
+        exact_count: stats[:exact_matches],
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
         price_range: price_range_text(saved_search),

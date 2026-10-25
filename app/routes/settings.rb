@@ -35,11 +35,12 @@ class MarketplaceApp < Sinatra::Base
       {
         listings:,
         query:,
-        stats: { api_results: listings.length + 15, filtered: 15, credits_used: 1 },
+        stats: { api_results: listings.length + 15, filtered: 15, credits_used: 1, exact_matches: listings.length },
         search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url,
         location_label: saved_search&.location_label,
         price_range:,
-        radius_km: saved_search&.radius_km || 65
+        radius_km: saved_search&.radius_km || 65,
+        exact_count: listings.length
       }
     end
 

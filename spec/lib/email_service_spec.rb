@@ -94,6 +94,16 @@ RSpec.describe EmailService do
         expect(mailer).to have_received(:send_email).with(hash_including(subject: '🔔 2 new listings for "bike"')).once
       end
 
+      it 'includes the exact match count in the subject' do
+        described_class.send_alerts(
+          listings:, emails:, query: 'bike', exact_count: 1
+        )
+
+        expect(mailer).to have_received(:send_email).with(
+          hash_including(subject: '🔔 2 new listings (1 exact) for "bike"')
+        ).once
+      end
+
       it 'alternates the row background colours' do
         call
 
@@ -189,7 +199,34 @@ RSpec.describe EmailService do
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('<h1>bike</h1>')
+        expect(args[:html_body]).to include('<h1>Search: bike</h1>')
+      end
+    end
+
+    it 'labels the query as a search' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('<h1>Search: bike</h1>')
+        expect(args[:html_body]).not_to include('<h1>bike</h1>')
+      end
+    end
+
+    it 'always shows the exact match count in the header' do
+      call
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('🎯 0 exact matches')
+      end
+    end
+
+    it 'shows the singular exact match label when there is one' do
+      described_class.send_alerts(
+        listings:, emails:, query: 'bike', exact_count: 1
+      )
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include('🎯 1 exact match')
       end
     end
 

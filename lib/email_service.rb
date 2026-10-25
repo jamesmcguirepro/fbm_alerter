@@ -10,20 +10,21 @@ class EmailService
     # @param listings [Array<ListingObject>] listings matched by this search
     # @param emails [Array<String>] recipient addresses
     # @param query [String] the search query these listings matched
-    # @param stats [Hash, nil] api_results, filtered and credits_used
+    # @param stats [Hash, nil] api_results, filtered, credits_used and exact_matches
+    # @param exact_count [Integer, nil] how many new listings contain every query keyword
     # @param search_url [String, nil] link that reruns the search on Marketplace
     # @param location_label [String, nil] place name or coordinates searched
     # @param price_range [String, nil] e.g. "$100 - $500"
     # @param radius_km [Integer, nil] search radius in kilometres
-    def send_alerts(listings:, emails:, query:, stats: nil, search_url: nil,
+    def send_alerts(listings:, emails:, query:, stats: nil, exact_count: nil, search_url: nil,
                     location_label: nil, price_range: nil, radius_km: nil)
       return if listings.empty?
 
       html_body = render(
-        listings:, query:, stats:, search_url:,
+        listings:, query:, stats:, exact_count:, search_url:,
         location_label:, price_range:, radius_km:
       )
-      subject = subject_line(count: listings.length, query:)
+      subject = subject_line(count: listings.length, query:, exact_count:)
 
       emails.each do |recipient|
         send_to_recipient(recipient:, subject:, html_body:)
@@ -34,16 +35,17 @@ class EmailService
     # preview without sending (and without spending any API credits).
     # @param listings [Array<ListingObject>]
     # @param query [String] the search query the listings matched
-    # @param stats [Hash, nil] api_results, filtered and credits_used
+    # @param stats [Hash, nil] api_results, filtered, credits_used and exact_matches
+    # @param exact_count [Integer, nil] how many new listings contain every query keyword
     # @param search_url [String, nil] link that reruns the search on Marketplace
     # @param location_label [String, nil] place name or coordinates searched
     # @param price_range [String, nil] e.g. "$100 - $500"
     # @param radius_km [Integer, nil] search radius in kilometres
     # @return [String]
-    def render(listings:, query:, stats: nil, search_url: nil,
+    def render(listings:, query:, stats: nil, exact_count: nil, search_url: nil,
                location_label: nil, price_range: nil, radius_km: nil)
       html = header(
-        count: listings.length, query:, stats:, search_url:,
+        count: listings.length, query:, stats:, exact_count:, search_url:,
         location_label:, price_range:, radius_km:
       )
       listings.each_with_index do |listing, index|
@@ -52,10 +54,12 @@ class EmailService
       html + footer(stats:)
     end
 
-    # Subject line naming the search query and the number of matches.
+    # Subject line naming the search query, the number of matches and the exact
+    # match count (every query keyword present in the title).
     # @return [String]
-    def subject_line(count:, query:)
-      "🔔 #{count} new listing#{'s' if count != 1} for \"#{query}\""
+    def subject_line(count:, query:, exact_count: nil)
+      exact = exact_count.nil? ? '' : " (#{exact_count} exact)"
+      "🔔 #{count} new listing#{'s' if count != 1}#{exact} for \"#{query}\""
     end
 
     private
@@ -70,7 +74,7 @@ class EmailService
     end
 
     # Email header HTML, led by the search query and match count
-    def header(count:, query:, stats: nil, search_url: nil,
+    def header(count:, query:, stats: nil, exact_count: nil, search_url: nil,
                location_label: nil, price_range: nil, radius_km: nil)
       details = [
         location_label && "📍 #{escape(location_label)}",
@@ -79,6 +83,9 @@ class EmailService
       ].compact.join('  ·  ')
 
       details_html = details.empty? ? '' : %(<p class="search-details">#{details}</p>)
+
+      exact_count = 0 if exact_count.nil?
+      exact_html = %(<p class="exact-match">🎯 #{exact_count} exact match#{'es' if exact_count != 1}</p>)
 
       <<~HTML
         <!DOCTYPE html>
@@ -92,6 +99,7 @@ class EmailService
               .header h1 { margin: 0 0 6px; font-size: 22px; }
               .header p { margin: 0; color: #6b7280; }
               .header .search-details { margin-top: 4px; font-size: 13px; color: #6b7280; }
+              .header .exact-match { margin-top: 4px; font-size: 13px; color: #6b7280; }
               .header .results { margin-top: 4px; font-size: 13px; }
               .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
@@ -108,8 +116,9 @@ class EmailService
           <body>
             <div class="container">
               <div class="header">
-                <h1>#{escape(query)}</h1>
+                <h1>Search: #{escape(query)}</h1>
                 #{details_html}
+                #{exact_html}
                 <p>#{count} new listing#{'s' if count != 1}</p>
                 #{results_html(stats:)}
                 #{search_link_html(search_url:)}

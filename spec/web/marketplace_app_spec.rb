@@ -699,7 +699,7 @@ RSpec.describe MarketplaceApp do
     it 'sends an email in the alert format' do
       expect(Mailer).to receive(:send_email) do |args|
         expect(args[:subject]).to include('road bike')
-        expect(args[:html_body]).to include('<h1>road bike</h1>')
+        expect(args[:html_body]).to include('<h1>Search: road bike</h1>')
       end
 
       post '/settings/test-email', { email: 'dest@example.com' }
@@ -839,7 +839,8 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.content_type).to include('text/html')
       expect(last_response.body).to include('Preview Bike')
-      expect(last_response.body).to include('<h1>bike</h1>')
+      expect(last_response.body).to include('<h1>Search: bike</h1>')
+      expect(last_response.body).to include('🎯 1 exact match')
       expect(last_response.body).to include('Marketplace returned')
       expect(last_response.body).to include('1 API credit used for this search')
       expect(last_response.body).to include('View this search on Facebook Marketplace')

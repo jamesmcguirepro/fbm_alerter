@@ -32,6 +32,15 @@ class ListingMatcher
     @keywords.any? { |keyword| normalized_title.include?(keyword) }
   end
 
+  # @param title [String, nil]
+  # @return [Boolean] true when the title contains ALL query keywords
+  def exact_match?(title:)
+    return false if @keywords.empty?
+
+    normalized_title = normalize(text: title)
+    @keywords.all? { |keyword| normalized_title.include?(keyword) }
+  end
+
   private
 
   # Downcase and replace nickname words with their canonical make. Splitting on
