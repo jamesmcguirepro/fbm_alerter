@@ -81,7 +81,7 @@ class EmailService
       # Lead line: Found N new listing(s) (M exact) between $min and $max for "query"
       lead = "Found #{count} new listing#{'s' if count != 1} (#{exact_count} exact)"
       lead << " #{escape(price_range)}" if price_range
-      lead << %( for "#{escape(query)}")
+      lead << " for #{escape(query)}"
 
       # Location line: 📍450 km radius of Santa Barbara, California
       location_line = if location_label || radius_km
@@ -110,7 +110,6 @@ class EmailService
               .header h1 { margin: 0 0 8px; font-size: 18px; }
               .header .search-location { margin: 0 0 12px; font-size: 13px; color: #6b7280; }
               .header .results { margin: 0; font-size: 13px; color: #6b7280; }
-              .header .email-version { margin: 0; font-size: 11px; color: #9ca3af; }
               .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
               .listing.alt { background: #f1f3f5; }
@@ -130,7 +129,6 @@ class EmailService
                 #{location_line && %(<p class="search-location">#{location_line}</p>)}
                 #{results_line}
                 #{search_link_html(search_url:)}
-                <p class="email-version">Marketplace Monitor v#{VERSION}</p>
               </div>
       HTML
     end

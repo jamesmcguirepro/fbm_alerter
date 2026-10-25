@@ -199,7 +199,7 @@ RSpec.describe EmailService do
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('<h1>Found 1 new listing (0 exact) for "bike"</h1>')
+        expect(args[:html_body]).to include('<h1>Found 1 new listing (0 exact) for bike</h1>')
       end
     end
 
@@ -210,7 +210,7 @@ RSpec.describe EmailService do
 
       expect(mailer).to have_received(:send_email) do |args|
         expect(args[:html_body]).to include(
-          '<h1>Found 1 new listing (0 exact) between $100 and $500 for "bike"</h1>'
+          '<h1>Found 1 new listing (0 exact) between $100 and $500 for bike</h1>'
         )
       end
     end
@@ -385,7 +385,7 @@ RSpec.describe EmailService do
 
         expect(mailer).to have_received(:send_email) do |args|
           expect(args[:html_body]).to include(
-            '<h1>Found 1 new listing (0 exact) between $100 and $500 for "bike"</h1>'
+            '<h1>Found 1 new listing (0 exact) between $100 and $500 for bike</h1>'
           )
         end
       end

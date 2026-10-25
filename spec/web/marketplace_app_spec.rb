@@ -699,7 +699,7 @@ RSpec.describe MarketplaceApp do
     it 'sends an email in the alert format' do
       expect(Mailer).to receive(:send_email) do |args|
         expect(args[:subject]).to include('road bike')
-        expect(args[:html_body]).to include('<h1>Found 2 new listings (2 exact) for "road bike"</h1>')
+        expect(args[:html_body]).to include('<h1>Found 2 new listings (2 exact) for road bike</h1>')
       end
 
       post '/settings/test-email', { email: 'dest@example.com' }
@@ -839,7 +839,7 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.content_type).to include('text/html')
       expect(last_response.body).to include('Preview Bike')
-      expect(last_response.body).to include('<h1>Found 1 new listing (1 exact) for "bike"</h1>')
+      expect(last_response.body).to include('<h1>Found 1 new listing (1 exact) for bike</h1>')
       expect(last_response.body).to include('📍65 km radius')
       expect(last_response.body).to include('Subject:')
       expect(last_response.body).to include('🔔 1 new listing (1 exact) for &quot;bike&quot;')
