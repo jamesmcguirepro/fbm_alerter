@@ -1,4 +1,4 @@
-<h1>Settings</h1>
+<h1>Settings <span class="settings-version">v<%= VERSION %></span></h1>
 
 <div class="card">
   <h2>Configuration</h2>
@@ -11,7 +11,6 @@
     <tr><td>SMTP_USERNAME</td><td><%= Config.smtp_username %></td></tr>
     <tr><td>Database</td><td><%= ActiveRecord::Base.connection_db_config.database %></td></tr>
     <tr><td>Environment</td><td><%= ENV['RUBY_ENV'] %></td></tr>
-    <tr><td>Version</td><td><%= VERSION %></td></tr>
   </table>
 </div>
 

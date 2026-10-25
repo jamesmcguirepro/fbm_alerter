@@ -110,6 +110,7 @@ class EmailService
               .header h1 { margin: 0 0 8px; font-size: 18px; }
               .header .search-location { margin: 0 0 12px; font-size: 13px; color: #6b7280; }
               .header .results { margin: 0; font-size: 13px; color: #6b7280; }
+              .header .email-version { margin: 0; font-size: 11px; color: #9ca3af; }
               .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
               .listing.alt { background: #f1f3f5; }
@@ -129,6 +130,7 @@ class EmailService
                 #{location_line && %(<p class="search-location">#{location_line}</p>)}
                 #{results_line}
                 #{search_link_html(search_url:)}
+                <p class="email-version">Marketplace Monitor v#{VERSION}</p>
               </div>
       HTML
     end
@@ -204,7 +206,7 @@ class EmailService
 
       <<~HTML
               <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
-                <p>Marketplace Monitor • Automated Email Alert</p>#{credit_line}
+                <p>Marketplace Monitor v#{VERSION} • Automated Email Alert</p>#{credit_line}
                 <p>Sent by #{escape(Socket.gethostname)}</p>
               </div>
             </div>

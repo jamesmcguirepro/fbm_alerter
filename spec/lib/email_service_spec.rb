@@ -137,7 +137,7 @@ RSpec.describe EmailService do
 
       expect(mailer).
         to have_received(:send_email).
-        with(hash_including(html_body: a_string_including("Marketplace Monitor • Automated Email Alert"))).
+        with(hash_including(html_body: a_string_including("Marketplace Monitor v#{VERSION} • Automated Email Alert"))).
         once
     end
 
