@@ -36,6 +36,7 @@ class MarketplaceApp < Sinatra::Base
         listings:,
         query:,
         stats: { api_results: listings.length + 15, filtered: 15, credits_used: 1, exact_matches: listings.length },
+        subject: EmailService.subject_line(count: listings.length, query:, exact_count: listings.length),
         search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url,
         location_label: saved_search&.location_label,
         price_range:,
@@ -90,10 +91,16 @@ class MarketplaceApp < Sinatra::Base
   end
 
   # Render the alert email in the browser so its layout can be iterated on
-  # without sending mail or running any searches.
+  # without sending mail or running any searches. The subject line is shown as
+  # a banner above the email so it's visible at a glance while iterating.
   get '/settings/email-preview' do
     content_type 'text/html'
-    EmailService.render(**preview_email)
+    email = preview_email
+    subject = Rack::Utils.escape_html(email.delete(:subject))
+    html = EmailService.render(**email)
+    # Insert the subject banner inside <body> so the result stays valid HTML.
+    banner = %(<div style="background:#eef2ff;border:1px solid #c7cdfe;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#1f2933;"><strong>Subject:</strong> #{subject}</div>)
+    html.sub(%r{<body>}, "<body>\n#{banner}")
   end
 
   post '/settings/test-email' do
@@ -104,6 +111,7 @@ class MarketplaceApp < Sinatra::Base
     else
       begin
         email = preview_email
+        email.delete(:subject)
         Mailer.send_email(
           to:,
           from: Config.email_from,
