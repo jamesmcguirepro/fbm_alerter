@@ -23,14 +23,9 @@ RUN apt-get update -qq && \
       build-essential \
       libsqlite3-dev \
       pkg-config \
+    && apt-get install -y --no-install-recommends libsqlite3-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-
-# Runtime-only system package: the shared SQLite library.
-RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends \
-      libsqlite3-0 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy the application code
 COPY . .
