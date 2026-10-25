@@ -34,7 +34,7 @@ loader.eager_load
 # Must be set before connecting: Database.connect picks the config section by env.
 ENV['RUBY_ENV'] ||= 'development'
 
-VERSION = '1.0.18'
+VERSION = '1.0.19'
 
 # --- Database -----------------------------------------------------------------
 
