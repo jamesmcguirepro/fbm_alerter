@@ -195,38 +195,48 @@ RSpec.describe EmailService do
       end
     end
 
-    it 'shows the search query in the header' do
+    it 'leads with the new listing count and exact match count' do
       call
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('<h1>Search: bike</h1>')
+        expect(args[:html_body]).to include('<h1>Found 1 new listing (0 exact) for "bike"</h1>')
       end
     end
 
-    it 'labels the query as a search' do
-      call
-
-      expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('<h1>Search: bike</h1>')
-        expect(args[:html_body]).not_to include('<h1>bike</h1>')
-      end
-    end
-
-    it 'always shows the exact match count in the header' do
-      call
-
-      expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('🎯 0 exact matches')
-      end
-    end
-
-    it 'shows the singular exact match label when there is one' do
+    it 'includes price range in the lead line when provided' do
       described_class.send_alerts(
-        listings:, emails:, query: 'bike', exact_count: 1
+        listings:, emails:, query: 'bike', price_range: 'between $100 and $500'
       )
 
       expect(mailer).to have_received(:send_email) do |args|
-        expect(args[:html_body]).to include('🎯 1 exact match')
+        expect(args[:html_body]).to include(
+          '<h1>Found 1 new listing (0 exact) between $100 and $500 for "bike"</h1>'
+        )
+      end
+    end
+
+    it 'shows the location as "N km radius of Place"' do
+      described_class.send_alerts(
+        listings:, emails:, query: 'bike', location_label: 'Austin, TX', radius_km: 65
+      )
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include(
+          '<p class="search-location">📍65 km radius of Austin, TX</p>'
+        )
+      end
+    end
+
+    it 'shows results line with pipe separator and "as not relevant" wording' do
+      described_class.send_alerts(
+        listings:, emails:, query: 'bike',
+        stats: { api_results: 10, filtered: 9, credits_used: 2 }
+      )
+
+      expect(mailer).to have_received(:send_email) do |args|
+        expect(args[:html_body]).to include(
+          '<p class="results">Marketplace returned 10 results | 9 filtered out as not relevant</p>'
+        )
       end
     end
 
@@ -356,31 +366,35 @@ RSpec.describe EmailService do
       let(:call) do
         described_class.send_alerts(
           listings:, emails:, query: 'bike',
-          location_label: 'Austin, TX', price_range: '$100 - $500', radius_km: 65
+          location_label: 'Austin, TX', price_range: 'between $100 and $500', radius_km: 65
         )
       end
 
-      it 'shows the location below the query' do
+      it 'shows the location line' do
         call
 
         expect(mailer).to have_received(:send_email) do |args|
-          expect(args[:html_body]).to include('📍 Austin, TX')
+          expect(args[:html_body]).to include(
+            '<p class="search-location">📍65 km radius of Austin, TX</p>'
+          )
         end
       end
 
-      it 'shows the price range below the query' do
+      it 'includes price range in the lead line' do
         call
 
         expect(mailer).to have_received(:send_email) do |args|
-          expect(args[:html_body]).to include('💰 $100 - $500')
+          expect(args[:html_body]).to include(
+            '<h1>Found 1 new listing (0 exact) between $100 and $500 for "bike"</h1>'
+          )
         end
       end
 
-      it 'shows the search radius below the query' do
+      it 'shows the search radius in the location line' do
         call
 
         expect(mailer).to have_received(:send_email) do |args|
-          expect(args[:html_body]).to include('📏 65 km radius')
+          expect(args[:html_body]).to include('65 km radius')
         end
       end
     end
@@ -403,7 +417,7 @@ RSpec.describe EmailService do
         search_url: 'https://www.facebook.com/marketplace/austin/search/?query=bike&radius=65'
       )
 
-      expect(html).to include('Marketplace returned 10 results · 9 filtered out')
+      expect(html).to include('Marketplace returned 10 results | 9 filtered out as not relevant')
       expect(html).to include('2 API credits used for this search')
       expect(html).to include(
         '<a class="search-link" href="https://www.facebook.com/marketplace/austin/search/?query=bike&amp;radius=65" target="_blank">'
@@ -416,7 +430,7 @@ RSpec.describe EmailService do
         stats: { api_results: 1, filtered: 0, credits_used: 1 }
       )
 
-      expect(html).to include('Marketplace returned 1 result ·')
+      expect(html).to include('Marketplace returned 1 result |')
       expect(html).to include('1 API credit used for this search')
     end
 

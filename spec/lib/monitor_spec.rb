@@ -398,7 +398,7 @@ RSpec.describe MarketplaceMonitor do
         exact_count: nil,
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
-        price_range: '$100 - $500',
+        price_range: 'between $100 and $500',
         radius_km: 25
       )
     end

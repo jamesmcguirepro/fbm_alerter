@@ -187,13 +187,13 @@ class MarketplaceMonitor
     end
   end
 
-  # Format a saved search's price bounds as "$min - $max", or nil if neither set.
+  # Format a saved search's price bounds as "between $min and $max", or nil if neither set.
   def price_range_text(saved_search)
     parts = []
     parts << "$#{saved_search.min_price.to_i}" if saved_search.min_price
     parts << "$#{saved_search.max_price.to_i}" if saved_search.max_price
     return nil if parts.empty?
 
-    parts.join(' - ')
+    "between #{parts.join(' and ')}"
   end
 end

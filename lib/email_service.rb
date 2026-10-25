@@ -73,19 +73,30 @@ class EmailService
       puts "✗ Failed to send email to #{recipient}: #{e.message}"
     end
 
-    # Email header HTML, led by the search query and match count
+    # Email header HTML, led by the "Found N listings" summary line.
     def header(count:, query:, stats: nil, exact_count: nil, search_url: nil,
                location_label: nil, price_range: nil, radius_km: nil)
-      details = [
-        location_label && "📍 #{escape(location_label)}",
-        price_range && "💰 #{escape(price_range)}",
-        radius_km && "📏 #{radius_km} km radius"
-      ].compact.join('  ·  ')
-
-      details_html = details.empty? ? '' : %(<p class="search-details">#{details}</p>)
-
       exact_count = 0 if exact_count.nil?
-      exact_html = %(<p class="exact-match">🎯 #{exact_count} exact match#{'es' if exact_count != 1}</p>)
+
+      # Lead line: Found N new listing(s) (M exact) between $min and $max for "query"
+      lead = "Found #{count} new listing#{'s' if count != 1} (#{exact_count} exact)"
+      lead << " #{escape(price_range)}" if price_range
+      lead << %( for "#{escape(query)}")
+
+      # Location line: 📍450 km radius of Santa Barbara, California
+      location_line = if location_label || radius_km
+        parts = []
+        parts << "📍#{radius_km} km radius" if radius_km
+        parts << "of #{escape(location_label)}" if location_label
+        parts.join(' ')
+      end
+
+      # Results line: Marketplace returned 19 results | 15 filtered out as not relevant
+      results_line = if stats && !stats[:api_results].nil?
+        results = stats[:api_results].to_i
+        filtered = stats[:filtered].to_i
+        %(<p class="results">Marketplace returned #{results} #{results == 1 ? 'result' : 'results'} | #{filtered} filtered out as not relevant</p>)
+      end
 
       <<~HTML
         <!DOCTYPE html>
@@ -96,11 +107,9 @@ class EmailService
               body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px 0; }
               .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; }
               .header { color: #111827; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 12px; }
-              .header h1 { margin: 0 0 6px; font-size: 22px; }
-              .header p { margin: 0; color: #6b7280; }
-              .header .search-details { margin-top: 4px; font-size: 13px; color: #6b7280; }
-              .header .exact-match { margin-top: 4px; font-size: 13px; color: #6b7280; }
-              .header .results { margin-top: 4px; font-size: 13px; }
+              .header h1 { margin: 0 0 8px; font-size: 18px; }
+              .header .search-location { margin: 0 0 12px; font-size: 13px; color: #6b7280; }
+              .header .results { margin: 0; font-size: 13px; color: #6b7280; }
               .header .search-link { display: inline-block; margin-top: 10px; color: #007bff; font-size: 14px; font-weight: bold; text-decoration: none; }
               .listing { display: block; padding: 14px; border-radius: 6px; text-decoration: none; color: #111827; margin-bottom: 8px; }
               .listing.alt { background: #f1f3f5; }
@@ -116,24 +125,12 @@ class EmailService
           <body>
             <div class="container">
               <div class="header">
-                <h1>Search: #{escape(query)}</h1>
-                #{details_html}
-                #{exact_html}
-                <p>#{count} new listing#{'s' if count != 1}</p>
-                #{results_html(stats:)}
+                <h1>#{lead}</h1>
+                #{location_line && %(<p class="search-location">#{location_line}</p>)}
+                #{results_line}
                 #{search_link_html(search_url:)}
               </div>
       HTML
-    end
-
-    # How many raw results the API returned and how many the search discarded,
-    # so the reader can see that the alert is a filtered subset.
-    def results_html(stats:)
-      return '' if stats.nil? || stats[:api_results].nil?
-
-      results = stats[:api_results].to_i
-      filtered = stats[:filtered].to_i
-      %(<p class="results">Marketplace returned #{results} #{results == 1 ? 'result' : 'results'} · #{filtered} filtered out</p>)
     end
 
     # Link that opens the same query, place and filters on Facebook Marketplace.

@@ -29,7 +29,7 @@ class MarketplaceApp < Sinatra::Base
                       parts = []
                       parts << "$#{saved_search.min_price.to_i}" if saved_search.min_price
                       parts << "$#{saved_search.max_price.to_i}" if saved_search.max_price
-                      parts.join(' - ')
+                      "between #{parts.join(' and ')}"
                     end
 
       {
