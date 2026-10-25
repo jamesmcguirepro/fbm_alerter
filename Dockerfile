@@ -1,26 +1,36 @@
 # syntax=docker/dockerfile:1
 FROM ruby:4.0.6-slim
 
-# Install system dependencies for native gems (sqlite3, etc.) and health checks
+# Skip gem documentation to save space
+RUN echo 'gem: --no-document' > /etc/gemrc
+
+WORKDIR /app
+
+# Install gems. The `date` gem (a dependency of mail → net-imap) has no
+# precompiled binary for aarch64-linux, so build tools are needed at build
+# time. They are installed, used, then purged in the same RUN layer so they
+# do not bloat the final image. At runtime only libsqlite3-0 is required.
+COPY Gemfile Gemfile.lock ./
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
       build-essential \
       libsqlite3-dev \
       pkg-config \
-      git \
-      curl \
+    && gem install bundler \
+    && bundle config set --local without 'development test' \
+    && bundle install \
+    && apt-get purge -y --auto-remove \
+      build-essential \
+      libsqlite3-dev \
+      pkg-config \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Runtime-only system package: the shared SQLite library.
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+      libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
-WORKDIR /app
-
-# Install bundler first
-RUN gem install bundler
-
-# Copy Gemfile and install gems (runtime only; dev/test gems excluded)
-COPY Gemfile Gemfile.lock ./
-RUN bundle config set --local without 'development test' && \
-    bundle install
 
 # Copy the application code
 COPY . .
@@ -33,8 +43,9 @@ RUN mkdir -p /app/storage && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 9292
 
+# curl is not installed; use Ruby's net/http for the health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -fsS http://localhost:9292/health || exit 1
+  CMD ruby -e "require 'net/http'; require 'uri'; exit(Net::HTTP.get_response(URI('http://localhost:9292/health')).code == '200' ? 0 : 1)"
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["exec"]
