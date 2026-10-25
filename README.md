@@ -83,6 +83,31 @@ docker buildx build \
 
 `--provenance=false` keeps the image a clean two-manifest list: the `unknown/unknown` attestation entries Buildx adds by default confuse older Docker engines (Synology's, for instance). The image intentionally contains no secrets or data — `.env` and `storage/*.sqlite3*` are excluded by `.dockerignore`.
 
+### Issuing a release
+
+Releases are handled with `script/release`, which bumps the semantic version across the repo, commits, tags, pushes to GitHub, and builds/pushes the multi-arch Docker image:
+
+```bash
+# Bump the patch version (1.0.17 → 1.0.18)
+./script/release patch
+
+# Bump the minor version (1.0.17 → 1.1.0)
+./script/release minor
+
+# Bump the major version (1.0.17 → 2.0.0)
+./script/release major
+```
+
+The script:
+
+1. Requires a clean working tree on `main`.
+2. Reads the current `VERSION` from `config/boot.rb` and bumps major/minor/patch.
+3. Updates the version everywhere it appears: `config/boot.rb`, `README.md`, `.env.example`, and `app/views/layout.erb`.
+4. Commits (`chore: release vX.Y.Z`), tags (`vX.Y.Z`), and pushes branch + tags to `origin`.
+5. Builds and pushes the multi-arch image (`linux/amd64` + `linux/arm64`) via `docker buildx build --push`, tagged with the new version and `latest`.
+
+You'll need Docker Buildx set up and be logged into Docker Hub (`docker login`) for the build/push step to succeed.
+
 ### Running on Synology/QNAP NAS
 
 DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed). Two ways to deploy:
