@@ -63,15 +63,20 @@ class SociaVaultClient
       { listings: [], cursor: nil, has_next_page: false }
     end
 
-    # Build request parameters from a SearchObject.
+    # Build request parameters from a SearchObject. Saved searches store miles;
+    # the API documents its radius in kilometres, so this is the single place
+    # the unit changes.
     def build_params(search_object:, cursor: nil, count: 100)
       params = {
         query: search_object.query,
         lat: search_object.lat,
         lng: search_object.long,
-        radius_km: search_object.radius_km,
         count:
       }
+
+      if search_object.radius_mi
+        params[:radius_km] = Distance.miles_to_km(search_object.radius_mi).round
+      end
 
       date_listed = Config.date_listed
       params[:date_listed] = date_listed if date_listed

@@ -12,17 +12,10 @@
       <label>Query <span class="label-hint">e.g. mountain bike</span></label>
       <input type="text" name="query" value="<%= escape_html(@search&.query || '') %>" required>
     </div>
+    <%= erb :'searches/_location_fields', layout: false %>
     <div class="field">
-      <label>Latitude</label>
-      <input type="number" step="any" name="lat" value="<%= escape_html(@search&.lat || '') %>" required>
-    </div>
-    <div class="field">
-      <label>Longitude</label>
-      <input type="number" step="any" name="long" value="<%= escape_html(@search&.long || '') %>" required>
-    </div>
-    <div class="field">
-      <label>Radius (km) <span class="label-hint">5–1000</span></label>
-      <input type="number" min="5" max="1000" name="radius_km" value="<%= escape_html(@search&.radius_km || 65) %>" required>
+      <label>Radius (miles) <span class="label-hint">1–500</span></label>
+      <input type="number" min="1" max="500" name="radius_mi" value="<%= escape_html(@search&.radius_mi || 40) %>" required>
     </div>
     <div class="field">
       <label>Min price</label>

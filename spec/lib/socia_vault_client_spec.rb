@@ -13,7 +13,7 @@ RSpec.describe SociaVaultClient do
       long: -74.0060,
       min_price: 100,
       max_price: 500,
-      radius_km: 25,
+      radius_mi: 25,
       condition: nil,
       delivery_method: nil
     )
@@ -198,12 +198,12 @@ RSpec.describe SociaVaultClient do
       expect { described_class.search_page(search_object:) }.to raise_error(/Server Error/)
     end
 
-    it 'includes radius_km in request' do
+    it 'converts miles to radius_km in the request' do
       described_class.search_page(search_object:)
 
       expect(HTTParty).to have_received(:get).with(
         anything,
-        hash_including(query: hash_including(radius_km: 25))
+        hash_including(query: hash_including(radius_km: 40))
       )
     end
 
@@ -353,7 +353,7 @@ RSpec.describe SociaVaultClient do
       long: -74.0060,
       min_price: 100,
       max_price: 500,
-      radius_km: 25,
+      radius_mi: 25,
       condition: nil,
       delivery_method: nil
     }

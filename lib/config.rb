@@ -35,6 +35,15 @@ class Config
       %w[1 true yes on].include?(ENV['DRY_RUN'].to_s.strip.downcase)
     end
 
+    # Nominatim endpoint used for city lookups and reverse geocoding. The
+    # public service can be swapped for a self-hosted/proxied instance without
+    # a code change, which its usage policy asks for.
+    def nominatim_url
+      url = ENV['NOMINATIM_URL'].to_s.strip
+      url = 'https://nominatim.openstreetmap.org' if url.empty?
+      url.sub(%r{/+\z}, '')
+    end
+
     # Windows SociaVault accepts for date_listed, from its Marketplace search
     # endpoint. These are the API's documented values, not our own scheme.
     DATE_LISTED_VALUES = %w[all 1 7 30 last_24_hours last_7_days last_30_days].freeze

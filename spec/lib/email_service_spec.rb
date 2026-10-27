@@ -215,14 +215,14 @@ RSpec.describe EmailService do
       end
     end
 
-    it 'shows the location as "N km radius of Place"' do
+    it 'shows the location as "N mi radius of Place"' do
       described_class.send_alerts(
-        listings:, emails:, query: 'bike', location_label: 'Austin, TX', radius_km: 65
+        listings:, emails:, query: 'bike', location_label: 'Austin, TX', radius_mi: 40
       )
 
       expect(mailer).to have_received(:send_email) do |args|
         expect(args[:html_body]).to include(
-          '<p class="search-location">📍65 km radius of Austin, TX</p>'
+          '<p class="search-location">📍40 mi radius of Austin, TX</p>'
         )
       end
     end
@@ -366,7 +366,7 @@ RSpec.describe EmailService do
       let(:call) do
         described_class.send_alerts(
           listings:, emails:, query: 'bike',
-          location_label: 'Austin, TX', price_range: 'between $100 and $500', radius_km: 65
+          location_label: 'Austin, TX', price_range: 'between $100 and $500', radius_mi: 40
         )
       end
 
@@ -375,7 +375,7 @@ RSpec.describe EmailService do
 
         expect(mailer).to have_received(:send_email) do |args|
           expect(args[:html_body]).to include(
-            '<p class="search-location">📍65 km radius of Austin, TX</p>'
+            '<p class="search-location">📍40 mi radius of Austin, TX</p>'
           )
         end
       end
@@ -394,7 +394,7 @@ RSpec.describe EmailService do
         call
 
         expect(mailer).to have_received(:send_email) do |args|
-          expect(args[:html_body]).to include('65 km radius')
+          expect(args[:html_body]).to include('40 mi radius')
         end
       end
     end

@@ -15,7 +15,7 @@ RSpec.describe SearchService do
       long: -74.0060,
       min_price: nil,
       max_price: nil,
-      radius_km: 65,
+      radius_mi: 65,
       condition: nil,
       delivery_method: nil
     )

@@ -1,0 +1,25 @@
+<% if @places.any? %>
+  <p class="label-hint">Select the closest match:</p>
+  <ul class="location-results-list">
+    <% @places.each do |place| %>
+      <li>
+        <button type="button" class="location-result"
+                data-location-pick
+                data-lat="<%= place.lat %>"
+                data-long="<%= place.long %>"
+                data-name="<%= escape_html(place.name) %>">
+          <span class="location-result__name"><%= escape_html(place.display_name) %></span>
+          <span class="location-result__coords"><%= format_coordinates(place.lat, place.long) %></span>
+        </button>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="muted">
+    <% if @query.present? %>
+      No places found for “<%= escape_html(@query) %>”. Check the spelling or enter coordinates manually.
+    <% else %>
+      Enter a city, state or ZIP code first.
+    <% end %>
+  </p>
+<% end %>

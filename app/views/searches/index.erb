@@ -1,33 +1,37 @@
-<h1>Searches</h1>
+<div class="page">
+  <h1>Searches</h1>
 
-<div class="actions">
-  <a href="/searches/new" class="button button--primary">+ Add search</a>
-  <% if @show_inactive %>
-    <a href="/searches" class="button button--secondary">Hide inactive</a>
-  <% else %>
-    <a href="/searches?inactive=1" class="button button--secondary">Show inactive</a>
-  <% end %>
-</div>
-
-<% if @searches.any? %>
-<table>
-  <thead>
-    <tr>
-      <th>Name</th><th>Query</th><th>Location</th><th>Price</th><th>Email</th><th>Calls</th><th>Status</th><th>Run now</th><th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% @searches.each do |search| %>
-      <%= erb :'searches/_row', layout: false, locals: { search: search } %>
+  <div class="actions">
+    <a href="/searches/new" class="button button--primary">+ Add search</a>
+    <% if @show_inactive %>
+      <a href="/searches" class="button button--secondary">Hide inactive</a>
+    <% else %>
+      <a href="/searches?inactive=1" class="button button--secondary">Show inactive</a>
     <% end %>
-  </tbody>
-</table>
-<% else %>
-<div class="empty">
-  <% if @show_inactive %>
-    No searches saved yet. Add one to get started.
+  </div>
+
+  <% if @searches.any? %>
+  <div class="table-scroll">
+  <table class="searches-table">
+    <thead>
+      <tr>
+        <th>Name</th><th>Query</th><th>Location</th><th>Radius</th><th>Price</th><th>Email</th><th>Calls</th><th>Status</th><th>Facebook</th><th>Run now</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @searches.each do |search| %>
+        <%= erb :'searches/_row', layout: false, locals: { search: search } %>
+      <% end %>
+    </tbody>
+  </table>
+  </div>
   <% else %>
-    No active searches. <a href="/searches?inactive=1">Show inactive</a>.
+  <div class="empty">
+    <% if @show_inactive %>
+      No searches saved yet. Add one to get started.
+    <% else %>
+      No active searches. <a href="/searches?inactive=1">Show inactive</a>.
+    <% end %>
+  </div>
   <% end %>
 </div>
-<% end %>

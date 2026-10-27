@@ -40,7 +40,7 @@ class MarketplaceApp < Sinatra::Base
         search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url,
         location_label: saved_search&.location_label,
         price_range:,
-        radius_km: saved_search&.radius_km || 65,
+        radius_mi: saved_search&.radius_mi || 40,
         exact_count: listings.length
       }
     end

@@ -2,7 +2,7 @@
 
 class SearchObject < Data.define(
   :query, :lat, :long, :min_price, :max_price,
-  :radius_km, :condition, :delivery_method, :id
+  :radius_mi, :condition, :delivery_method, :id
 )
   def self.from_saved_search(saved_search:)
     new(
@@ -12,7 +12,7 @@ class SearchObject < Data.define(
       long: saved_search.long,
       min_price: saved_search.min_price,
       max_price: saved_search.max_price,
-      radius_km: saved_search.radius_km,
+      radius_mi: saved_search.radius_mi,
       condition: saved_search.condition,
       delivery_method: saved_search.delivery_method
     )

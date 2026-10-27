@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marketplace Monitor</title>
-  <link rel="stylesheet" href="/css/app.css?v=5">
+  <link rel="stylesheet" href="/css/app.css?v=8">
   <script src="/js/htmx.min.js"></script>
 </head>
 <body>
@@ -49,6 +49,10 @@
   <footer class="footer">
     <div class="container">
       <small>Marketplace Monitor v<%= ::VERSION %></small>
+      <small>
+        Location data ©
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+      </small>
     </div>
   </footer>
 
@@ -73,6 +77,64 @@
     document.addEventListener('change', function (event) {
       var select = event.target.closest('select[data-autosubmit]');
       if (select && select.form) select.form.submit();
+    });
+
+    // Location picker: a candidate fills the form's coordinate fields. Lookups
+    // only happen when Find is pressed (Nominatim forbids autocomplete).
+    document.addEventListener('click', function (event) {
+      var option = event.target.closest('[data-location-pick]');
+      if (!option) return;
+      var form = option.closest('form');
+      if (!form) return;
+
+      var lat = option.getAttribute('data-lat');
+      var long = option.getAttribute('data-long');
+      var name = option.getAttribute('data-name');
+      var fields = {
+        lat: form.querySelector('[name="lat"]'),
+        long: form.querySelector('[name="long"]'),
+        resolved: form.querySelector('[name="resolved_location"]'),
+        query: form.querySelector('[name="location_query"]')
+      };
+      if (fields.lat) fields.lat.value = lat;
+      if (fields.long) fields.long.value = long;
+      if (fields.resolved) fields.resolved.value = name;
+      if (fields.query) fields.query.value = name;
+
+      var selected = form.querySelector('[data-location-selected]');
+      if (selected) {
+        selected.textContent = 'Using ' + name + ' — ' +
+          Number(lat).toFixed(4) + ', ' + Number(long).toFixed(4);
+      }
+    });
+
+    // Editing the location text invalidates a previous pick; editing the
+    // coordinates invalidates the stored place name.
+    document.addEventListener('input', function (event) {
+      var form = event.target.closest('form');
+      if (!form) return;
+      var selected = form.querySelector('[data-location-selected]');
+
+      if (event.target.matches('[name="location_query"]')) {
+        ['lat', 'long', 'resolved_location'].forEach(function (name) {
+          var field = form.querySelector('[name="' + name + '"]');
+          if (field) field.value = '';
+        });
+        var results = form.querySelector('#location-results');
+        if (results) results.innerHTML = '';
+        if (selected) selected.textContent = '';
+      } else if (event.target.matches('[name="lat"], [name="long"]')) {
+        var resolved = form.querySelector('[name="resolved_location"]');
+        if (resolved) resolved.value = '';
+
+        var lat = form.querySelector('[name="lat"]');
+        var long = form.querySelector('[name="long"]');
+        if (selected) {
+          selected.textContent = (lat && lat.value && long && long.value)
+            ? 'Using coordinates ' + Number(lat.value).toFixed(4) + ', ' + Number(long.value).toFixed(4)
+            : '';
+        }
+      }
     });
   </script>
 </body>

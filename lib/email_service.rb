@@ -15,14 +15,14 @@ class EmailService
     # @param search_url [String, nil] link that reruns the search on Marketplace
     # @param location_label [String, nil] place name or coordinates searched
     # @param price_range [String, nil] e.g. "$100 - $500"
-    # @param radius_km [Integer, nil] search radius in kilometres
+    # @param radius_mi [Integer, nil] search radius in miles
     def send_alerts(listings:, emails:, query:, stats: nil, exact_count: nil, search_url: nil,
-                    location_label: nil, price_range: nil, radius_km: nil)
+                    location_label: nil, price_range: nil, radius_mi: nil)
       return if listings.empty?
 
       html_body = render(
         listings:, query:, stats:, exact_count:, search_url:,
-        location_label:, price_range:, radius_km:
+        location_label:, price_range:, radius_mi:
       )
       subject = subject_line(count: listings.length, query:, exact_count:)
 
@@ -40,13 +40,13 @@ class EmailService
     # @param search_url [String, nil] link that reruns the search on Marketplace
     # @param location_label [String, nil] place name or coordinates searched
     # @param price_range [String, nil] e.g. "$100 - $500"
-    # @param radius_km [Integer, nil] search radius in kilometres
+    # @param radius_mi [Integer, nil] search radius in miles
     # @return [String]
     def render(listings:, query:, stats: nil, exact_count: nil, search_url: nil,
-               location_label: nil, price_range: nil, radius_km: nil)
+               location_label: nil, price_range: nil, radius_mi: nil)
       html = header(
         count: listings.length, query:, stats:, exact_count:, search_url:,
-        location_label:, price_range:, radius_km:
+        location_label:, price_range:, radius_mi:
       )
       listings.each_with_index do |listing, index|
         html += listing_section(listing:, alternate: index.odd?)
@@ -75,7 +75,7 @@ class EmailService
 
     # Email header HTML, led by the "Found N listings" summary line.
     def header(count:, query:, stats: nil, exact_count: nil, search_url: nil,
-               location_label: nil, price_range: nil, radius_km: nil)
+               location_label: nil, price_range: nil, radius_mi: nil)
       exact_count = 0 if exact_count.nil?
 
       # Lead line: Found N new listing(s) (M exact) between $min and $max for "query"
@@ -83,10 +83,10 @@ class EmailService
       lead << " #{escape(price_range)}" if price_range
       lead << " for #{escape(query)}"
 
-      # Location line: 📍450 km radius of Santa Barbara, California
-      location_line = if location_label || radius_km
+      # Location line: 📍450 mi radius of Santa Barbara, California
+      location_line = if location_label || radius_mi
         parts = []
-        parts << "📍#{radius_km} km radius" if radius_km
+        parts << "📍#{radius_mi} mi radius" if radius_mi
         parts << "of #{escape(location_label)}" if location_label
         parts.join(' ')
       end

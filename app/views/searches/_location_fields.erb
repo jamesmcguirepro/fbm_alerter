@@ -1,0 +1,47 @@
+<%
+  selected = @search&.resolved_location.presence
+  has_coords = @search&.lat.present? && @search&.long.present?
+  selected_text = if selected
+                    "Using #{selected} — #{format_coordinates(@search.lat, @search.long)}"
+                  elsif has_coords
+                    "Using coordinates #{format_coordinates(@search.lat, @search.long)}"
+                  end
+%>
+<div class="field">
+  <label for="location-query">Location <span class="label-hint">city, state or ZIP</span></label>
+  <div class="field-inline">
+    <input type="text" id="location-query" name="location_query"
+           value="<%= escape_html(@location_query || '') %>"
+           placeholder="Austin, TX or 78701" autocomplete="off">
+    <button type="button" class="button button--secondary"
+            hx-get="/locations/search"
+            hx-include="#location-query"
+            hx-target="#location-results"
+            hx-swap="innerHTML"
+            hx-indicator="#location-spinner"
+            hx-disabled-elt="this">Find</button>
+    <span id="location-spinner" class="htmx-indicator muted">Searching…</span>
+  </div>
+  <div id="location-results" class="location-results" aria-live="polite"></div>
+  <div class="location-selected" data-location-selected><%= escape_html(selected_text) %></div>
+  <p class="label-hint">
+    Pick a result to set the coordinates. Location search by
+    <a href="https://nominatim.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap Nominatim</a>.
+  </p>
+</div>
+
+<details class="location-manual" <%= 'open' if has_coords && selected.blank? %>>
+  <summary>Enter coordinates manually</summary>
+  <div class="field">
+    <label for="search-lat">Latitude</label>
+    <input type="number" step="any" id="search-lat" name="lat"
+           value="<%= escape_html(@search&.lat || '') %>">
+  </div>
+  <div class="field">
+    <label for="search-long">Longitude</label>
+    <input type="number" step="any" id="search-long" name="long"
+           value="<%= escape_html(@search&.long || '') %>">
+  </div>
+</details>
+
+<input type="hidden" name="resolved_location" value="<%= escape_html(selected) %>">

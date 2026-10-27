@@ -3,15 +3,31 @@
   <td><%= escape_html(search.name || '(unnamed)') %></td>
   <td><%= escape_html(search.query) %></td>
   <td>
-    <div><%= escape_html(search.location_label || '—') %></div>
-    <% if search.resolved_location.present? && search.lat && search.long %>
-      <div class="coord"><%= format_coordinates(search.lat, search.long) %></div>
+    <% if search.resolved_location.present? %>
+      <div><%= escape_html(search.resolved_location) %></div>
+      <% if search.lat && search.long %>
+        <div class="coord"><%= google_maps_link(search.lat, search.long) %></div>
+      <% end %>
+    <% elsif search.lat && search.long %>
+      <div class="coord"><%= google_maps_link(search.lat, search.long) %></div>
+    <% else %>
+      <div>—</div>
     <% end %>
   </td>
+  <td class="nowrap"><%= format_radius(search.radius_mi) %></td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
   <td><%= escape_html(search.email) %></td>
   <td><div id="search-calls-<%= search.id %>"><%= calls_cell(search) %></div></td>
   <td><%= active_badge(search) %></td>
+  <td class="nowrap">
+    <%# Opens the same query and filters on the public Marketplace site. %>
+    <% marketplace_url = search.marketplace_url %>
+    <% if marketplace_url %>
+      <a href="<%= escape_html(marketplace_url) %>" target="_blank" rel="noopener"
+         title="Open this search on Facebook Marketplace"
+         class="button button--small button--secondary">Open in Facebook</a>
+    <% end %>
+  </td>
   <td class="run-col">
     <button hx-post="/searches/<%= search.id %>/run"
             hx-target="#run-modal-body-<%= search.id %>"

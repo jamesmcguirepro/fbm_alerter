@@ -38,7 +38,7 @@ docker compose run --rm marketplace-monitor exec
 | `docker compose up -d web` | Start just the web GUI |
 | `docker compose run --rm marketplace-monitor exec` | Run all saved searches once (waits for web's migrations) |
 | `docker compose run --rm marketplace-monitor list` | List saved searches |
-| `docker compose run --rm marketplace-monitor add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com` | Add a new saved search |
+| `docker compose run --rm marketplace-monitor add -q bike --city "Austin, TX" --radius 25 --min 100 --max 500 --email you@example.com` | Add a new saved search |
 | `docker compose run --rm marketplace-monitor delete 3` | Delete a saved search by ID |
 | `docker compose logs -f scheduler` | Watch the scheduler (results of each run) |
 | `docker compose down` | Stop the containers (data is kept) |
@@ -100,7 +100,7 @@ Releases are handled with `script/release`, which bumps the semantic version acr
 
 The script:
 
-1. Requires a clean working tree on `main`.
+1. Requires a clean working tree on `main`, with no local commits that have not been pushed and no commits behind `origin`.
 2. Reads the current `VERSION` from `config/boot.rb` and bumps major/minor/patch.
 3. Updates the version everywhere it appears: `config/boot.rb`, `README.md`, `.env.example`, and `app/views/layout.erb`.
 4. Commits (`chore: release vX.Y.Z`), tags (`vX.Y.Z`), and pushes branch + tags to `origin`.
@@ -188,11 +188,12 @@ Start it with `docker compose up -d web` and visit `http://<nas-ip>:9292` — th
 
 A few things worth knowing:
 
+- **Locations and radius** — type a city, state or ZIP and press **Find**; the app uses OpenStreetMap Nominatim to show matching places, and picking one stores its coordinates. Coordinates can still be entered manually under the location field, and all radii are in miles. Lookups are cached and paced to Nominatim's usage policy.
 - **Time zone** — the picker in the header applies to every page and is remembered for the session (Pacific by default), so timestamps read the way you expect without the container's clock mattering.
 - **Dry run badge** — with `DRY_RUN=true` a "Dry run" badge appears in the header, and every search becomes a no-op: you can click around, run searches, and check the email layout without spending credits.
 - **Fresh, relevant results** — each search asks for ads from the **last 7 days** (`DATE_LISTED`, configurable), in SociaVault's default relevance order, then lists them newest-first using each ad's own `creation_time`. It deliberately avoids SociaVault's `sort_by`: that order makes Facebook ignore the query and hand back the newest listings anywhere, so "husqvarna te 300" returns Camrys. Listings are kept only when their title contains at least one query keyword (nicknames like `husky` → `husqvarna` and `chevy` → `chevrolet` count), so filler is never stored or alerted. Paging stops at the first page with no title match, which is usually page 1 or 2. Duplicates are deduped per search, so a daily run only alerts on genuinely new ads. Every page fetched costs a credit, with a 3-page ceiling.
 - **Dashboard** — every card is a link. "Credits left" is read live from SociaVault (that call is free) and turns amber once the balance gets low. "Run all searches now" streams the monitor's log into a modal, so a run is visible without watching the container. In the recent-listings table the whole row opens the ad, and the Search column links back to the search that produced it.
-- **Searches** — each row can be run on its own ("Run now" opens the log in a modal), paused/resumed, edited, or deleted. The Calls column counts SociaVault API calls (one call = one credit) plus the date of the last run, and the Location cell shows the resolved place name with the coordinates underneath. Saving an edit forks a new search and pauses the original, so past listings keep pointing at the search that actually found them; deleting removes a search from the lists but keeps its alert and run history, so the Alerts page stays complete.
+- **Searches** — each row can be run on its own ("Run now" opens the log in a modal), paused/resumed, edited, or deleted. The Calls column counts SociaVault API calls (one call = one credit) plus the date of the last run, the Radius column is in miles, and the Location cell shows the resolved place name with the coordinates underneath. "Open in Facebook" reruns the same query, city and radius on Marketplace. Saving an edit forks a new search and pauses the original, so past listings keep pointing at the search that actually found them; deleting removes a search from the lists but keeps its alert and run history, so the Alerts page stays complete.
 - **Listings** — thumbnails, prices, the resolved location and the search each listing came from; rows link to the Facebook ad.
 - **Alerts** — send times are shown to the second, since a single run can send several alerts within the same minute. Each alert ends with the host that sent it, taken from the container's `hostname:` in `docker-compose.yml`.
 - **Alert emails** — each listing shows when the ad was posted, the header reports how many results Marketplace returned and how many were filtered out, a link reruns the same search on Marketplace, and the footer reports the API credits the search spent.
@@ -212,7 +213,7 @@ cp .env.example .env
 ./setup.sh
 
 # 4. Add searches and run
-bundle exec ruby main.rb add -q bike --lat 30.2677 --long=-97.7475 --min 100 --max 500 --email you@example.com
+bundle exec ruby main.rb add -q bike --city "Austin, TX" --radius 25 --min 100 --max 500 --email you@example.com
 bundle exec ruby main.rb exec
 
 # 5. Start the web GUI (http://localhost:9292)
@@ -232,6 +233,7 @@ Optional:
 - `DATE_LISTED` — how far back each search looks, sent to SociaVault as `date_listed`: one of `all`, `1`, `7`, `30`, `last_24_hours`, `last_7_days`, `last_30_days`. Unset means `last_7_days`, which survives a skipped day. Every page fetched costs a credit, so a narrow window is cheapest — but with a daily run it also has no margin, and ads posted while a run was skipped are never seen. An unrecognised value warns at startup and falls back to the default. Changing it needs the containers recreated.
 - `DRY_RUN` — `true` to make searches a no-op: the pipeline runs but nothing is sent to SociaVault and no credits are spent. Useful for exercising the UI or checking a change without spending credits; the header shows a "Dry run" badge while it is on.
 - `IMAGE_TAG` — which `trailstack/fbm_alerter` image tag `docker-compose.yml` runs (default `1.0.14`).
+- `NOMINATIM_URL` — base URL for the geocoding service used by the location picker and reverse lookup (default `https://nominatim.openstreetmap.org`). Set this to a self-hosted or proxied Nominatim instance to move off the public service without changing code.
 - `PERMITTED_HOSTS` — comma-separated Host allow-list for the web GUI. Unset (the default) accepts any Host, so the GUI is reachable by the NAS hostname or IP; set it to restrict access (e.g. `fbm-nas.local,192.168.1.50`).
 - `SCHEDULE_AT` — daily full-run time for the `scheduler`, as 24-hour `HH:MM` in the container's `TZ` (default `20:00`). Restarting the container does not trigger a run; if today's scheduled pass was missed, the next start catches up. An invalid value warns and falls back to the default.
 - `TZ` — the container's time zone (e.g. `America/Los_Angeles`), used for log timestamps, "today" counts, the scheduler's `SCHEDULE_AT`, and the listing dates and times in alert emails. The web GUI's time-zone picker is separate and only affects what it displays.
@@ -241,11 +243,18 @@ Optional:
 Searches are stored in the SQLite database. Add them via the CLI:
 
 ```bash
-bundle exec ruby main.rb add -q "mountain bike" --lat 40.7128 --long=-74.0060 --min 50 --max 300 --radius 25 --cond used_good --del shipping --email you@example.com
+bundle exec ruby main.rb add -q "mountain bike" --city "Austin, TX" --radius 25 --min 50 --max 300 --cond used_good --del shipping --email you@example.com
+```
+
+`--radius` is in miles. `--city` is geocoded through Nominatim; you can use
+`--lat`/`--long` instead for an exact point:
+
+```bash
+bundle exec ruby main.rb add -q "mountain bike" --lat 40.7128 --long=-74.0060 --radius 25 --email you@example.com
 ```
 
 > Use `--long=-74.0060` (with `=`) for negative longitudes — a space-separated value
-> starting with `-` is parsed as a command-line switch.
+> starting with `-` is parsed as a command-line switch. `--city` avoids that issue.
 
 Each search stores its own alert recipient (`--email`), which is where notifications for that search are sent.
 

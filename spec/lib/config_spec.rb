@@ -173,6 +173,25 @@ RSpec.describe Config do
     end
   end
 
+  describe '.nominatim_url' do
+    after { ENV.delete('NOMINATIM_URL') }
+
+    it 'defaults to the public service' do
+      ENV.delete('NOMINATIM_URL')
+      expect(described_class.nominatim_url).to eq('https://nominatim.openstreetmap.org')
+    end
+
+    it 'treats a blank value as unset' do
+      ENV['NOMINATIM_URL'] = '  '
+      expect(described_class.nominatim_url).to eq('https://nominatim.openstreetmap.org')
+    end
+
+    it 'uses a configured endpoint and strips trailing slashes' do
+      ENV['NOMINATIM_URL'] = 'https://geo.example.com/nominatim/'
+      expect(described_class.nominatim_url).to eq('https://geo.example.com/nominatim')
+    end
+  end
+
   describe '.validate!' do
     it 'passes when all required vars are set' do
       expect { described_class.validate! }.not_to raise_error

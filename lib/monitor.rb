@@ -9,8 +9,9 @@ class MarketplaceMonitor
 
   # @param [SearchObject] search_object
   # @param [String] email
-  def add_saved_search(search_object:, email:)
-    SavedSearch.add_search(search_object:, email:)
+  # @param [String, nil] resolved_location cached place name from a city lookup
+  def add_saved_search(search_object:, email:, resolved_location: nil)
+    SavedSearch.add_search(search_object:, email:, resolved_location:)
   rescue ActiveRecord::RecordInvalid => e
     @io.puts "✗ Could not add search: #{e.record.errors.full_messages.join(', ')}"
     nil
@@ -179,7 +180,7 @@ class MarketplaceMonitor
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
         price_range: price_range_text(saved_search),
-        radius_km: saved_search.radius_km
+        radius_mi: saved_search.radius_mi
       )
       listings.each { |listing| Alert.record_alert(listing_id: listing.id, search_id: saved_search.id) }
     else

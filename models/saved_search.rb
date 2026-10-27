@@ -18,7 +18,7 @@ require 'uri'
 #  min_price         :decimal(, )
 #  name              :string
 #  query             :string
-#  radius_km         :integer
+#  radius_mi         :integer
 #  resolved_location :string
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
@@ -36,26 +36,28 @@ class SavedSearch < ActiveRecord::Base
   # unlike paranoia, adds no default scope, so joins keep seeing the history.
   self.discard_column = :deleted_at
 
-  attribute :radius_km, default: 65
+  attribute :radius_mi, default: 40
 
   # Keep coordinates at ~11 m precision, then drop a stale cached place name.
   before_save :round_coordinates
   before_save :reset_resolved_location, if: :coordinates_changed?
 
-  validates :lat, numericality: {
-    greater_than_or_equal_to: -90, less_than_or_equal_to: 90,
-    message: 'must be a number between -90 and 90'
-  }
-  validates :long, numericality: {
-    greater_than_or_equal_to: -180, less_than_or_equal_to: 180,
-    message: 'must be a number between -180 and 180'
-  }
-  validates :radius_km, numericality: {
-    greater_than_or_equal_to: 5, less_than_or_equal_to: 1000,
-    message: 'must be a number between 5 and 1000 km'
+  validates :lat, presence: { message: 'is required; pick a location or enter coordinates manually' },
+                numericality: {
+                  greater_than_or_equal_to: -90, less_than_or_equal_to: 90,
+                  message: 'must be a number between -90 and 90', allow_nil: true
+                }
+  validates :long, presence: { message: 'is required; pick a location or enter coordinates manually' },
+                 numericality: {
+                   greater_than_or_equal_to: -180, less_than_or_equal_to: 180,
+                   message: 'must be a number between -180 and 180', allow_nil: true
+                 }
+  validates :radius_mi, numericality: {
+    greater_than_or_equal_to: 1, less_than_or_equal_to: 500,
+    message: 'must be a number between 1 and 500 miles'
   }
 
-  def self.add_search(search_object:, email:)
+  def self.add_search(search_object:, email:, resolved_location: nil)
     create!(
       query: search_object.query,
       lat: search_object.lat,
@@ -63,8 +65,9 @@ class SavedSearch < ActiveRecord::Base
       min_price: search_object.min_price,
       max_price: search_object.max_price,
       condition: search_object.condition,
-      radius_km: search_object.radius_km,
+      radius_mi: search_object.radius_mi,
       delivery_method: search_object.delivery_method,
+      resolved_location:,
       email:,
     )
   end
@@ -83,7 +86,7 @@ class SavedSearch < ActiveRecord::Base
     return resolved_location if resolved_location.present?
     return nil unless valid_coordinates?
 
-    name = ReverseGeocoder.lookup(lat: lat.to_f, long: long.to_f)
+    name = Geocoder.reverse(lat: lat.to_f, long: long.to_f)
     update_column(:resolved_location, name) if name.present?
     name
   end
@@ -100,7 +103,7 @@ class SavedSearch < ActiveRecord::Base
   # as the web UI allows. Facebook ignores latitude/longitude query parameters,
   # so a resolved city name is what actually targets the search; without one
   # the link still opens the right query at the viewer's default location.
-  # Radius is interpreted in kilometres, matching the saved search.
+  # Radius is in miles, matching the saved search and Facebook's US UI.
   # @return [String, nil]
   def marketplace_url
     return nil if query.to_s.strip.empty?
@@ -108,7 +111,7 @@ class SavedSearch < ActiveRecord::Base
     slug = marketplace_location_slug
     path = slug ? "/#{slug}/search/" : '/search/'
     params = { query: }
-    params[:radius] = radius_km if radius_km
+    params[:radius] = radius_mi if radius_mi
     params[:minPrice] = min_price.to_i if min_price
     params[:maxPrice] = max_price.to_i if max_price
 
@@ -116,7 +119,8 @@ class SavedSearch < ActiveRecord::Base
   end
 
   def print_search(io: $stdout)
-    io.puts "ID: #{id}, query: #{query} (#{lat}, #{long}), price: #{min_price} - #{max_price}, email: #{email}"
+    io.puts "ID: #{id}, query: #{query} (#{lat}, #{long}), radius: #{radius_mi} mi, " \
+            "price: #{min_price} - #{max_price}, email: #{email}"
   end
 
   private

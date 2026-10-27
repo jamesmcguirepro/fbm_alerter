@@ -40,7 +40,7 @@ RSpec.describe 'Marketplace Monitor integration' do
       long: -97.7475,
       min_price: 100,
       max_price: 500,
-      radius_km: 65,
+      radius_mi: 40,
       email: 'owner@example.com'
     )
   end
@@ -52,7 +52,7 @@ RSpec.describe 'Marketplace Monitor integration' do
           query: 'bike',
           lat: '30.2677',
           lng: '-97.7475',
-          radius_km: '65',
+          radius_km: '64',
           count: '100'
         ),
         headers: { 'X-API-Key' => 'sk_test_key' }

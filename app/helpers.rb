@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'cgi'
+require 'uri'
 
 module ViewHelpers
   # Curated short list — easy to scan. Value is an IANA zone name; add more
@@ -54,6 +55,32 @@ module ViewHelpers
     return '—' if lat.nil? || long.nil?
 
     '%.4f, %.4f' % [lat.to_f, long.to_f]
+  end
+
+  def format_radius(radius_mi)
+    return '—' if radius_mi.nil?
+
+    "#{radius_mi} mi"
+  end
+
+  # Google Maps search URL for a pair of coordinates. Kept here so every place
+  # that shows a latitude/longitude can link to the same map.
+  def google_maps_url(lat, long)
+    return nil if lat.nil? || long.nil?
+
+    query = URI.encode_www_form_component("#{lat.to_f},#{long.to_f}")
+    "https://www.google.com/maps/search/?api=1&query=#{query}"
+  end
+
+  # Render coordinates as a link to Google Maps, falling back to plain text
+  # when there is no location to show.
+  def google_maps_link(lat, long, content = nil)
+    label = content || format_coordinates(lat, long)
+    url = google_maps_url(lat, long)
+    return escape_html(label) if url.nil?
+
+    %(<a href="#{escape_html(url)}" target="_blank" rel="noopener" ) +
+      %(title="Open in Google Maps">#{escape_html(label)}</a>)
   end
 
   def format_number(value)

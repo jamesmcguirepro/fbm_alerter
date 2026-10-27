@@ -192,6 +192,7 @@ RSpec.describe MarketplaceApp do
     it 'renders the index' do
       get '/searches'
       expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('<div class="page">')
     end
 
     it 'renders the active badge as HTML, not escaped text' do
@@ -272,6 +273,60 @@ RSpec.describe MarketplaceApp do
       expect(search.reload.resolved_location).to eq('New York')
     end
 
+    it 'links the coordinates to Google Maps' do
+      get '/searches'
+
+      expect(last_response.body).to include(
+        'href="https://www.google.com/maps/search/?api=1&amp;query=40.7128%2C-74.006"'
+      )
+      expect(last_response.body).to include('title="Open in Google Maps"')
+    end
+
+    it 'links unresolved coordinates to Google Maps too' do
+      allow(Geocoder).to receive(:reverse).and_return(nil)
+      raw = SavedSearch.create!(
+        query: 'lamp', lat: 34.0522, long: -118.2437, email: 'owner@example.com',
+        active: true
+      )
+
+      get '/searches'
+
+      expect(raw.reload.resolved_location).to be_nil
+      expect(last_response.body).to include(
+        'href="https://www.google.com/maps/search/?api=1&amp;query=34.0522%2C-118.2437"'
+      )
+      expect(last_response.body).to include('34.0522, -118.2437')
+    end
+
+    it 'shows the search radius' do
+      search.update_column(:radius_mi, 25)
+
+      get '/searches'
+
+      expect(last_response.body).to include('<th>Radius</th>')
+      expect(last_response.body).to include('25 mi')
+    end
+
+    it 'links the search to the same query on Facebook Marketplace' do
+      get '/searches'
+
+      expect(last_response.body).to include(
+        %(href="https://www.facebook.com/marketplace/new-york/search/?query=bike&amp;radius=40&amp;minPrice=100&amp;maxPrice=500")
+      )
+      expect(last_response.body).to include('target="_blank"')
+      expect(last_response.body).to include('Open in Facebook')
+    end
+
+    it 'gives Open in Facebook its own column' do
+      get '/searches'
+
+      expect(last_response.body).to include('<th>Facebook</th>')
+      expect(last_response.body).to match(
+        %r{<td class="nowrap">\s*<a href="https://www\.facebook\.com/marketplace/new-york/search/[^"]+"[^>]*>Open in Facebook</a>\s*</td>}m
+      )
+      expect(last_response.body).not_to match(%r{<td class="actions-col">.*Open in Facebook}m)
+    end
+
     it 'shows how many API calls each search has made' do
       SearchRun.create!(saved_search_id: search.id, success: true)
       SearchRun.create!(saved_search_id: search.id, success: true)
@@ -302,7 +357,7 @@ RSpec.describe MarketplaceApp do
       expect do
         post '/searches', {
           query: 'bike', lat: 40.7128, long: -74.0060,
-          min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com'
+          min_price: 100, max_price: 500, radius_mi: 40, email: 'owner@example.com'
         }
       end.to change(SavedSearch, :count).by(1)
 
@@ -314,7 +369,7 @@ RSpec.describe MarketplaceApp do
       expect do
         post '/searches', {
           query: 'bike', lat: 40.7128, long: -11971922006451092,
-          radius_km: 65, email: 'owner@example.com'
+          radius_mi: 40, email: 'owner@example.com'
         }
       end.not_to change(SavedSearch, :count)
 
@@ -326,23 +381,144 @@ RSpec.describe MarketplaceApp do
       expect do
         post '/searches', {
           query: 'bike', lat: 40.7128, long: -74.0060,
-          radius_km: 2000, email: 'owner@example.com'
+          radius_mi: 600, email: 'owner@example.com'
         }
       end.not_to change(SavedSearch, :count)
 
       expect(last_response.status).to eq(422)
-      expect(last_response.body).to include('must be a number between 5 and 1000 km')
+      expect(last_response.body).to include('must be a number between 1 and 500 miles')
     end
 
     it 'escapes the values it re-renders in the form' do
       post '/searches', {
         query: '<script>alert(1)</script>', lat: 40.7128, long: -74.0060,
-        radius_km: 2000, email: 'owner@example.com'
+        resolved_location: '<b>Place</b>', radius_mi: 600, email: 'owner@example.com'
       }
 
       expect(last_response.status).to eq(422)
       expect(last_response.body).to include('&lt;script&gt;alert(1)&lt;/script&gt;')
       expect(last_response.body).not_to include('<script>alert(1)</script>')
+      expect(last_response.body).to include('&lt;b&gt;Place&lt;/b&gt;')
+      expect(last_response.body).not_to include('<b>Place</b>')
+    end
+
+    it 'saves picked coordinates without calling Nominatim' do
+      post '/searches', {
+        query: 'bike', location_query: 'Austin, TX',
+        lat: '30.2672', long: '-97.7431', resolved_location: 'Austin, Texas',
+        radius_mi: 30, email: 'owner@example.com'
+      }
+
+      expect(last_response.status).to eq(302)
+      saved = SavedSearch.last
+      expect(saved.lat.to_f).to be_within(0.0001).of(30.2672)
+      expect(saved.long.to_f).to be_within(0.0001).of(-97.7431)
+      expect(saved.resolved_location).to eq('Austin, Texas')
+      expect(saved.radius_mi).to eq(30)
+      expect(a_request(:get, %r{nominatim\.openstreetmap\.org/search})).not_to have_been_made
+    end
+
+    it 'falls back to the top Nominatim match when only a location is typed' do
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: 'Austin, TX'))
+        .to_return(
+          status: 200,
+          body: [{
+            'lat' => '30.2672',
+            'lon' => '-97.7431',
+            'display_name' => 'Austin, Travis County, Texas, United States',
+            'address' => { 'city' => 'Austin', 'state' => 'Texas', 'country' => 'United States' }
+          }].to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      post '/searches', {
+        query: 'bike', location_query: 'Austin, TX',
+        radius_mi: 30, email: 'owner@example.com'
+      }
+
+      expect(last_response.status).to eq(302)
+      saved = SavedSearch.last
+      expect(saved.lat.to_f).to be_within(0.0001).of(30.2672)
+      expect(saved.long.to_f).to be_within(0.0001).of(-97.7431)
+      expect(saved.resolved_location).to eq('Austin, Texas')
+      expect(a_request(:get, %r{nominatim\.openstreetmap\.org/search})).to have_been_made.once
+    end
+
+    it 're-renders with an explanation when the typed location is not found' do
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: 'Nowhere'))
+        .to_return(status: 200, body: '[]')
+
+      expect do
+        post '/searches', {
+          query: 'bike', location_query: 'Nowhere',
+          radius_mi: 30, email: 'owner@example.com'
+        }
+      end.not_to change(SavedSearch, :count)
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.body).to include('Nowhere')
+      expect(last_response.body).to include('Pick a match from the list')
+      expect(last_response.body).to include('value="Nowhere"')
+    end
+  end
+
+  describe 'GET /locations/search' do
+    it 'renders candidate buttons with their coordinates' do
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: 'Austin, TX'))
+        .to_return(
+          status: 200,
+          body: [{
+            'lat' => '30.2672',
+            'lon' => '-97.7431',
+            'display_name' => 'Austin, Travis County, Texas, United States',
+            'address' => { 'city' => 'Austin', 'state' => 'Texas', 'country' => 'United States' }
+          }].to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      get '/locations/search', { location_query: 'Austin, TX' }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('Austin, Travis County, Texas, United States')
+      expect(last_response.body).to include('data-lat="30.2672"')
+      expect(last_response.body).to include('data-long="-97.7431"')
+      expect(last_response.body).to include('data-name="Austin, Texas"')
+      expect(last_response.body).to include('data-location-pick')
+    end
+
+    it 'does not call Nominatim for a blank query' do
+      get '/locations/search', { location_query: '  ' }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('Enter a city, state or ZIP code first')
+      expect(a_request(:get, %r{nominatim\.openstreetmap\.org/search})).not_to have_been_made
+    end
+
+    it 'explains when there are no matches' do
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .to_return(status: 200, body: '[]')
+
+      get '/locations/search', { location_query: 'Nowhere' }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('No places found')
+      expect(last_response.body).to include('Nowhere')
+    end
+  end
+
+  describe 'GET /searches/new' do
+    it 'offers the location picker and a radius in miles' do
+      get '/searches/new'
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('name="location_query"')
+      expect(last_response.body).to include('hx-get="/locations/search"')
+      expect(last_response.body).to include('name="radius_mi"')
+      expect(last_response.body).to include('1–500')
+      expect(last_response.body).to include('Enter coordinates manually')
     end
   end
 
@@ -367,7 +543,7 @@ RSpec.describe MarketplaceApp do
       expect do
         patch "/searches/#{original.id}", {
           name: 'My Bike Search', query: 'bike', lat: 40.7128, long: -74.0060,
-          min_price: 100, max_price: 500, radius_km: 65, email: 'owner@example.com',
+          min_price: 100, max_price: 500, radius_mi: 40, email: 'owner@example.com',
           active: 'on'
         }
       end.to change(SavedSearch, :count).by(1)
@@ -387,7 +563,7 @@ RSpec.describe MarketplaceApp do
       )
       patch "/searches/#{search.id}", {
         query: 'bike', lat: 40.7128, long: -11971922006451092,
-        radius_km: 65, email: 'owner@example.com'
+        radius_mi: 40, email: 'owner@example.com'
       }
       expect(last_response.status).to eq(422)
       expect(search.reload.long.to_f).to be_within(0.0001).of(-74.006)
@@ -483,6 +659,7 @@ RSpec.describe MarketplaceApp do
     it 'renders' do
       get '/listings'
       expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('<div class="page">')
     end
 
     it 'links a listing back to the search that produced it' do
@@ -585,6 +762,7 @@ RSpec.describe MarketplaceApp do
     it 'renders' do
       get '/alerts'
       expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('<div class="page">')
     end
 
     it 'links each alert back to the search that produced it' do
@@ -840,7 +1018,7 @@ RSpec.describe MarketplaceApp do
       expect(last_response.content_type).to include('text/html')
       expect(last_response.body).to include('Preview Bike')
       expect(last_response.body).to include('<h1>Found 1 new listing (1 exact) for bike</h1>')
-      expect(last_response.body).to include('📍65 km radius')
+      expect(last_response.body).to include('📍40 mi radius')
       expect(last_response.body).to include('Subject:')
       expect(last_response.body).to include('🔔 1 new listing (1 exact) for &quot;bike&quot;')
       expect(last_response.body).to include('Marketplace returned')

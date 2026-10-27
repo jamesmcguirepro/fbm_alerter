@@ -12,7 +12,7 @@ RSpec.describe SavedSearch, type: :model do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         condition: 'used_good',
         delivery_method: 'shipping'
       )
@@ -33,7 +33,7 @@ RSpec.describe SavedSearch, type: :model do
       expect(search.long).to eq(-74.0060)
       expect(search.min_price).to eq(100)
       expect(search.max_price).to eq(500)
-      expect(search.radius_km).to eq(25)
+      expect(search.radius_mi).to eq(25)
       expect(search.condition).to eq('used_good')
       expect(search.delivery_method).to eq('shipping')
       expect(search.email).to eq('owner@example.com')
@@ -100,22 +100,22 @@ RSpec.describe SavedSearch, type: :model do
   describe 'radius validation' do
     let(:attrs) { { query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com' } }
 
-    it 'defaults to 65 km' do
-      expect(described_class.new(attrs).radius_km).to eq(65)
+    it 'defaults to 40 miles' do
+      expect(described_class.new(attrs).radius_mi).to eq(40)
     end
 
-    it 'accepts a radius within 5..1000' do
-      expect(described_class.new(attrs.merge(radius_km: 25))).to be_valid
+    it 'accepts a radius within 1..500' do
+      expect(described_class.new(attrs.merge(radius_mi: 25))).to be_valid
     end
 
-    it 'rejects a radius below 5 km' do
-      search = described_class.new(attrs.merge(radius_km: 4))
+    it 'rejects a radius below 1 mile' do
+      search = described_class.new(attrs.merge(radius_mi: 0))
       expect(search).not_to be_valid
-      expect(search.errors[:radius_km]).to be_present
+      expect(search.errors[:radius_mi]).to be_present
     end
 
-    it 'rejects a radius above 1000 km' do
-      expect(described_class.new(attrs.merge(radius_km: 1001))).not_to be_valid
+    it 'rejects a radius above 500 miles' do
+      expect(described_class.new(attrs.merge(radius_mi: 501))).not_to be_valid
     end
   end
 
@@ -163,7 +163,7 @@ RSpec.describe SavedSearch, type: :model do
 
     it 'builds a city-scoped search URL with radius and price filters' do
       search = described_class.new(
-        attrs.merge(resolved_location: 'Austin, Texas', radius_km: 25, min_price: 100, max_price: 500)
+        attrs.merge(resolved_location: 'Austin, Texas', radius_mi: 25, min_price: 100, max_price: 500)
       )
 
       expect(search.marketplace_url).to eq(
@@ -183,7 +183,7 @@ RSpec.describe SavedSearch, type: :model do
       search = described_class.new(attrs)
 
       expect(search.marketplace_url).to eq(
-        'https://www.facebook.com/marketplace/search/?query=mountain+bike&radius=65'
+        'https://www.facebook.com/marketplace/search/?query=mountain+bike&radius=40'
       )
     end
 

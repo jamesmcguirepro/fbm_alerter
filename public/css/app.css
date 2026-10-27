@@ -12,7 +12,25 @@ body { margin: 0; background: #f6f7f9; color: #1f2937; }
    pagination) set their own colours and still win. */
 a { color: #2563eb; }
 
-.container { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
+/* Wider than a reading column: the searches and listings tables have many
+   columns, and centring the content keeps it balanced on large screens. */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+
+/* Table-heavy pages (searches, listings, alerts) get their own centred column so
+   the content keeps balanced side margins on wide screens. Table contents stay
+   left-aligned; only the column itself is centred. */
+.page { width: 100%; max-width: 1120px; margin: 0 auto; }
+
+/* Avoid a wide table pushing its centred column off-centre on narrow screens. */
+.table-scroll { width: 100%; overflow-x: auto; }
+
+/* The searches table has the most columns, so it gets tighter padding and
+   breakable cells; otherwise its minimum width exceeds the page column and
+   the overflow makes the whole table look left-aligned. */
+.searches-table th,
+.searches-table td { padding: 0.55rem 0.65rem; }
+.searches-table td { overflow-wrap: anywhere; }
+.searches-table .button--small { padding: 0.3rem 0.55rem; }
 
 /* Header */
 .header { background: #111827; color: #fff; padding: 1rem 0; margin-bottom: 1.5rem; }
@@ -70,6 +88,7 @@ td.nowrap { white-space: nowrap; }
 /* Small secondary text (coordinates, call counts) */
 .muted { color: #6b7280; font-size: 0.8rem; }
 .coord { color: #9ca3af; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.coord a { color: #2563eb; }
 .calls-count { font-weight: 600; }
 
 /* Badges */
@@ -96,6 +115,26 @@ td.nowrap { white-space: nowrap; }
 
 /* Hint inside a field label: "Name (optional label)". */
 .label-hint { font-weight: 400; font-size: 0.85rem; color: #6b7280; }
+
+/* Location picker */
+.field-inline { display: flex; gap: 0.5rem; align-items: center; }
+.field-inline input { flex: 1; }
+.field-inline .button { white-space: nowrap; }
+.location-results { margin-top: 0.5rem; }
+.location-results-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.location-result {
+  display: flex; flex-direction: column; align-items: flex-start; width: 100%;
+  text-align: left; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+  color: #111827; font-weight: 500; padding: 0.5rem 0.75rem; cursor: pointer;
+}
+.location-result:hover { background: #eef2f7; border-color: #93c5fd; }
+.location-result__name { font-size: 0.9rem; }
+.location-result__coords { font-size: 0.8rem; color: #6b7280; font-variant-numeric: tabular-nums; }
+.location-selected { margin-top: 0.4rem; font-size: 0.85rem; color: #166534; }
+.location-manual { margin-bottom: 1rem; }
+.location-manual summary { cursor: pointer; font-size: 0.9rem; color: #374151; }
+.location-manual[open] summary { margin-bottom: 0.5rem; }
+.location-manual .field:first-of-type { margin-top: 0.75rem; }
 
 /* Standfirst above a form. */
 .page-note { color: #6b7280; font-size: 0.9rem; margin-top: -0.5rem; }
@@ -234,6 +273,8 @@ pre.run-log {
 
 /* Htmx indicator */
 .htmx-indicator { display: none; }
+/* hx-indicator targets the indicator element itself, so it gets the class. */
+.htmx-indicator.htmx-request { display: inline; }
 .htmx-request .htmx-indicator { display: inline; }
 .htmx-request .htmx-indicator::after { content: ' …'; animation: pulse 1s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }

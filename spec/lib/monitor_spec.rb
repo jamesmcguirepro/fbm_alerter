@@ -12,7 +12,7 @@ RSpec.describe MarketplaceMonitor do
       long: -74.0060,
       min_price: 100,
       max_price: 500,
-      radius_km: 25,
+      radius_mi: 25,
       email: 'owner@example.com'
     )
   end
@@ -71,7 +71,7 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 200,
         max_price: 800,
-        radius_km: 25,
+        radius_mi: 25,
         email: 'owner@example.com'
       )
 
@@ -169,7 +169,7 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         condition: nil,
         delivery_method: nil
       )
@@ -399,7 +399,7 @@ RSpec.describe MarketplaceMonitor do
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
         price_range: 'between $100 and $500',
-        radius_km: 25
+        radius_mi: 25
       )
     end
 
@@ -456,7 +456,7 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         condition: nil,
         delivery_method: nil
       )
@@ -480,14 +480,14 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         condition: nil,
         delivery_method: nil
       )
     end
 
     it 'delegates to SavedSearch.add_search' do
-      expect(SavedSearch).to receive(:add_search).with(search_object:, email: 'owner@example.com')
+      expect(SavedSearch).to receive(:add_search).with(search_object:, email: 'owner@example.com', resolved_location: nil)
 
       monitor.add_saved_search(search_object:, email: 'owner@example.com')
     end
@@ -501,7 +501,7 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         email: 'owner@example.com'
       )
     end
@@ -546,7 +546,7 @@ RSpec.describe MarketplaceMonitor do
         long: -74.0060,
         min_price: 100,
         max_price: 500,
-        radius_km: 25,
+        radius_mi: 25,
         email: 'owner@example.com'
       )
     end
