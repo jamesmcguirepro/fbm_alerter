@@ -4,6 +4,18 @@ class MarketplaceApp < Sinatra::Base
   get '/listings' do
     query = Listing.all.includes(:search_run)
 
+    @search_id = params[:search_id].to_s.strip.presence
+    if @search_id
+      @search = SavedSearch.find_by(id: @search_id)
+      # Alert rows double as the per-search result history for now: every
+      # listing newly returned by a saved search gets one.
+      query = if @search
+                query.where(id: Alert.where(search_id: @search.id).select(:listing_id))
+              else
+                query.none
+              end
+    end
+
     if params[:query].to_s.strip != ''
       # ILIKE is Postgres, not SQLite; LIKE is already case-insensitive for
       # ASCII, so a plain substring match behaves the way users expect here.

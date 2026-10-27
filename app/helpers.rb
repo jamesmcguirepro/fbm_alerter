@@ -179,6 +179,7 @@ module ViewHelpers
     parts = []
     parts << "query=#{CGI.escape(@query)}" if @query.to_s.strip != ''
     parts << "sold=#{CGI.escape(@sold.to_s)}" if @sold.to_s.strip != ''
+    parts << "search_id=#{CGI.escape(@search_id.to_s)}" if @search_id.present?
     parts.empty? ? '' : "&#{parts.join('&')}"
   end
 end

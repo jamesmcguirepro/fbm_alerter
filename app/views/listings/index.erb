@@ -1,8 +1,24 @@
 <div class="page">
   <h1>Listings</h1>
 
+  <% if @search %>
+  <p class="page-note">
+    Showing all listings ever returned by
+    <strong><%= escape_html(@search.name.presence || @search.query) %></strong><% if @search.name.present? %>
+    (<%= escape_html(@search.query) %>)<% end %>.
+    <a href="/listings">Show all listings</a>
+  </p>
+  <% elsif @search_id.present? %>
+  <p class="page-note">
+    That search no longer exists. <a href="/listings">Show all listings</a>
+  </p>
+  <% end %>
+
   <div class="form form--wide">
     <form action="/listings" method="get" class="filter-form">
+      <% if @search_id.present? %>
+        <input type="hidden" name="search_id" value="<%= escape_html(@search_id) %>">
+      <% end %>
       <div class="field">
         <label>Search title</label>
         <input type="text" name="query" value="<%= escape_html(@query) %>" placeholder="Filter by title…">
@@ -16,7 +32,8 @@
         </select>
       </div>
       <button type="submit" class="button button--primary">Filter</button>
-      <a href="/listings" class="button button--secondary">Clear</a>
+      <a href="<%= @search_id.present? ? "/listings?search_id=#{CGI.escape(@search_id)}" : '/listings' %>"
+         class="button button--secondary">Clear</a>
     </form>
   </div>
 
@@ -46,6 +63,14 @@
     <% end %>
   </div>
   <% else %>
-  <div class="empty">No listings yet.</div>
+  <div class="empty">
+    <% if @search %>
+      No listings returned by this search yet.
+    <% elsif @search_id.present? %>
+      No listings for that search.
+    <% else %>
+      No listings yet.
+    <% end %>
+  </div>
   <% end %>
 </div>

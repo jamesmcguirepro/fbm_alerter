@@ -1,7 +1,12 @@
 <tr id="search-row-<%= search.id %>">
   <%# Queries, names and addresses are user input, so they are escaped here. %>
   <td><%= escape_html(search.name || '(unnamed)') %></td>
-  <td><%= escape_html(search.query) %></td>
+  <td>
+    <div><%= escape_html(search.query) %></div>
+    <div class="muted">
+      <a href="/listings?search_id=<%= search.id %>">View all listings</a>
+    </div>
+  </td>
   <td>
     <% if search.resolved_location.present? %>
       <div><%= escape_html(search.resolved_location) %></div>

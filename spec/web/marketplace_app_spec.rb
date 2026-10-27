@@ -307,6 +307,14 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include('25 mi')
     end
 
+    it 'links each search to all of its listings' do
+      get '/searches'
+
+      expect(last_response.body).to include(
+        %(href="/listings?search_id=#{search.id}">View all listings</a>)
+      )
+    end
+
     it 'links the search to the same query on Facebook Marketplace' do
       get '/searches'
 
@@ -679,6 +687,50 @@ RSpec.describe MarketplaceApp do
       expect(last_response.body).to include(
         %(<a href="https://facebook.com/marketplace/item/abc123/" target="_blank" rel="noopener">Test Bike</a>)
       )
+    end
+
+    it 'shows every listing ever returned by one search' do
+      bike = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      car = SavedSearch.create!(
+        query: 'car', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      bike_listing = Listing.create!(listing_id: 'bike-result', title: 'Result Bike')
+      car_listing = Listing.create!(listing_id: 'car-result', title: 'Result Car')
+      Alert.record_alert(listing_id: bike_listing.id, search_id: bike.id)
+      Alert.record_alert(listing_id: car_listing.id, search_id: car.id)
+
+      get '/listings', { 'search_id' => bike.id.to_s }
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.body).to include('Showing all listings ever returned by')
+      expect(last_response.body).to include('Result Bike')
+      expect(last_response.body).not_to include('Result Car')
+    end
+
+    it 'keeps the search filter in pagination links' do
+      search = SavedSearch.create!(
+        query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
+      )
+      26.times do |i|
+        listing = Listing.create!(listing_id: "search-page-#{i}", title: "Search Item #{i}")
+        Alert.record_alert(listing_id: listing.id, search_id: search.id)
+      end
+
+      get '/listings', { 'search_id' => search.id.to_s }
+
+      expect(last_response.body).to include("page=2")
+      expect(last_response.body).to include("search_id=#{search.id}")
+    end
+
+    it 'shows an empty state for an unknown search filter' do
+      Listing.create!(listing_id: 'visible', title: 'Visible Bike')
+
+      get '/listings', { 'search_id' => '999999' }
+
+      expect(last_response.body).to include('That search no longer exists.')
+      expect(last_response.body).not_to include('Visible Bike')
     end
 
     it 'does not link a listing that has no URL' do
