@@ -60,3 +60,4 @@ build-iPhoneSimulator/
 /.idea/
 /storage/*.sqlite3*
 /.env
+/log/*
