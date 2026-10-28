@@ -37,6 +37,8 @@ class MarketplaceApp < Sinatra::Base
       @credits_error = e.message
     end
 
+    @credit_chart_data = CreditSnapshot.chart_data
+
     erb :'dashboard/_credits', layout: false
   end
 
@@ -54,5 +56,6 @@ class MarketplaceApp < Sinatra::Base
     @last_activity      = Listing.maximum(:last_seen_at)
     @recent_listings    = Listing.includes(:search_run).order(updated_at: :desc).limit(10)
     @search_id_by_query = search_id_by_query
+    @credit_chart_data  = CreditSnapshot.chart_data
   end
 end

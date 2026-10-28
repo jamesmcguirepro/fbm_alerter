@@ -21,3 +21,64 @@
     </div>
   <% end %>
 </a>
+
+<div id="credit-chart-card" class="card">
+  <h2>Credits history</h2>
+  <% if @credit_chart_data && @credit_chart_data.any? %>
+    <div class="chart">
+      <canvas id="credit-chart" width="560" height="200"></canvas>
+      <script>
+        (function() {
+          var data = <%= @credit_chart_data.map { |ts, balance| "[#{ts.iso8601.inspect}, #{balance}]" }.to_s %>;
+          var canvas = document.getElementById('credit-chart');
+          if (!canvas || !data.length) return;
+          var ctx = canvas.getContext('2d');
+          var w = canvas.width, h = canvas.height;
+          var padding = { top: 20, right: 20, bottom: 30, left: 50 };
+          var chartW = w - padding.left - padding.right;
+          var chartH = h - padding.top - padding.bottom;
+          var balances = data.map(function(d) { return d[1]; });
+          var minBal = Math.min.apply(null, balances);
+          var maxBal = Math.max.apply(null, balances);
+          var range = maxBal - minBal || 1;
+          var stepX = chartW / (data.length - 1 || 1);
+          ctx.strokeStyle = '#007bff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          data.forEach(function(d, i) {
+            var x = padding.left + i * stepX;
+            var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+          ctx.fillStyle = '#007bff';
+          data.forEach(function(d, i) {
+            var x = padding.left + i * stepX;
+            var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          });
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '11px Arial';
+          ctx.textAlign = 'right';
+          [minBal, maxBal].forEach(function(val, idx) {
+            var actualY = padding.top + chartH - ((val - minBal) / range) * chartH;
+            ctx.fillText(val.toFixed(0), padding.left - 5, actualY + 4);
+          });
+          ctx.textAlign = 'center';
+          var firstDate = new Date(data[0][0]);
+          var lastDate = new Date(data[data.length - 1][0]);
+          ctx.fillText(formatDate(firstDate), padding.left, h - 8);
+          ctx.fillText(formatDate(lastDate), w - padding.right, h - 8);
+        })();
+        function formatDate(d) {
+          var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          return months[d.getMonth()] + ' ' + d.getDate();
+        }
+      </script>
+    </div>
+  <% else %>
+    <div class="card-note">No balance history yet. Run searches to start tracking.</div>
+  <% end %>
+</div>
