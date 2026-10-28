@@ -27,6 +27,10 @@ class SavedSearch < ActiveRecord::Base
   include Discard::Model
 
   FACEBOOK_MARKETPLACE_URL = 'https://www.facebook.com/marketplace'
+  DEFAULT_RADIUS_MI = 40
+  RADIUS_RANGE = (1..500)
+  MIN_RADIUS_MI = 1
+  MAX_RADIUS_MI = 500
 
   has_many :alerts
   has_many :search_runs
@@ -36,7 +40,7 @@ class SavedSearch < ActiveRecord::Base
   # unlike paranoia, adds no default scope, so joins keep seeing the history.
   self.discard_column = :deleted_at
 
-  attribute :radius_mi, default: 40
+  attribute :radius_mi, default: DEFAULT_RADIUS_MI
 
   # Keep coordinates at ~11 m precision, then drop a stale cached place name.
   before_save :round_coordinates
@@ -53,8 +57,8 @@ class SavedSearch < ActiveRecord::Base
                    message: 'must be a number between -180 and 180', allow_nil: true
                  }
   validates :radius_mi, numericality: {
-    greater_than_or_equal_to: 1, less_than_or_equal_to: 500,
-    message: 'must be a number between 1 and 500 miles'
+    greater_than_or_equal_to: MIN_RADIUS_MI, less_than_or_equal_to: MAX_RADIUS_MI,
+    message: "must be a number between #{MIN_RADIUS_MI} and #{MAX_RADIUS_MI} miles"
   }
 
   def self.add_search(search_object:, email:, resolved_location: nil)
@@ -97,6 +101,22 @@ class SavedSearch < ActiveRecord::Base
     return nil if lat.nil? || long.nil?
 
     "#{lat}, #{long}"
+  end
+
+  # Human-readable price bounds for emails and the preview, e.g.
+  # "between $100 and $500". Nil when neither bound is set.
+  def price_range_text
+    parts = []
+    parts << "$#{min_price.to_i}" if min_price
+    parts << "$#{max_price.to_i}" if max_price
+    return nil if parts.empty?
+
+    "between #{parts.join(' and ')}"
+  end
+
+  # Label for the searches table and the listings filter note.
+  def display_name
+    name.presence || query
   end
 
   # Public Marketplace search URL that reproduces this saved search as closely

@@ -25,12 +25,7 @@ class MarketplaceApp < Sinatra::Base
     # Adds sample API counts and a real (or representative) Marketplace link so
     # the preview shows every part of the alert email.
     def preview_payload(listings:, query:, saved_search: nil)
-      price_range = if saved_search&.min_price || saved_search&.max_price
-                      parts = []
-                      parts << "$#{saved_search.min_price.to_i}" if saved_search.min_price
-                      parts << "$#{saved_search.max_price.to_i}" if saved_search.max_price
-                      "between #{parts.join(' and ')}"
-                    end
+      price_range = saved_search&.price_range_text
 
       {
         listings:,
@@ -40,7 +35,7 @@ class MarketplaceApp < Sinatra::Base
         search_url: saved_search&.marketplace_url || SavedSearch.new(query:).marketplace_url,
         location_label: saved_search&.location_label,
         price_range:,
-        radius_mi: saved_search&.radius_mi || 40,
+        radius_mi: saved_search&.radius_mi || SavedSearch::DEFAULT_RADIUS_MI,
         exact_count: listings.length
       }
     end

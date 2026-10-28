@@ -6,7 +6,7 @@ class MarketplaceApp < Sinatra::Base
     per_page = 50
     offset = (page - 1) * per_page
 
-    @alerts = Alert.joins(:listing, :saved_search)
+    @alerts = Alert.includes(:listing, :saved_search)
                    .order(sent_at: :desc)
                    .offset(offset)
                    .limit(per_page)

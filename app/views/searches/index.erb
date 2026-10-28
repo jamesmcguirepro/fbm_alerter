@@ -20,7 +20,7 @@
     </thead>
     <tbody>
       <% @searches.each do |search| %>
-        <%= erb :'searches/_row', layout: false, locals: { search: search } %>
+        <%= erb :'searches/_row', layout: false, locals: { search: search, call_counts: @call_counts, last_call_at: @last_call_at } %>
       <% end %>
     </tbody>
   </table>

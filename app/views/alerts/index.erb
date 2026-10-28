@@ -23,15 +23,7 @@
   </table>
   </div>
 
-  <div class="pagination">
-    <% (1..[@total_pages, 1].max).each do |p| %>
-      <% if p == @page %>
-        <span class="current"><%= p %></span>
-      <% else %>
-        <a href="/alerts?page=<%= p %>"><%= p %></a>
-      <% end %>
-    <% end %>
-  </div>
+  <%= erb :'shared/_pagination', locals: { path: '/alerts', page: @page, total_pages: @total_pages } %>
   <% else %>
   <div class="empty">No alerts sent yet.</div>
   <% end %>

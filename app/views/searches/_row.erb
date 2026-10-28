@@ -7,22 +7,18 @@
       <a href="/listings?search_id=<%= search.id %>">View all listings</a>
     </div>
   </td>
-  <td>
-    <% if search.resolved_location.present? %>
-      <div><%= escape_html(search.resolved_location) %></div>
-      <% if search.lat && search.long %>
-        <div class="coord"><%= google_maps_link(search.lat, search.long) %></div>
-      <% end %>
-    <% elsif search.lat && search.long %>
-      <div class="coord"><%= google_maps_link(search.lat, search.long) %></div>
-    <% else %>
-      <div>—</div>
-    <% end %>
-  </td>
+  <td><%= search_location_cell(search) %></td>
   <td class="nowrap"><%= format_radius(search.radius_mi) %></td>
   <td class="nowrap"><%= format_price(search.min_price || 0) %> – <%= format_price(search.max_price || 0) %></td>
   <td><%= escape_html(search.email) %></td>
-  <td><div id="search-calls-<%= search.id %>"><%= calls_cell(search) %></div></td>
+  <% call_count = call_counts[search.id] || 0 %>
+  <% last_call = last_call_at[search.id] %>
+  <td><div id="search-calls-<%= search.id %>"><%= call_count %>
+    <% if last_call %>
+      <span class="muted">(last <%= format_day(last_call) %>)</span>
+    <% else %>
+      <span class="muted">never run</span>
+    <% end %></div></td>
   <td><%= active_badge(search) %></td>
   <td class="nowrap">
     <%# Opens the same query and filters on the public Marketplace site. %>

@@ -53,15 +53,7 @@
   </table>
   </div>
 
-  <div class="pagination">
-    <% (1..[@total_pages, 1].max).each do |p| %>
-      <% if p == @page %>
-        <span class="current"><%= p %></span>
-      <% else %>
-        <a href="/listings?page=<%= p %><%= qs_extra %>"><%= p %></a>
-      <% end %>
-    <% end %>
-  </div>
+  <%= erb :'shared/_pagination', locals: { path: '/listings', page: @page, total_pages: @total_pages, qs_extra: qs_extra } %>
   <% else %>
   <div class="empty">
     <% if @search %>

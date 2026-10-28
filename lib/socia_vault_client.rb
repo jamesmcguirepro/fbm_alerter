@@ -139,17 +139,35 @@ class SociaVaultClient
       when 200
         response.parsed_response
       when 400
-        raise "Bad Request: #{response.parsed_response['error']}"
+        raise "Bad Request: #{error_message(response)}"
       when 401
         raise 'Authentication Error: Invalid or missing API key'
       when 402
-        raise "Insufficient Credits: Required #{response.parsed_response['required']}, " \
-              "Available #{response.parsed_response['available']}"
+        parsed = safe_parsed(response)
+        if parsed.is_a?(Hash)
+          raise "Insufficient Credits: Required #{parsed['required']}, " \
+                "Available #{parsed['available']}"
+        end
+        raise "Insufficient Credits: #{response.body}"
       when 500
-        raise "500 Server Error: #{response.parsed_response['error']}"
+        raise "500 Server Error: #{error_message(response)}"
       else
-        raise "API Error (#{response.code}): #{response.parsed_response['error'] || response.body}"
+        raise "API Error (#{response.code}): #{error_message(response)}"
       end
+    end
+
+    # Safely extract an error message from a parsed response.
+    #
+    # When the API returns non-JSON (e.g. HTML error pages), HTTParty's
+    # +parsed_response+ is the raw body string; calling [] on a String
+    # with a symbol key would raise NoMethodError.
+    def error_message(response)
+      parsed = safe_parsed(response)
+      parsed.is_a?(Hash) ? (parsed['error'] || response.body) : response.body
+    end
+
+    def safe_parsed(response)
+      response.parsed_response
     end
 
     BASE_URL = 'https://api.sociavault.com'

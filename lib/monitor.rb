@@ -179,22 +179,12 @@ class MarketplaceMonitor
         exact_count: stats[:exact_matches],
         search_url: saved_search.marketplace_url,
         location_label: saved_search.location_label,
-        price_range: price_range_text(saved_search),
+        price_range: saved_search.price_range_text,
         radius_mi: saved_search.radius_mi
       )
       listings.each { |listing| Alert.record_alert(listing_id: listing.id, search_id: saved_search.id) }
     else
       @io.puts "\n✓ No new listings to alert"
     end
-  end
-
-  # Format a saved search's price bounds as "between $min and $max", or nil if neither set.
-  def price_range_text(saved_search)
-    parts = []
-    parts << "$#{saved_search.min_price.to_i}" if saved_search.min_price
-    parts << "$#{saved_search.max_price.to_i}" if saved_search.max_price
-    return nil if parts.empty?
-
-    "between #{parts.join(' and ')}"
   end
 end

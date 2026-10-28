@@ -341,8 +341,7 @@ RSpec.describe MarketplaceApp do
 
       get '/searches'
 
-      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}">))
-      expect(last_response.body).to include('<div class="calls-count">2</div>')
+      expect(last_response.body).to include(%(<div id="search-calls-#{search.id}">2))
     end
 
     it 'hides inactive searches unless explicitly requested' do

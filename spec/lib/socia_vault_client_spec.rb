@@ -285,6 +285,44 @@ RSpec.describe SociaVaultClient do
 
       expect { described_class.search_page(search_object:) }.to raise_error(/500/)
     end
+
+    context 'with non-JSON error body' do
+      it 'raises a meaningful error on 400 instead of NoMethodError' do
+        html_body = '<html><body>400 Bad Request</body></html>'
+        bad_response = double(code: 400, parsed_response: html_body, body: html_body, success?: false)
+        allow(HTTParty).to receive(:get).and_return(bad_response)
+
+        expect { described_class.search_page(search_object:) }
+          .to raise_error(/Bad Request.*400 Bad Request/)
+      end
+
+      it 'raises a meaningful error on 500 instead of NoMethodError' do
+        html_body = '<html><body>500 Internal Server Error</body></html>'
+        server_response = double(code: 500, parsed_response: html_body, body: html_body, success?: false)
+        allow(HTTParty).to receive(:get).and_return(server_response)
+
+        expect { described_class.search_page(search_object:) }
+          .to raise_error(/500 Server Error.*500 Internal Server Error/)
+      end
+
+      it 'raises a meaningful error on unknown status code instead of NoMethodError' do
+        plain_body = 'Something went wrong'
+        unknown_response = double(code: 502, parsed_response: plain_body, body: plain_body, success?: false)
+        allow(HTTParty).to receive(:get).and_return(unknown_response)
+
+        expect { described_class.search_page(search_object:) }
+          .to raise_error(/API Error \(502\).*Something went wrong/)
+      end
+
+      it 'falls back to response body when 402 has no structured JSON' do
+        plain_body = 'Insufficient credits'
+        credit_response = double(code: 402, parsed_response: plain_body, body: plain_body, success?: false)
+        allow(HTTParty).to receive(:get).and_return(credit_response)
+
+        expect { described_class.search_page(search_object:) }
+          .to raise_error(/Insufficient Credits: Insufficient credits/)
+      end
+    end
   end
 
   describe '.search_page in dry run' do

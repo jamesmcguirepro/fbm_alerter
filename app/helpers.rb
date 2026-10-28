@@ -167,6 +167,19 @@ module ViewHelpers
     str.length > 10 ? "#{str[0, 7]}#{'*' * (str.length - 10)}#{str[-3, 3]}" : ('*' * str.length)
   end
 
+  # Render the location cell for a saved-search table row: resolved name,
+  # coordinates link, or "—".
+  def search_location_cell(search)
+    has_location = search.resolved_location.present?
+    has_coords = search.lat && search.long
+    return '<div>—</div>' unless has_location || has_coords
+
+    parts = []
+    parts << "<div>#{escape_html(search.resolved_location)}</div>" if has_location
+    parts << %(<div class="coord">#{google_maps_link(search.lat, search.long)}</div>) if has_coords
+    parts.join
+  end
+
   # Render validation errors for a record as an HTML block ('' when valid).
   def form_errors(record)
     return '' if record.nil? || record.errors.empty?

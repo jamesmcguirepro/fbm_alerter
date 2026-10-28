@@ -1,0 +1,19 @@
+<%#
+  Locals:
+    path    - base path for pagination links (e.g. "/alerts" or "/listings")
+    page    - current page number
+    total_pages - total number of pages
+    qs_extra - optional extra query string to append (default: "")
+%>
+
+<% qs_extra = qs_extra unless defined?(:qs_extra) %>
+
+<div class="pagination">
+  <% (1..[total_pages, 1].max).each do |p| %>
+    <% if p == page %>
+      <span class="current"><%= p %></span>
+    <% else %>
+      <a href="<%= escape_html("#{path}?page=#{p}") %><%= escape_html(qs_extra) %>"><%= p %></a>
+    <% end %>
+  <% end %>
+</div>
