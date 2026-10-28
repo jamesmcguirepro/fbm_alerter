@@ -32,6 +32,9 @@ class MarketplaceMonitor
 
       send_alerts(listings: result.listings, saved_search:, stats: result.stats) if result.listings.any?
     end
+
+    capture_credit_snapshot(run)
+    check_low_credit_alert
   ensure
     run&.finish!
   end
@@ -186,5 +189,48 @@ class MarketplaceMonitor
     else
       @io.puts "\n✓ No new listings to alert"
     end
+  end
+
+  # Record the current credit balance and purge old snapshots.
+  def capture_credit_snapshot(run)
+    return if Config.dry_run?
+
+    snapshot = CreditSnapshot.capture(monitor_run: run)
+    return if snapshot.nil?
+
+    @io.puts "\n💾 Credits recorded — balance: #{snapshot.balance}"
+    CreditSnapshot.purge_old!
+  end
+
+  # Send a low-credit alert when the projected balance runs out soon.
+  # At most one alert per day.
+  def check_low_credit_alert
+    return if Config.dry_run?
+
+    unless credit_alert_needed?
+      @io.puts "\n✓ Credit alert: no action needed"
+      return
+    end
+
+    @io.puts "\n⚠ Low credits — sending alert"
+    EmailService.send_low_credit_alert
+
+    # Record that we sent an alert today so we don't spam.
+    AlertRecord.set_low_credit_alerted(type: AlertRecord::LOW_CREDIT)
+  end
+
+  # Whether a low-credit alert should be sent.
+  # Returns true when:
+  #   - We have at least 2 snapshots to establish a trend
+  #   - Projected days until exhaustion < 7
+  #   - We haven't alerted today yet
+  def credit_alert_needed?
+    return false unless CreditSnapshot.recent.count >= 2
+    return false if AlertRecord.low_credit_alerted_today?
+
+    days_remaining = CreditSnapshot.days_remaining
+    return true if days_remaining.nil? || days_remaining < 7
+
+    false
   end
 end

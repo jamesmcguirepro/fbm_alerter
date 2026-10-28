@@ -46,6 +46,8 @@ RSpec.describe MarketplaceMonitor do
 
   before do
     allow(Config).to receive(:validate!)
+    stub_request(:get, %r{https://api\.sociavault\.com/v1/credits})
+      .to_return(status: 200, body: { 'credits' => 950 }.to_json)
     # The real client yields once per API request so the caller can record the
     # credit; the stub does the same (one request).
     allow(SociaVaultClient).to receive(:search_page) do |&on_request|

@@ -87,6 +87,8 @@ RSpec.describe 'Marketplace Monitor integration' do
   describe 'full search cycle' do
     before do
       stub_api_success
+      stub_request(:get, %r{https://api\.sociavault\.com/v1/credits})
+        .to_return(status: 200, body: { 'credits' => 950 }.to_json)
       # Stub email delivery to avoid actual SMTP
       allow(Mailer).to receive(:send_email).and_return(true)
     end
@@ -172,6 +174,8 @@ RSpec.describe 'Marketplace Monitor integration' do
   describe 'empty API response' do
     before do
       stub_api_empty
+      stub_request(:get, %r{https://api\.sociavault\.com/v1/credits})
+        .to_return(status: 200, body: { 'credits' => 950 }.to_json)
       allow(Mailer).to receive(:send_email).and_return(true)
     end
 
@@ -189,6 +193,8 @@ RSpec.describe 'Marketplace Monitor integration' do
 
   describe 'API error handling' do
     before do
+      stub_request(:get, %r{https://api\.sociavault\.com/v1/credits})
+        .to_return(status: 200, body: { 'credits' => 950 }.to_json)
       allow(Mailer).to receive(:send_email).and_return(true)
     end
 

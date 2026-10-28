@@ -31,6 +31,19 @@ class EmailService
       end
     end
 
+    # Send a low-credit alert email. Renders a summary of the current balance,
+    # the consumption trend, and a link to the SociaVault dashboard.
+    def send_low_credit_alert
+      current = CreditSnapshot.latest_recent
+      days_remaining = CreditSnapshot.days_remaining
+
+      send_to_recipient(
+        recipient: Config.email_from,
+        subject: '⚠ Marketplace Monitor — low credits alert',
+        html_body: render_low_credit(current:, days_remaining:)
+      )
+    end
+
     # Build the full alert email HTML. Public so it can be rendered for a
     # preview without sending (and without spending any API credits).
     # @param listings [Array<ListingObject>]
@@ -53,6 +66,126 @@ class EmailService
       end
       html + footer(stats:)
     end
+
+    # Build the low-credit alert HTML.
+    # @param current [Integer, nil] current credit balance
+    # @param days_remaining [Float, nil] projected days until exhaustion
+    # @return [String]
+    def render_low_credit(current:, days_remaining:)
+      current_display = current.nil? ? 'unknown' : current.to_i
+      days_display = days_remaining.nil? ? 'unknown' : "#{days_remaining} days"
+      chart_data = credit_chart_data_json
+
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px 0; }
+              .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; }
+              .header { color: #111827; border-bottom: 2px solid #f59e0b; padding-bottom: 10px; margin-bottom: 12px; }
+              .header h1 { margin: 0 0 8px; font-size: 18px; color: #b45309; }
+              .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f3f5; }
+              .stat-label { color: #6b7280; }
+              .stat-value { font-weight: bold; color: #111827; }
+              .stat-value.danger { color: #dc2626; }
+              .stat-value.warn { color: #f59e0b; }
+              .chart { margin: 16px 0; text-align: center; }
+              .chart canvas { max-width: 100%; }
+              .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+              .footer a { color: #007bff; text-decoration: none; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>⚠ Credits running low</h1>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                  Your credit balance is projected to run out in <strong>#{escape(days_display)}</strong>.
+                  Please top up your plan at SociaVault.
+                </p>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Current balance</span>
+                <span class="stat-value #{current.nil? || current < 50 ? 'danger' : 'warn'}">#{escape(current_display.to_s)}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Estimated days remaining</span>
+                <span class="stat-value #{days_remaining.nil? || days_remaining < 7 ? 'danger' : 'warn'}">#{escape(days_display)}</span>
+              </div>
+              <div class="chart">
+                <canvas id="credit-chart" width="560" height="200"></canvas>
+                <script>
+                  (function() {
+                    var data = #{chart_data};
+                    var canvas = document.getElementById('credit-chart');
+                    if (!canvas || !data.length) return;
+                    var ctx = canvas.getContext('2d');
+                    var w = canvas.width, h = canvas.height;
+                    var padding = { top: 20, right: 20, bottom: 30, left: 50 };
+                    var chartW = w - padding.left - padding.right;
+                    var chartH = h - padding.top - padding.bottom;
+                    var balances = data.map(function(d) { return d[1]; });
+                    var minBal = Math.min.apply(null, balances);
+                    var maxBal = Math.max.apply(null, balances);
+                    var range = maxBal - minBal || 1;
+                    var stepX = chartW / (data.length - 1 || 1);
+                    ctx.strokeStyle = '#007bff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    data.forEach(function(d, i) {
+                      var x = padding.left + i * stepX;
+                      var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
+                      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                    ctx.fillStyle = '#007bff';
+                    data.forEach(function(d, i) {
+                      var x = padding.left + i * stepX;
+                      var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
+                      ctx.beginPath();
+                      ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                      ctx.fill();
+                    });
+                    ctx.fillStyle = '#6b7280';
+                    ctx.font = '11px Arial';
+                    ctx.textAlign = 'right';
+                    [minBal, maxBal].forEach(function(val, idx) {
+                      var actualY = padding.top + chartH - ((val - minBal) / range) * chartH;
+                      ctx.fillText(val.toFixed(0), padding.left - 5, actualY + 4);
+                    });
+                    ctx.textAlign = 'center';
+                    var firstDate = new Date(data[0][0]);
+                    var lastDate = new Date(data[data.length - 1][0]);
+                    ctx.fillText(formatDate(firstDate), padding.left, h - 8);
+                    ctx.fillText(formatDate(lastDate), w - padding.right, h - 8);
+                  })();
+                  function formatDate(d) {
+                    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    return months[d.getMonth()] + ' ' + d.getDate();
+                  }
+                </script>
+              </div>
+              <div class="footer">
+                <p>Marketplace Monitor v#{VERSION} • Credit Alert</p>
+                <p><a href="https://sociavault.com/dashboard" target="_blank">Open SociaVault Dashboard →</a></p>
+                <p>Sent by #{escape(Socket.gethostname)}</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      HTML
+    end
+
+    # JSON array of [ISO-8601 timestamp, balance] pairs for the chart.
+    def credit_chart_data_json
+      data = CreditSnapshot.chart_data
+      return '[]' if data.empty?
+
+      data.map { |ts, balance| "[#{ts.iso8601.inspect}, #{balance}]" }.to_s
+    end
+    private :credit_chart_data_json
 
     # Subject line naming the search query, the number of matches and the exact
     # match count (every query keyword present in the title).

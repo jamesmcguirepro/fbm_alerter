@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Run the FBM Alerter web server locally.
+#
+# Usage:
+#   script/server              # starts Puma on port 9292
+#   script/server -p 4567      # custom port
+#
+# Reads .env via dotenv, runs migrations, then boots Puma.
+#
+# Environment variables
+#   PORT        — HTTP port (default: 9292)
+#   RUBY_ENV    — Environment; controls which DB config to use (default: development)
+
+set -euo pipefail
+
+# Parse options
+PORT="${PORT:-9292}"
+RUBY_ENV="${RUBY_ENV:-development}"
+
+while getopts ":p:e:" opt; do
+  case ${opt} in
+    p )
+      PORT="$OPTARG"
+      ;;
+    e )
+      RUBY_ENV="$OPTARG"
+      ;;
+    \? )
+      echo "Usage: $0 [-p port] [-e environment]"
+      exit 1
+      ;;
+  esac
+done
+export PORT RUBY_ENV
+
+# Check if another process is already listening on this port
+if lsof -i :${PORT} -sTCP:LISTEN -t >/dev/null 2>&1; then
+  existing_pid=$(lsof -i :${PORT} -sTCP:LISTEN -t)
+  echo "Error: Port ${PORT} is already in use (PID ${existing_pid})."
+  echo "Stop it first, or use a different port: script/server -p <port>"
+  exit 1
+fi
+
+echo ""
+echo "=== FBM Alerter Web Server ==="
+echo "Running database migrations..."
+
+# Run migrations via Rake (dotenv is loaded by boot.rb)
+BUNDLE_GEMFILE="$(pwd)/Gemfile" bundle exec rake db:migrate
+
+echo "✓ Database migrations up to date."
+echo "Booting server on port ${PORT} (${RUBY_ENV})…"
+echo "Press Ctrl+C to stop."
+echo ""
+
+# Boot Puma (config.ru loads boot.rb + the app)
+BUNDLE_GEMFILE="$(pwd)/Gemfile" bundle exec puma -b "tcp://0.0.0.0:${PORT}" config.ru
