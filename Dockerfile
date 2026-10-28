@@ -33,8 +33,8 @@ COPY . .
 ENV RUBY_ENV=development
 ENV PORT=9292
 
-# Ensure the SQLite storage directory exists
-RUN mkdir -p /app/storage && chmod +x /app/docker-entrypoint.sh
+# Ensure required directories exist
+RUN mkdir -p /app/storage /app/tmp/pids /app/log && chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 9292
 
