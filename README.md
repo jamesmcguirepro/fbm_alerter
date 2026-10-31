@@ -69,7 +69,7 @@ docker login
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
-  -t trailstack/fbm_alerter:1.2.0 \
+  -t trailstack/fbm_alerter:1.2.1 \
   -t trailstack/fbm_alerter:latest \
   --push .
 ```
