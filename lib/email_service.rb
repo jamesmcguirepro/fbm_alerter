@@ -283,9 +283,9 @@ class EmailService
       body_class = image.empty? ? 'listing-body' : 'listing-body listing-body--with-thumb'
 
       match_tier_html = case listing.match_tier
-                        when Listing.match_tiers[:exact]
+                        when "exact", 2
                           '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534;margin-top:6px;">Exact</span>'
-                        when Listing.match_tiers[:partial]
+                        when "partial", 1
                           '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e;margin-top:6px;">Partial</span>'
                         else
                           ''
