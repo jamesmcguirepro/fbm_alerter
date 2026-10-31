@@ -21,13 +21,12 @@ cp .env.example .env
 # 2. Start the web GUI (http://localhost:9292) and the daily scheduler
 docker compose up -d
 
-# 3. (optional) run the searches now instead of waiting for the scheduler
-docker compose run --rm marketplace-monitor exec
+# 3. (optional) run the searches now from the web GUI at http://localhost:9292/searches
 ```
 
-`web` and `scheduler` share one SQLite database, so a run triggered from the CLI shows up in the GUI straight away.
+`web` and `scheduler` share one SQLite database, so a run triggered from the GUI shows up in the dashboard straight away.
 
-`web` is the only service that runs database migrations. `scheduler` and the one-shot `marketplace-monitor` tool wait for `web` to be healthy, which means migrations have finished, so two containers never race on `schema_migrations`.
+`web` is the only service that runs database migrations. `scheduler` waits for `web` to be healthy, which means migrations have finished, so two containers never race on `schema_migrations`.
 
 ### Docker commands
 
@@ -36,17 +35,12 @@ docker compose run --rm marketplace-monitor exec
 | `docker compose pull` | Pull the published image |
 | `docker compose up -d` | Start the web GUI and the daily scheduler |
 | `docker compose up -d web` | Start just the web GUI |
-| `docker compose run --rm marketplace-monitor exec` | Run all saved searches once (waits for web's migrations) |
-| `docker compose run --rm marketplace-monitor list` | List saved searches |
-| `docker compose run --rm marketplace-monitor add -q bike --city "Austin, TX" --radius 25 --min 100 --max 500 --email you@example.com` | Add a new saved search |
-| `docker compose run --rm marketplace-monitor delete 3` | Delete a saved search by ID |
 | `docker compose logs -f scheduler` | Watch the scheduler (results of each run) |
+| `docker compose logs -f web` | Watch the web service |
 | `docker compose down` | Stop the containers (data is kept) |
 | `docker compose down -v` | Stop and remove the data volume (deletes the SQLite database) |
 
 Data persists in the `data` folder next to the compose file, bind-mounted at `/app/storage` (SQLite file: `data/development.sqlite3`).
-
-> `marketplace-monitor` is a one-shot job (it runs the searches, then exits) and lives in the optional `tools` profile, so `docker compose up` and Container Manager's project start skip it. Run it explicitly with `docker compose run --rm marketplace-monitor exec` for a manual run — its normal exit would otherwise be reported by Container Manager as an unexpected stop.
 
 ### Choosing an image tag
 
@@ -62,7 +56,6 @@ To run your own changes instead of the published image, use the build override (
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-docker compose -f docker-compose.yml -f docker-compose.build.yml run --rm marketplace-monitor exec
 ```
 
 ### Publishing a new image (maintainers)
@@ -118,7 +111,7 @@ DSM 7.2+ ships this as **Container Manager** (the old "Docker" package, renamed)
 2. File Station → create a project folder on a shared folder, e.g. `/volume1/docker/fbm_alerter`, and copy in `docker-compose.yml`.
 3. Create a `.env` in that folder (see [Configuration](#configuration)).
 4. Container Manager → **Project** → **Create**, point it at the folder, and start it.
-5. The project starts `web` and `scheduler`. `marketplace-monitor` is a one-shot job in the optional `tools` profile, so the project start leaves it alone and its normal exit is not reported as an unexpected stop.
+5. The project starts `web` and `scheduler`.
 
 **SSH / CLI** (DSM 7.2.1+ with a current Container Manager):
 
@@ -146,33 +139,33 @@ It does **not** run just because the container started. Before each pass it chec
 - no run today, before the scheduled time → wait for today's time
 - no run today, past the scheduled time → run immediately (catch-up)
 
-That means restarting or recreating the container costs nothing unless a scheduled run was genuinely missed. A manual “Run all searches now”, or `docker compose run --rm marketplace-monitor exec`, also counts as today's full run, so the scheduler won't repeat it. A single-search “Run now” does not count.
+That means restarting or recreating the container costs nothing unless a scheduled run was genuinely missed. A manual "Run all searches now" from the GUI also counts as today's full run, so the scheduler won't repeat it. A single-search "Run now" does not count.
 
 To change the time, set `SCHEDULE_AT` in `.env` (24-hour `HH:MM`) and recreate the container. The value is interpreted in `TZ`.
 
-It uses the same code path as `docker compose run --rm marketplace-monitor exec`, so results match a manual run.
+It uses the same code path as a manual "Run all" from the GUI, so results match.
 
-`web` is the only service that runs migrations, and it does so before serving HTTP. Both `scheduler` and `marketplace-monitor` wait for `web` to be healthy, so they only start once the database schema is ready. This is also why `docker compose up -d` does not produce a `schema_migrations` race between the two containers.
+`web` is the only service that runs migrations, and it does so before serving HTTP. The `scheduler` waits for `web` to be healthy, so it only starts once the database schema is ready. This is also why `docker compose up -d` does not produce a `schema_migrations` race between the two containers.
 
-The image carries a healthcheck for the web GUI (port 9292), and Docker applies it to every container from the image. Since only `web` serves that port, `scheduler` and `marketplace-monitor` override it with `healthcheck: test: ["NONE"]` — otherwise they get reported as unhealthy for no reason.
+The image carries a healthcheck for the web GUI (port 9292), and Docker applies it to every container from the image. Since only `web` serves that port, `scheduler` overrides it with `healthcheck: test: ["NONE"]` — otherwise it gets reported as unhealthy for no reason.
 
 Prefer an external scheduler? Point your host at the run command and drop the `scheduler` service. On a Synology NAS: **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script** (run as `root`), daily:
 
 ```sh
-cd /volume1/docker/fbm_alerter && /usr/local/bin/docker compose up -d web && /usr/local/bin/docker compose run --rm marketplace-monitor exec
+cd /volume1/docker/fbm_alerter && /usr/local/bin/docker compose up -d web && /usr/local/bin/ruby main.rb schedule
 ```
 
 On a generic Linux host:
 
 ```cron
-0 8 * * * cd /path/to/fbm_alerter && docker compose up -d web && docker compose run --rm marketplace-monitor exec >> /path/to/fbm_alerter/cron.log 2>&1
+0 8 * * * cd /path/to/fbm_alerter && /usr/local/bin/ruby main.rb schedule >> /path/to/fbm_alerter/cron.log 2>&1
 ```
 
 Set `TZ` in `.env` so the container's timestamps, "today" counts, and the scheduler's run time line up.
 
 ## Web GUI
 
-The app includes a Sinatra-based web GUI (no auth, intended for LAN use). It reads and writes the same SQLite database as the CLI, so a search added from either place shows up in both.
+The app includes a Sinatra-based web GUI (no auth, intended for LAN use). It reads and writes the same SQLite database as the scheduler, so all search management is unified.
 
 ![Marketplace Monitor dashboard](docs/web-dashboard.png)
 
@@ -212,11 +205,7 @@ cp .env.example .env
 # 3. Run setup (migrates DB, validates config)
 ./setup.sh
 
-# 4. Add searches and run
-bundle exec ruby main.rb add -q bike --city "Austin, TX" --radius 25 --min 100 --max 500 --email you@example.com
-bundle exec ruby main.rb exec
-
-# 5. Start the web GUI (http://localhost:9292)
+# 4. Start the web GUI (http://localhost:9292) — add and manage searches from the GUI
 bundle exec puma -b tcp://0.0.0.0:9292 config.ru
 ```
 
@@ -240,23 +229,12 @@ Optional:
 
 ### Saved searches
 
-Searches are stored in the SQLite database. Add them via the CLI:
+Searches are stored in the SQLite database. Add them from the web GUI at `/searches/new` or via the CLI scheduler:
 
 ```bash
-bundle exec ruby main.rb add -q "mountain bike" --city "Austin, TX" --radius 25 --min 50 --max 300 --cond used_good --del shipping --email you@example.com
+# Schedule daily runs (the only CLI command left)
+bundle exec ruby main.rb schedule
 ```
-
-`--radius` is in miles. `--city` is geocoded through Nominatim; you can use
-`--lat`/`--long` instead for an exact point:
-
-```bash
-bundle exec ruby main.rb add -q "mountain bike" --lat 40.7128 --long=-74.0060 --radius 25 --email you@example.com
-```
-
-> Use `--long=-74.0060` (with `=`) for negative longitudes — a space-separated value
-> starting with `-` is parsed as a command-line switch. `--city` avoids that issue.
-
-Each search stores its own alert recipient (`--email`), which is where notifications for that search are sent.
 
 ## Testing
 
@@ -266,10 +244,12 @@ bundle exec rspec
 
 Integration tests mock the SociaVault API with WebMock — no real API calls are made.
 
-## CLI commands
+## Scheduler
 
-- `add` — Add a new saved search
-- `delete ID` — Delete a saved search by ID
-- `exec` — Execute all saved searches and send alerts for new listings
-- `list` — List all saved searches
-- `search` — Run a one-off search (not saved)
+The only remaining CLI command is `schedule` — it runs the daily scheduler loop:
+
+```bash
+bundle exec ruby main.rb schedule
+```
+
+This is what the `scheduler` Docker service runs. All search management (add, edit, delete, run) is done through the web GUI.

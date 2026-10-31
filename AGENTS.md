@@ -22,14 +22,8 @@ RUBY_ENV=development ruby -r ./config/boot -r puma -r sinatra/base -e 'run Marke
 # or simply via config.ru:
 ruby -I. -r ./config/boot -r puma -r sinatra/base config.ru
 
-# Run the CLI
-ruby main.rb --help
-ruby main.rb add --query "PS5" --city "Austin TX" --email "you@example.com"
-ruby main.rb exec          # run all saved searches
-ruby main.rb schedule      # run saved searches daily at SCHEDULE_AT
-ruby main.rb list          # list saved searches
-ruby main.rb delete <id>   # remove a saved search
-ruby main.rb search --query "PS5" --city "Austin TX"  # ad-hoc search
+# Run the daily scheduler
+ruby main.rb schedule
 ```
 
 ### Docker
@@ -44,11 +38,7 @@ docker compose up -d web          # http://<host>:9292
 # Run the daily scheduler
 docker compose up -d scheduler
 
-# Ad-hoc CLI (runs once and exits)
-docker compose run --rm marketplace-monitor exec
-docker compose run --rm marketplace-monitor add --query "PS5" --city "Austin TX" --email "you@example.com"
-docker compose run --rm marketplace-monitor list
-docker compose run --rm marketplace-monitor search --query "PS5" --city "Austin TX"
+
 ```
 
 ### Tests
@@ -200,8 +190,8 @@ rubocop -a  # auto-correct
 
 ### Docker
 
-- Three compose services: **web** (GUI), **scheduler** (daily runs), **marketplace-monitor** (ad-hoc CLI).
-- The **web** service runs migrations before accepting traffic; the scheduler and monitor wait for web's health check.
+- Two compose services: **web** (GUI) and **scheduler** (daily runs).
+- The **web** service runs migrations before accepting traffic; the scheduler waits for web's health check.
 - SQLite storage is mounted from the host (`/volume1/docker/fbm_alerter/data:/app/storage`).
 - `docker-compose.build.yml` is used for local builds (no `--rm` groups); the published image is `trailstack/fbm_alerter`.
 

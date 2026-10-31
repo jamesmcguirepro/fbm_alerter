@@ -45,25 +45,4 @@ services:
     restart: unless-stopped
     command: schedule
 
-  # Ad-hoc CLI runs, not started by `up`:
-  #   docker compose run --rm marketplace-monitor exec
-  #   docker compose run --rm marketplace-monitor list
-  # Pulls the published image; use docker-compose.build.yml to build locally.
-  marketplace-monitor:
-    image: trailstack/fbm_alerter:${IMAGE_TAG:-1.0.14}
-    profiles: ["tools"]
-    # Same startup guarantee as the scheduler: web has finished migrating.
-    depends_on:
-      web:
-        condition: service_healthy
-    hostname: james-nas
-    env_file: .env
-    environment:
-      - RUBY_ENV=development
-      - TZ=${TZ:-UTC}
-    volumes:
-      - /volume1/docker/fbm_alerter/data:/app/storage
-    # Same reason as `scheduler`: this container doesn't serve 9292.
-    healthcheck:
-      test: ["NONE"]
-    command: exec
+
