@@ -990,6 +990,44 @@ RSpec.describe MarketplaceApp do
       expect(last_response.status).to eq(200)
       expect(last_response.body).to include("can't reach SociaVault")
     end
+
+    it 'renders a chart when credit snapshots exist' do
+      3.times do |i|
+        CreditSnapshot.create!(balance: 500 - i * 10, created_at: Time.current - (3 - i).days)
+      end
+
+      get '/dashboard/credits'
+
+      expect(last_response.body).to include('Credits history')
+      expect(last_response.body).to include('credit-chart')
+      # Data should be a valid JSON array of [timestamp, balance] pairs.
+      expect(last_response.body).to match(/var data = \[\["\d{4}-\d{2}-\d{2}T[\d:.]+Z",\d/)
+    end
+
+    it 'shows an empty message when no credit snapshots exist' do
+      get '/dashboard/credits'
+
+      expect(last_response.body).to include('Credits history')
+      expect(last_response.body).to include('No balance history yet')
+    end
+
+    it 'renders chart data as valid JSON arrays, not escaped strings' do
+      CreditSnapshot.create!(
+        balance: 420.50,
+        created_at: Time.current - 1.day
+      )
+
+      get '/dashboard/credits'
+
+      # The chart data must be a valid JS/JSON array: [timestamp, number], not
+      # an array of strings like ["[\"2026-...\", 420.5]"].
+      expect(last_response.body).to match(
+        /var data = \[\["\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",420\.5\]\]/
+      )
+      # Ensure no escaped-quote artifact from iso8601.inspect leak through.
+      expect(last_response.body).not_to include('\u0022')
+      expect(last_response.body).not_to match(/\\["\']/)
+    end
   end
 
   describe 'time zone display' do

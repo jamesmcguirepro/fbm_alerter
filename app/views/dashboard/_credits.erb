@@ -29,7 +29,7 @@
       <canvas id="credit-chart" width="560" height="200"></canvas>
       <script>
         (function() {
-          var data = <%= @credit_chart_data.map { |ts, balance| "[#{ts.iso8601.inspect}, #{balance.to_f}]" }.to_s %>;
+          var data = <%= @credit_chart_data.map { |ts, balance| [ts.iso8601, balance.to_f] }.to_json %>;
           var canvas = document.getElementById('credit-chart');
           if (!canvas || !data.length) return;
           var ctx = canvas.getContext('2d');
