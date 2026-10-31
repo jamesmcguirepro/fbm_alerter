@@ -32,8 +32,8 @@ class ListingMatcher < ListingFilter
   def filter(listing, _search_object)
     return false if @keywords.empty? || listing.title.nil?
 
-    normalized_title = normalize(text: listing.title)
-    @keywords.any? { |keyword| normalized_title.include?(keyword) }
+    title_tokens = split_tokens(listing.title)
+    @keywords.any? { |keyword| match_token?(keyword, title_tokens, listing.title) }
   end
 
   # @param title [String, nil]
@@ -41,8 +41,8 @@ class ListingMatcher < ListingFilter
   def title_match?(title:)
     return false if @keywords.empty? || title.nil?
 
-    normalized_title = normalize(text: title)
-    @keywords.any? { |keyword| normalized_title.include?(keyword) }
+    title_tokens = split_tokens(title)
+    @keywords.any? { |keyword| match_token?(keyword, title_tokens, title) }
   end
 
   # @param title [String, nil]
@@ -61,5 +61,34 @@ class ListingMatcher < ListingFilter
   # hiding a match.
   def normalize(text:)
     text.to_s.downcase.gsub(/[a-z0-9]+/) { |word| KEYWORD_ALIASES.fetch(word, word) }
+  end
+
+  # Split text into lowercase alphanumeric tokens for word-boundary matching.
+  def split_tokens(text)
+    text.to_s.downcase.scan(/[a-z0-9]+/)
+  end
+
+  # Match a keyword against a listing title using token matching for longer
+  # keywords (≥ 3 chars) and digit-alpha boundary matching for shorter ones.
+  #
+  # Exact token matching prevents "te" from matching "Terrain". For short
+  # keywords (< 3 chars), we allow prefix/suffix matches only when separated
+  # by a non-letter boundary — this catches model designators like "te300" or
+  # "300te" while rejecting pure-letter words like "Terrain".
+  def match_token?(keyword, title_tokens, _title_text)
+    title_tokens.include?(keyword) ||
+      (keyword.length < 3 && title_tokens.any? do |token|
+        next false unless token.length > keyword.length
+
+        if token.start_with?(keyword)
+          next_char = token[keyword.length]
+          next_char.nil? || !next_char.match?(/\p{Ll}/)
+        elsif token.end_with?(keyword)
+          prev_char = token[-(keyword.length + 1)]
+          prev_char.nil? || !prev_char.match?(/\p{Ll}/)
+        else
+          false
+        end
+      end)
   end
 end

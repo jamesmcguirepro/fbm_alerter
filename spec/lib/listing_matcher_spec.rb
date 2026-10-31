@@ -27,6 +27,34 @@ RSpec.describe ListingMatcher do
       expect(matcher(query: 'te 300').title_match?(title: 'Husqvarna TE300i')).to be(true)
     end
 
+    it 'matches reversed compound model suffixes like "300te"' do
+      expect(matcher(query: 'te 300').title_match?(title: 'Husqvarna 300te')).to be(true)
+    end
+
+    it 'matches compound suffixes with the prefix first like "te300"' do
+      expect(matcher(query: 'te 300').title_match?(title: 'Husqvarna te300')).to be(true)
+    end
+
+    it 'does not match short query keywords as substrings of unrelated words' do
+      expect(matcher(query: 'husqvarna te 300').title_match?(title: '2016 GMC Terrain')).to be(false)
+    end
+
+    it 'does not match "te" inside "Tex"' do
+      expect(matcher(query: 'te 300').title_match?(title: '2004 Big Tex 14gn')).to be(false)
+    end
+
+    it 'does not match "te" inside "Date"' do
+      expect(matcher(query: 'husqvarna te 300').title_match?(title: 'Rolex Submariner Date Men Watch 41mm')).to be(false)
+    end
+
+    it 'does not match "300" inside "1500"' do
+      expect(matcher(query: 'husqvarna te 300').title_match?(title: '2005 Chevrolet Silverado 1500')).to be(false)
+    end
+
+    it 'does not match "te" inside "mustang"' do
+      expect(matcher(query: 'husqvarna te 300').title_match?(title: '2016 Ford Mustang EcoBoost Coupe 2D')).to be(false)
+    end
+
     it 'returns false when no keyword is present' do
       expect(matcher(query: 'husqvarna te 300').title_match?(title: 'Kawasaki KX 250')).to be(false)
     end
