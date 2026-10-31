@@ -21,8 +21,9 @@ RSpec.describe SearchService do
     )
   end
 
-  def listing(id:, title:, creation_time: nil)
-    { 'id' => id, 'title' => title, 'creation_time' => creation_time }
+  def listing(id:, title:, creation_time: nil, location: nil, is_sold: nil)
+    { 'id' => id, 'title' => title, 'creation_time' => creation_time,
+      'location' => { 'display_name' => location }, 'is_sold' => is_sold }
   end
 
   def page(listings:, cursor: nil, has_next_page: true)
@@ -38,10 +39,10 @@ RSpec.describe SearchService do
 
   it 'returns only listings whose title matches the query' do
     stub_pages(page(listings: [
-                       listing(id: '1', title: '2022 Husqvarna TE 300'),
-                       listing(id: '2', title: 'Toyota Camry'),
-                       listing(id: '3', title: 'Husqvarna FE 350')
-                     ], has_next_page: false))
+                     listing(id: '1', title: '2022 Husqvarna TE 300'),
+                     listing(id: '2', title: 'Toyota Camry'),
+                     listing(id: '3', title: 'Husqvarna FE 350')
+                   ], has_next_page: false))
 
     expect(service.run.map(&:listing_id)).to contain_exactly('1', '3')
   end
@@ -162,7 +163,7 @@ RSpec.describe SearchService do
 
     service.run
 
-    expect(service.stats).to eq(api_results: 3, pages_fetched: 2)
+    expect(service.stats).to eq(api_results: 3, pages_fetched: 2, title_matches: 2)
   end
 
   it 'counts the credit spent when the first page is empty' do
@@ -170,12 +171,73 @@ RSpec.describe SearchService do
 
     service.run
 
-    expect(service.stats).to eq(api_results: 0, pages_fetched: 1)
+    expect(service.stats).to eq(api_results: 0, pages_fetched: 1, title_matches: 0)
   end
 
   it 'tolerates a malformed page response' do
     stub_pages({})
 
     expect(service.run).to eq([])
+  end
+
+  context 'with distance filtering' do
+    before do
+      # Stub geocode for within-radius city (normalized: "New Rochelle, NY" → "new rochelle, new york")
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: /new rochelle.*new york/i))
+        .to_return(status: 200, body: [
+                     { 'lat' => '40.91', 'lon' => '-73.79', 'display_name' => 'New Rochelle, New York' }
+                   ].to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      # Stub geocode for out-of-radius city (normalized: "Miami, FL" → "miami, florida")
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: /miami.*florida/i))
+        .to_return(status: 200, body: [
+                     { 'lat' => '25.76', 'lon' => '-80.19', 'display_name' => 'Miami, Florida' }
+                   ].to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+    end
+
+    it 'filters out listings beyond the radius' do
+      # New Rochelle is ~25 miles from NYC (within 65 mi)
+      stub_pages(page(listings: [
+                        listing(id: '1', title: 'Husqvarna TE 300', location: 'New Rochelle, NY'),
+                        listing(id: '2', title: 'Husqvarna TE 300', location: 'Miami, FL')
+                      ], has_next_page: false))
+
+      result = service.run
+
+      # Miami is ~1100 miles from NYC, so filtered out.
+      expect(result.map(&:listing_id)).to eq(['1'])
+    end
+
+    it 'passes listings without a location through' do
+      stub_pages(page(listings: [
+                        listing(id: '1', title: 'Husqvarna TE 300', location: nil)
+                      ], has_next_page: false))
+
+      expect(service.run.map(&:listing_id)).to eq(['1'])
+    end
+  end
+
+  context 'with sold filtering' do
+    it 'excludes sold listings' do
+      stub_pages(page(listings: [
+                        listing(id: '1', title: 'Husqvarna TE 300', is_sold: true),
+                        listing(id: '2', title: 'Husqvarna TE 300', is_sold: false)
+                      ], has_next_page: false))
+
+      result = service.run
+
+      expect(result.map(&:listing_id)).to eq(['2'])
+    end
+
+    it 'includes listings without is_sold flag' do
+      stub_pages(page(listings: [listing(id: '1', title: 'Husqvarna TE 300', is_sold: nil)],
+                      has_next_page: false))
+
+      expect(service.run.map(&:listing_id)).to eq(['1'])
+    end
   end
 end

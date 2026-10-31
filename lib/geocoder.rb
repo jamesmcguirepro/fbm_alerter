@@ -17,6 +17,25 @@ class Geocoder
   # make many stubbed requests, so they skip the wait.
   MIN_INTERVAL = ENV['RUBY_ENV'] == 'test' ? 0 : 1.1
 
+  # Standard USPS abbreviations → full state name. Used by
+  # `normalize_location` so that "Austin, TX" and "Austin, Texas" resolve to
+  # the same cache key.
+  STATE_ABBREVS = {
+    'AL' => 'Alabama',   'AK' => 'Alaska',    'AZ' => 'Arizona',   'AR' => 'Arkansas',
+    'CA' => 'California', 'CO' => 'Colorado',  'CT' => 'Connecticut', 'DE' => 'Delaware',
+    'FL' => 'Florida',   'GA' => 'Georgia',   'HI' => 'Hawaii',    'ID' => 'Idaho',
+    'IL' => 'Illinois',  'IN' => 'Indiana',   'IA' => 'Iowa',      'KS' => 'Kansas',
+    'KY' => 'Kentucky',  'LA' => 'Louisiana', 'ME' => 'Maine',     'MD' => 'Maryland',
+    'MA' => 'Massachusetts', 'MI' => 'Michigan', 'MN' => 'Minnesota', 'MS' => 'Mississippi',
+    'MO' => 'Missouri',  'MT' => 'Montana',   'NE' => 'Nebraska',  'NV' => 'Nevada',
+    'NH' => 'New Hampshire', 'NJ' => 'New Jersey', 'NM' => 'New Mexico', 'NY' => 'New York',
+    'NC' => 'North Carolina', 'ND' => 'North Dakota', 'OH' => 'Ohio', 'OK' => 'Oklahoma',
+    'OR' => 'Oregon',    'PA' => 'Pennsylvania', 'RI' => 'Rhode Island', 'SC' => 'South Carolina',
+    'SD' => 'South Dakota', 'TN' => 'Tennessee', 'TX' => 'Texas',   'UT' => 'Utah',
+    'VT' => 'Vermont',   'VA' => 'Virginia',  'WA' => 'Washington', 'WV' => 'West Virginia',
+    'WI' => 'Wisconsin', 'WY' => 'Wyoming',   'DC' => 'District of Columbia'
+  }.freeze
+
   # A forward lookup candidate. `name` is the compact label we store on a
   # saved search ("Austin, Texas"); `display_name` is Nominatim's fuller label
   # used to tell ambiguous matches apart in the picker.
@@ -33,20 +52,7 @@ class Geocoder
     def reverse(lat:, long:)
       return nil if lat.nil? || long.nil?
 
-      key = format('%.4f,%.4f', lat.to_f, long.to_f)
-      data = fetch_json(
-        kind: 'reverse',
-        query: key,
-        path: '/reverse',
-        params: {
-          format: 'jsonv2',
-          lat: lat,
-          lon: long,
-          zoom: 10,
-          addressdetails: 1
-        }
-      )
-
+      data = fetch_reverse(lat: lat, long: long)
       data.is_a?(Hash) ? place_name(data) : nil
     end
 
@@ -58,60 +64,82 @@ class Geocoder
       query = query.to_s.strip
       return [] if query.empty?
 
-      data = fetch_json(
-        kind: 'search',
-        query: query.downcase.gsub(/\s+/, ' '),
-        path: '/search',
-        params: {
-          format: 'jsonv2',
-          q: query,
-          addressdetails: 1,
-          limit: SEARCH_LIMIT
-        }
-      )
+      # Use the normalized form (state abbreviations expanded) as the cache key
+      # so that "Austin, TX" and "Austin, Texas" share a single entry.
+      cache_key = normalize_location(query).downcase
+      cached = GeocodeCache.read(cache_key)
+      if cached
+        # Build a Place from the cached coordinates — we need the original
+        # display_name from Nominatim for disambiguation, so we fall back to
+        # a basic Place when the cache only has lat/lon.
+        return [Place.new(name: cache_key, lat: cached[:lat], long: cached[:lon], display_name: cache_key)]
+      end
 
+      data = request_forward(query: cache_key)
       return [] unless data.is_a?(Array)
 
-      data.filter_map { |item| build_place(item) }.first(limit)
+      first = build_place(data.first)
+      return [] unless first
+
+      GeocodeCache.write(cache_key, { lat: first.lat, lon: first.long })
+      [first].first(limit)
+    end
+
+    # Normalize a city-state string so that abbreviations and full names
+    # collide on the same cache key: "Austin, TX" and "Austin, Texas" both
+    # become "austin, texas".
+    def normalize_location(city_state)
+      parts = city_state.strip.split(',').map(&:strip)
+      city = parts[0]&.capitalize
+      state = if parts[1] && STATE_ABBREVS[parts[1].upcase]
+                STATE_ABBREVS[parts[1].upcase]
+              else
+                parts[1]&.capitalize
+              end
+      state ? "#{city}, #{state}" : city
     end
 
     private
 
-    def fetch_json(kind:, query:, path:, params:)
-      cached = GeocodeCacheEntry.read(kind:, query:, ttl: CACHE_TTL)
-      if cached
-        begin
-          parsed = JSON.parse(cached)
-          return parsed if cacheable?(kind, parsed)
-        rescue JSON::ParserError
-          # Ignore a corrupt cache row and fetch a fresh response below.
-        end
-      end
-
-      data = request(path:, params:)
-      return nil if data.nil?
-
-      GeocodeCacheEntry.write(kind:, query:, payload: JSON.generate(data)) if cacheable?(kind, data)
-      data
-    end
-
-    # Only cache successful payloads. Nominatim can return a 200 with an error
-    # object for a coordinate it cannot resolve; retrying that later is better
-    # than pinning it for the cache lifetime.
-    def cacheable?(kind, data)
-      case kind
-      when 'search' then data.is_a?(Array)
-      when 'reverse' then data.is_a?(Hash) && data['display_name'].present?
-      else false
-      end
-    end
-
-    def request(path:, params:)
+    # Forward geocode request to Nominatim — cached via GeocodeCache.
+    def request_forward(query:)
       throttle!
 
       response = HTTParty.get(
-        "#{Config.nominatim_url}#{path}",
-        query: params,
+        "#{Config.nominatim_url}/search",
+        query: {
+          format: 'jsonv2',
+          q: query,
+          addressdetails: 1,
+          limit: SEARCH_LIMIT
+        },
+        headers: {
+          'User-Agent' => USER_AGENT,
+          'Accept-Language' => 'en'
+        },
+        timeout: 5
+      )
+
+      return nil unless response.code == 200
+
+      response.parsed_response
+    rescue StandardError
+      nil
+    end
+
+    # Reverse geocode request to Nominatim — no caching (one-time call per search).
+    def fetch_reverse(lat:, long:)
+      throttle!
+
+      response = HTTParty.get(
+        "#{Config.nominatim_url}/reverse",
+        query: {
+          format: 'jsonv2',
+          lat: lat,
+          lon: long,
+          zoom: 10,
+          addressdetails: 1
+        },
         headers: {
           'User-Agent' => USER_AGENT,
           'Accept-Language' => 'en'

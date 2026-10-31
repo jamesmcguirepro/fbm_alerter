@@ -91,6 +91,19 @@ RSpec.describe 'Marketplace Monitor integration' do
         .to_return(status: 200, body: { 'credits' => 950 }.to_json)
       # Stub email delivery to avoid actual SMTP
       allow(Mailer).to receive(:send_email).and_return(true)
+      # Stub Nominatim for distance filter geocode lookups
+      # (listing locations like "Austin, TX" normalize to "austin, texas")
+      stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+        .with(query: hash_including(q: /austin.*texas/i))
+        .to_return(
+          status: 200,
+          body: [{
+            'lat' => '30.2677',
+            'lon' => '-97.7475',
+            'display_name' => 'Austin, Travis County, Texas, United States'
+          }].to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
     end
 
     it 'creates listings from API response' do

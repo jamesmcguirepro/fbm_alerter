@@ -56,6 +56,33 @@ RSpec.describe MarketplaceMonitor do
     end
     allow(EmailService).to receive(:send_alerts)
     allow(Alert).to receive(:record_alert)
+
+    # Stub Nominatim geocoding for listing locations used in execute_search tests.
+    # ListingDistanceFilter normalizes locations before geocoding (e.g. "Brooklyn, NY"
+    # → "brooklyn, new york").
+    stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+      .with(query: hash_including(q: 'nyc'))
+      .to_return(
+        status: 200,
+        body: [{
+          'lat' => '40.7128',
+          'lon' => '-74.0060',
+          'display_name' => 'New York, NY, United States'
+        }].to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+    stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
+      .with(query: hash_including(q: 'brooklyn, new york'))
+      .to_return(
+        status: 200,
+        body: [{
+          'lat' => '40.6782',
+          'lon' => '-73.9442',
+          'display_name' => 'Brooklyn, New York, United States'
+        }].to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
   end
 
   describe '#initialize' do

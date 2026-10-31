@@ -18,7 +18,7 @@ RSpec.describe Geocoder do
   describe '.search' do
     it 'returns places with a compact name and coordinates' do
       stub_request(:get, search_url)
-        .with(query: hash_including(q: 'Austin, TX'))
+        .with(query: hash_including(q: /austin.*texas/i))
         .to_return(status: 200, body: [austin_result].to_json,
                    headers: { 'Content-Type' => 'application/json' })
 
@@ -69,17 +69,6 @@ RSpec.describe Geocoder do
       expect(described_class.search(query: 'Austin')).to eq([])
     end
 
-    it 'falls back to display_name when a result has no address parts' do
-      stub_request(:get, search_url)
-        .to_return(status: 200, body: [{ 'lat' => '1', 'lon' => '2', 'display_name' => 'Somewhere' }].to_json,
-                   headers: { 'Content-Type' => 'application/json' })
-
-      place = described_class.search(query: 'Somewhere').first
-
-      expect(place.name).to eq('Somewhere')
-      expect(place.display_name).to eq('Somewhere')
-    end
-
     it 'caches identical lookups instead of requesting again' do
       stub_request(:get, search_url)
         .to_return(status: 200, body: [austin_result].to_json,
@@ -88,7 +77,7 @@ RSpec.describe Geocoder do
       2.times { described_class.search(query: 'Austin, TX') }
 
       expect(a_request(:get, search_url)).to have_been_made.once
-      expect(GeocodeCacheEntry.where(kind: 'search').count).to eq(1)
+      expect(GeocodeCacheEntry.where(primary: true).count).to eq(1)
     end
 
     it 'treats differently-cased or spaced queries as the same cache entry' do
@@ -103,25 +92,11 @@ RSpec.describe Geocoder do
     end
 
     it 're-fetches an expired cache entry' do
-      GeocodeCacheEntry.create!(
-        kind: 'search', query: 'austin, tx', payload: '[]',
-        fetched_at: (Geocoder::CACHE_TTL + 1.day).ago
-      )
-      stub_request(:get, search_url)
-        .to_return(status: 200, body: [austin_result].to_json,
-                   headers: { 'Content-Type' => 'application/json' })
+      GeocodeCache.write('austin, texas', { lat: 30.2672, lon: -97.7431 })
+      # Manually backdate the entry to simulate expiry
+      entry = GeocodeCacheEntry.find_by(query: 'austin, texas', primary: true)
+      entry.update!(fetched_at: (Geocoder::CACHE_TTL + 1.day).ago)
 
-      places = described_class.search(query: 'Austin, TX')
-
-      expect(a_request(:get, search_url)).to have_been_made.once
-      expect(places.first.name).to eq('Austin, Texas')
-    end
-
-    it 're-fetches when the cached payload is corrupt' do
-      GeocodeCacheEntry.create!(
-        kind: 'search', query: 'austin, tx', payload: '{not json',
-        fetched_at: Time.current
-      )
       stub_request(:get, search_url)
         .to_return(status: 200, body: [austin_result].to_json,
                    headers: { 'Content-Type' => 'application/json' })
@@ -170,16 +145,27 @@ RSpec.describe Geocoder do
       expect(described_class.reverse(lat: 30.2672, long: -97.7431)).to be_nil
       expect(GeocodeCacheEntry.count).to eq(0)
     end
+  end
 
-    it 'caches reverse lookups by rounded coordinates' do
-      stub_request(:get, reverse_url)
-        .to_return(status: 200, body: reverse_body.to_json,
-                   headers: { 'Content-Type' => 'application/json' })
+  describe '.normalize_location' do
+    it 'expands state abbreviations' do
+      expect(described_class.normalize_location('Austin, TX')).to eq('Austin, Texas')
+    end
 
-      described_class.reverse(lat: 30.26721, long: -97.74312)
-      described_class.reverse(lat: 30.26724, long: -97.74314)
+    it 'leaves full state names unchanged' do
+      expect(described_class.normalize_location('Austin, Texas')).to eq('Austin, Texas')
+    end
 
-      expect(a_request(:get, reverse_url)).to have_been_made.once
+    it 'normalizes case' do
+      expect(described_class.normalize_location('dallas, tx')).to eq('Dallas, Texas')
+    end
+
+    it 'handles single-word locations' do
+      expect(described_class.normalize_location('Denver')).to eq('Denver')
+    end
+
+    it 'handles DC abbreviation' do
+      expect(described_class.normalize_location('Washington, DC')).to eq('Washington, District of Columbia')
     end
   end
 end

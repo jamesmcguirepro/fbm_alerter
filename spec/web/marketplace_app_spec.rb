@@ -63,6 +63,18 @@ RSpec.describe MarketplaceApp do
       headers: { 'Content-Type' => 'application/json' }
     )
 
+    # Forward geocoding for ListingDistanceFilter (listing location normalization
+    # e.g. "New York, NY" → "new york, new york").
+    stub_request(:get, %r{nominatim\.openstreetmap\.org/search}).to_return(
+      status: 200,
+      body: [{
+        'lat' => '40.7128',
+        'lon' => '-74.0060',
+        'display_name' => 'New York, NY, United States'
+      }].to_json,
+      headers: { 'Content-Type' => 'application/json' }
+    )
+
     # Credit balance shown on the dashboard (loaded by htmx).
     stub_request(:get, %r{https://api\.sociavault\.com/v1/credits}).to_return(
       status: 200,
@@ -427,7 +439,7 @@ RSpec.describe MarketplaceApp do
 
     it 'falls back to the top Nominatim match when only a location is typed' do
       stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
-        .with(query: hash_including(q: 'Austin, TX'))
+        .with(query: hash_including(q: /austin.*texas/i))
         .to_return(
           status: 200,
           body: [{
@@ -454,7 +466,7 @@ RSpec.describe MarketplaceApp do
 
     it 're-renders with an explanation when the typed location is not found' do
       stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
-        .with(query: hash_including(q: 'Nowhere'))
+        .with(query: hash_including(q: /nowhere/i))
         .to_return(status: 200, body: '[]')
 
       expect do
@@ -474,7 +486,7 @@ RSpec.describe MarketplaceApp do
   describe 'GET /locations/search' do
     it 'renders candidate buttons with their coordinates' do
       stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
-        .with(query: hash_including(q: 'Austin, TX'))
+        .with(query: hash_including(q: /austin.*texas/i))
         .to_return(
           status: 200,
           body: [{

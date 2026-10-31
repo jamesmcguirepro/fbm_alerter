@@ -2,44 +2,45 @@
 
 # == Schema Information
 #
-# Table name: geocode_cache_entries
+# Table name: geocode_cache
 #
 #  id         :integer          not null, primary key
-#  fetched_at :datetime         not null
-#  kind       :string           not null
-#  payload    :text             not null
 #  query      :string           not null
+#  lat        :decimal(10, 6)
+#  lon        :decimal(10, 6)
+#  primary    :boolean          default(TRUE), not null
+#  fetched_at :datetime         not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #
 # Indexes
 #
-#  index_geocode_cache_entries_on_kind_and_query  (kind,query) UNIQUE
+#  index_geocode_cache_on_query_and_primary  (query,primary) UNIQUE
 #
 class GeocodeCacheEntry < ActiveRecord::Base
-  KINDS = %w[search reverse].freeze
+  self.table_name = 'geocode_cache'
 
-  validates :kind, inclusion: { in: KINDS }
-  validates :query, presence: true
-  validates :payload, presence: true
-  validates :fetched_at, presence: true
-
-  # Cached raw JSON for a successful lookup, or nil when there is no fresh
-  # entry. Failures are deliberately not cached, so a transient Nominatim
-  # outage does not make a city unreachable for a month.
-  # @return [String, nil]
+  # Legacy forward-geocode lookup (kind: 'search'). Delegates to GeocodeCache.
+  # Kept for backwards compatibility with any remaining callers.
   def self.read(kind:, query:, ttl:)
-    entry = find_by(kind: kind.to_s, query: query.to_s)
-    return nil unless entry
-    return nil if entry.fetched_at < ttl.ago
+    return nil unless kind == 'search'
 
-    entry.payload
+    GeocodeCache.read(query)
   end
 
-  # Store the raw JSON response. Repeated lookups of the same city (editing a
-  # search, for example) then spend no Nominatim request at all.
+  # Legacy forward-geocode write (kind: 'search'). Delegates to GeocodeCache.
+  # Kept for backwards compatibility with any remaining callers.
   def self.write(kind:, query:, payload:)
-    entry = find_or_initialize_by(kind: kind.to_s, query: query.to_s)
-    entry.update!(payload: payload, fetched_at: Time.current)
+    return unless kind == 'search'
+    return unless payload
+
+    begin
+      data = JSON.parse(payload)
+      if data.is_a?(Hash) && data['lat'] && data['lon']
+        GeocodeCache.write(query, { lat: data['lat'].to_f, lon: data['lon'].to_f })
+      end
+    rescue JSON::ParserError
+      # Ignore corrupt payloads
+    end
   end
 end

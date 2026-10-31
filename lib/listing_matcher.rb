@@ -7,7 +7,10 @@
 # puts real matches first, and SearchService stops paging as soon as a page has
 # no matches, so the loose match is what keeps recall high without spending
 # extra credits.
-class ListingMatcher
+#
+# Implements the {ListingFilter} interface so it can compose with other
+# filters (distance, sold status, etc.) in the search pipeline.
+class ListingMatcher < ListingFilter
   # Nickname -> canonical make. Both the query and the listing title are
   # normalized through this map, so "husky" matches "Husqvarna" and vice versa.
   # Kept small on purpose: every alias widens the match net, and aliases are
@@ -23,10 +26,20 @@ class ListingMatcher
     @keywords = normalize(text: query).split.uniq
   end
 
+  # @param listing [ListingObject]
+  # @param _search_object [SearchObject]
+  # @return [Boolean] true when the listing's title contains any query keyword
+  def filter(listing, _search_object)
+    return false if @keywords.empty? || listing.title.nil?
+
+    normalized_title = normalize(text: listing.title)
+    @keywords.any? { |keyword| normalized_title.include?(keyword) }
+  end
+
   # @param title [String, nil]
   # @return [Boolean] true when the title contains any query keyword
   def title_match?(title:)
-    return false if @keywords.empty?
+    return false if @keywords.empty? || title.nil?
 
     normalized_title = normalize(text: title)
     @keywords.any? { |keyword| normalized_title.include?(keyword) }

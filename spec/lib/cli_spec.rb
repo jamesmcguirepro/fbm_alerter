@@ -38,7 +38,7 @@ RSpec.describe CLI do
   describe '#resolve_location' do
     def stub_city_lookup
       stub_request(:get, %r{nominatim\.openstreetmap\.org/search})
-        .with(query: hash_including(q: 'Austin, TX'))
+        .with(query: hash_including(q: /austin.*texas/i))
         .to_return(
           status: 200,
           body: [

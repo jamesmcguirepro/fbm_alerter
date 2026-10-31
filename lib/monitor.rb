@@ -122,7 +122,8 @@ class MarketplaceMonitor
       listings: new_listings,
       api_results: service.stats[:api_results],
       credits_used: service.stats[:pages_fetched],
-      exact_matches:
+      exact_matches:,
+      stats: service.stats
     )
   rescue StandardError => e
     @io.puts "  ✗ Error: #{e.message}"
