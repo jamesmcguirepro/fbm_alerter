@@ -271,6 +271,10 @@ pre.run-log {
 /* Empty state */
 .empty { text-align: center; padding: 3rem; color: #6b7280; }
 
+/* Credit chart */
+.chart { overflow-x: auto; }
+.chart canvas { display: block; max-width: 100%; height: auto; }
+
 /* Footer */
 .footer { border-top: 1px solid #e5e7eb; padding: 1rem 0; margin-top: 2rem; color: #6b7280; font-size: 0.85rem; }
 
