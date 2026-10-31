@@ -183,7 +183,7 @@ class EmailService
       data = CreditSnapshot.chart_data
       return '[]' if data.empty?
 
-      data.map { |ts, balance| "[#{ts.iso8601.inspect}, #{balance}]" }.to_s
+      data.map { |ts, balance| "[#{ts.iso8601.inspect}, #{balance.to_f}]" }.to_s
     end
     private :credit_chart_data_json
 
