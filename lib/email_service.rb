@@ -281,11 +281,22 @@ class EmailService
       # this, a title tall enough to pass the floated image lets the metadata
       # (including the listed date) drop to the card's left edge underneath it.
       body_class = image.empty? ? 'listing-body' : 'listing-body listing-body--with-thumb'
+
+      match_tier_html = case listing.match_tier
+                        when Listing.match_tiers[:exact]
+                          '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534;margin-top:6px;">Exact</span>'
+                        when Listing.match_tiers[:partial]
+                          '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e;margin-top:6px;">Partial</span>'
+                        else
+                          ''
+                        end
+
       body = image +
              %(<div class="#{body_class}">) +
              %(<div class="title">#{escape(listing.title)}</div>) +
              location_html(listing) +
              %(<div class="price">#{PriceFormatter.format(listing.price)}</div>) +
+             match_tier_html +
              listed_html(listing) +
              %(</div>) +
              %(<div class="clear"></div>)

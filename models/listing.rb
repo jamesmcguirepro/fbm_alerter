@@ -11,6 +11,7 @@
 #  last_seen_at  :datetime
 #  listed_at     :datetime
 #  location      :string
+#  match_tier    :integer          default(0), not null
 #  price         :float
 #  search_query  :string
 #  title         :string           not null
@@ -23,6 +24,7 @@
 # Indexes
 #
 #  index_listings_on_listing_id     (listing_id) UNIQUE
+#  index_listings_on_match_tier     (match_tier)
 #  index_listings_on_search_run_id  (search_run_id)
 #
 # Foreign Keys
@@ -30,6 +32,8 @@
 #  search_run_id  (search_run_id => search_runs.id)
 #
 class Listing < ActiveRecord::Base
+  enum :match_tier, { no_match: 0, partial: 1, exact: 2 }, validate: true
+
   validates :title, presence: true
 
   has_many :alerts
@@ -39,8 +43,9 @@ class Listing < ActiveRecord::Base
 
   # @param [ListingObject] listing_object
   # @param [SearchRun, nil] search_run the run that found it (stamped once)
+  # @param [Symbol, nil] match_tier symbol from AR enum (:no_match, :partial, :exact)
   # @return [Listing]
-  def self.add_listing(listing_object:, search_run: nil)
+  def self.add_listing(listing_object:, search_run: nil, match_tier: nil)
     attributes = {
       listing_id: listing_object.listing_id,
       title: listing_object.title,
@@ -48,8 +53,9 @@ class Listing < ActiveRecord::Base
       location: listing_object.location,
       url: listing_object.url,
       image_url: listing_object.image_url,
-      search_query: listing_object.search_query
+      search_query: listing_object.search_query,
     }
+    attributes[:match_tier] = match_tier if match_tier
 
     now = Time.current
 

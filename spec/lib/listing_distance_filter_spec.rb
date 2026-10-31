@@ -19,7 +19,8 @@ RSpec.describe ListingDistanceFilter do
     ListingObject.new(
       listing_id: '1', title: 'Test', price: 100, location:, url: 'http://x',
       image_url: nil, search_query: 'test', listed_at: Time.current,
-      first_seen_at: nil, last_seen_at: nil, is_sold: is_sold
+      first_seen_at: nil, last_seen_at: nil, is_sold: is_sold,
+      match_tier: Listing.match_tiers[:partial]
     )
   end
 

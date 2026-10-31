@@ -163,7 +163,7 @@ RSpec.describe SearchService do
 
     service.run
 
-    expect(service.stats).to eq(api_results: 3, pages_fetched: 2, title_matches: 2)
+    expect(service.stats).to eq(api_results: 3, pages_fetched: 2, title_matches: 2, exact_matches: 1)
   end
 
   it 'counts the credit spent when the first page is empty' do
@@ -171,7 +171,7 @@ RSpec.describe SearchService do
 
     service.run
 
-    expect(service.stats).to eq(api_results: 0, pages_fetched: 1, title_matches: 0)
+    expect(service.stats).to eq(api_results: 0, pages_fetched: 1, title_matches: 0, exact_matches: 0)
   end
 
   it 'tolerates a malformed page response' do

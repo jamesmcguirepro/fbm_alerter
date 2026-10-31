@@ -32,7 +32,8 @@ RSpec.describe Listing, type: :model do
       first_seen_at: nil,
       last_seen_at: nil,
       is_sold: false,
-      listing_id: data['id']
+      listing_id: data['id'],
+      match_tier: Listing.match_tiers[:partial]
     )
   end
 

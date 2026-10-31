@@ -6,6 +6,7 @@
     Showing all listings ever returned by
     <strong><%= escape_html(@search.name.presence || @search.query) %></strong><% if @search.name.present? %>
     (<%= escape_html(@search.query) %>)<% end %>.
+    Includes non-matching filler listings stored for reference.
     <a href="/listings">Show all listings</a>
   </p>
   <% elsif @search_id.present? %>
@@ -31,6 +32,15 @@
           <option value="1" <%= @sold == '1' ? 'selected' : nil %>>Sold</option>
         </select>
       </div>
+      <div class="field">
+        <label>Match</label>
+        <select name="match_tier">
+          <option value="">All</option>
+          <option value="exact" <%= @match_tier == 'exact' ? 'selected' : nil %>>Exact</option>
+          <option value="partial" <%= @match_tier == 'partial' ? 'selected' : nil %>>Partial</option>
+          <option value="no_match" <%= @match_tier == 'no_match' ? 'selected' : nil %>>No match</option>
+        </select>
+      </div>
       <button type="submit" class="button button--primary">Filter</button>
       <a href="<%= @search_id.present? ? "/listings?search_id=#{CGI.escape(@search_id)}" : '/listings' %>"
          class="button button--secondary">Clear</a>
@@ -42,7 +52,7 @@
   <table>
     <thead>
       <tr>
-        <th>Thumbnail</th><th>Title</th><th>Price</th><th>Location</th><th>Search</th><th>Last seen</th><th>Sold</th>
+        <th>Thumbnail</th><th>Title</th><th>Price</th><th>Location</th><th>Match</th><th>Search</th><th>Last seen</th><th>Sold</th>
       </tr>
     </thead>
     <tbody>

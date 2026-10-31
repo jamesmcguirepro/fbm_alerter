@@ -4,9 +4,10 @@ require 'time'
 
 class ListingObject < Data.define(
   :listing_id, :title, :price, :location, :url,
-  :image_url, :search_query, :listed_at, :first_seen_at, :last_seen_at, :is_sold
+  :image_url, :search_query, :listed_at, :first_seen_at, :last_seen_at, :is_sold,
+  :match_tier
 )
-  def self.from_listing_response(response:, search_query: nil)
+  def self.from_listing_response(response:, search_query: nil, match_tier: nil)
     new(
       listing_id: response['id'],
       title: response['title'],
@@ -18,7 +19,8 @@ class ListingObject < Data.define(
       listed_at: parse_time(response['creation_time']),
       first_seen_at: nil,
       last_seen_at: nil,
-      is_sold: response['is_sold']
+      is_sold: response['is_sold'],
+      match_tier: match_tier
     )
   end
 

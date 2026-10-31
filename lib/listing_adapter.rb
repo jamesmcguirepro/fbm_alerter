@@ -9,8 +9,10 @@
 # Currently only SociaVault is supported; the module is a thin pass-through.
 module ListingAdapter
   class << self
-    def from_socia_vault(raw_listing, search_query: nil)
-      ListingObject.from_listing_response(response: raw_listing, search_query:)
+    def from_socia_vault(raw_listing, search_query: nil, match_tier: nil)
+      ListingObject.from_listing_response(
+        response: raw_listing, search_query:, match_tier:
+      )
     end
 
     # Example future adapter — uncomment and flesh out when a new source lands:

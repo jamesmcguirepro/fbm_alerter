@@ -25,7 +25,8 @@ RSpec.describe EmailService do
           image_url: 'https://example.com/photo.jpg',
           search_query: 'bike',
           listed_at: Time.now,
-          first_seen_at: Time.now
+          first_seen_at: Time.now,
+          match_tier: Listing.match_tiers[:exact]
         )
       ]
     end
@@ -72,7 +73,8 @@ RSpec.describe EmailService do
             image_url: 'https://example.com/photo.jpg',
             search_query: 'bike',
             listed_at: Time.now,
-            first_seen_at: Time.now
+            first_seen_at: Time.now,
+            match_tier: Listing.match_tiers[:exact]
           ),
           instance_double(
             ListingObject,
@@ -83,7 +85,8 @@ RSpec.describe EmailService do
             image_url: 'https://example.com/photo.jpg',
             search_query: 'bike',
             listed_at: Time.now,
-            first_seen_at: Time.now
+            first_seen_at: Time.now,
+            match_tier: Listing.match_tiers[:exact]
           )
         ]
       end

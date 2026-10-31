@@ -52,7 +52,8 @@ class MarketplaceApp < Sinatra::Base
         listed_at: listing.listed_at,
         first_seen_at: listing.first_seen_at,
         last_seen_at: listing.last_seen_at,
-        is_sold: listing.is_sold
+        is_sold: listing.is_sold,
+        match_tier: listing.match_tier
       )
     end
 
@@ -67,7 +68,8 @@ class MarketplaceApp < Sinatra::Base
           price: 1250, location: 'Santa Barbara, CA',
           url: 'https://facebook.com/marketplace/item/sample-1/',
           image_url: nil, search_query: 'road bike',
-          listed_at: now, first_seen_at: now, last_seen_at: now, is_sold: false
+          listed_at: now, first_seen_at: now, last_seen_at: now, is_sold: false,
+          match_tier: Listing.match_tiers[:exact]
         ),
         ListingObject.new(
           listing_id: 'sample-2', title: 'Mid-century Coffee Table',
@@ -75,7 +77,8 @@ class MarketplaceApp < Sinatra::Base
           url: 'https://facebook.com/marketplace/item/sample-2/',
           image_url: nil, search_query: 'furniture',
           # No listed_at: exercises the "First seen" fallback in the preview.
-          listed_at: nil, first_seen_at: now, last_seen_at: now, is_sold: false
+          listed_at: nil, first_seen_at: now, last_seen_at: now, is_sold: false,
+          match_tier: Listing.match_tiers[:partial]
         )
       ]
     end

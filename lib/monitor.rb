@@ -105,7 +105,14 @@ class MarketplaceMonitor
     # One SearchRun per API request (each page spends a credit), with the first
     # successful run recorded as the discovery run for the listings it returns.
     discovery_run = nil
-    service = SearchService.new(search_object:)
+
+    # Callback invoked for EVERY listing (matched or not) so the service can
+    # persist listings with their match tier immediately.
+    on_listing = ->(listing_object:, match_tier:) do
+      Listing.add_listing(listing_object:, search_run: discovery_run, match_tier:)
+    end
+
+    service = SearchService.new(search_object:, on_listing:)
     listings = service.run do
       next unless saved_search
 
@@ -132,8 +139,10 @@ class MarketplaceMonitor
     SearchResult.empty
   end
 
-  # Store confirmed title matches and return the ones this search has not
-  # alerted about yet.
+  # Return the listings that this search still needs to be alerted about.
+  #
+  # All listings are already stored (with their match tier) by the on_listing
+  # callback in SearchService. This method only deduplicates.
   # @param listings [Array<ListingObject>]
   def handle_listings(listings:, search_run: nil, saved_search: nil)
     new_listings = []
@@ -142,16 +151,14 @@ class MarketplaceMonitor
       @io.puts "  Found #{listings.length} matching listing(s)"
 
       listings.each do |listing_object|
-        # add_listing upserts, so a listing is stored once globally (by its
-        # Facebook id) no matter which search saw it first.
-        saved = Listing.add_listing(listing_object:, search_run:)
+        # Listing already stored by the on_listing callback.
+        listing = Listing.find_by(listing_id: listing_object.listing_id)
+        next unless listing
 
-        if new_for_search?(listing: saved, saved_search:)
-          new_listings << saved
+        if new_for_search?(listing:, saved_search:)
+          new_listings << listing
         elsif saved_search
-          @io.puts "Listing #{saved.title} already alerted for this search"
-        else
-          @io.puts "Listing #{saved.title} already exists"
+          @io.puts "Listing #{listing.title} already alerted for this search"
         end
       end
     else
@@ -164,9 +171,9 @@ class MarketplaceMonitor
   # Whether this search still needs to be alerted about a listing. Dedup is per
   # saved search: the same listing can alert each search that matches it, but
   # only once. Without a saved search (ad-hoc CLI run) there is nothing to
-  # dedup against, so fall back to first-ever sighting.
+  # dedup against, so all matched listings are treated as new.
   def new_for_search?(listing:, saved_search:)
-    return listing.previously_new_record? if saved_search.nil?
+    return true if saved_search.nil?
 
     !Alert.exists?(listing_id: listing.id, search_id: saved_search.id)
   end

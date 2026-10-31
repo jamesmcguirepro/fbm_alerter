@@ -28,6 +28,11 @@ class MarketplaceApp < Sinatra::Base
       query = query.where(is_sold: false)
     end
 
+    match_tier = params[:match_tier].to_s.strip
+    if match_tier.present?
+      query = query.where(match_tier: Listing.match_tiers.fetch(match_tier, nil))
+    end
+
     query = query.order(updated_at: :desc)
 
     page = [params[:page].to_i, 1].max
@@ -44,6 +49,7 @@ class MarketplaceApp < Sinatra::Base
     # Map a listing's stored query string to a saved search, so the listings
     # view can link back to the search that produced it.
     @search_id_by_query = search_id_by_query
+    @match_tier = params[:match_tier]
 
     erb :'listings/index'
   end

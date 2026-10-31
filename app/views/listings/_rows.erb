@@ -11,6 +11,15 @@
   <td><%= external_link(listing.url, escape_html(truncate(listing.title))) %></td>
   <td class="nowrap"><%= format_price(listing.price) %></td>
   <td><%= escape_html(listing.location || '—') %></td>
+  <td style="white-space: nowrap">
+    <% if listing.match_tier == 'exact' %>
+      <span class="badge badge--success">Exact</span>
+    <% elsif listing.match_tier == 'partial' %>
+      <span class="badge badge--warning">Partial</span>
+    <% else %>
+      <span class="badge badge--no-match">No match</span>
+    <% end %>
+  </td>
   <td>
     <%= search_query_link(search_id_by_query[listing.search_query], listing.search_query) %>
     <% if run && listing.search_run %>
