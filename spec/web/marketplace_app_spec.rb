@@ -1000,8 +1000,11 @@ RSpec.describe MarketplaceApp do
 
       expect(last_response.body).to include('Credits trend')
       expect(last_response.body).to include('credit-sparkline')
+      expect(last_response.body).to include('Last 7 days')
       # Data should be a valid JSON array of [timestamp, balance] pairs.
       expect(last_response.body).to match(/var data = \[\["\d{4}-\d{2}-\d{2}T[\d:.]+Z",\d/)
+      # Y-axis labels should appear (max balance at top, min at bottom).
+      expect(last_response.body).to match(/500.*480/)
     end
 
     it 'shows an empty message when no credit snapshots exist' do

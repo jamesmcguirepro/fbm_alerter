@@ -37,7 +37,7 @@ class MarketplaceApp < Sinatra::Base
       @credits_error = e.message
     end
 
-    @credit_chart_data = CreditSnapshot.chart_data
+    @credit_chart_data = CreditSnapshot.chart_data_7d
 
     erb :'dashboard/_credits', layout: false
   end

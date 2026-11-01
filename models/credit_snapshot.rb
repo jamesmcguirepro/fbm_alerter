@@ -31,6 +31,9 @@ class CreditSnapshot < ActiveRecord::Base
   HISTORY_DAYS = 30
   private_constant :HISTORY_DAYS
 
+  # How many days the chart widget shows.
+  CHART_DAYS = 7
+
   # Remove snapshots older than +HISTORY_DAYS+.
   def self.purge_old!
     where('created_at < ?', Time.current - HISTORY_DAYS.days).delete_all
@@ -52,6 +55,13 @@ class CreditSnapshot < ActiveRecord::Base
   # chart).
   def self.chart_data
     recent.order(created_at: :asc).pluck(:created_at, :balance)
+  end
+
+  # Snapshots in the last +CHART_DAYS+, ordered oldest first (for the widget).
+  def self.chart_data_7d
+    where('created_at >= ?', Time.current - CHART_DAYS.days)
+      .order(created_at: :asc)
+      .pluck(:created_at, :balance)
   end
 
   # Snapshots within the history window.

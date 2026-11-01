@@ -27,18 +27,21 @@
   <% if @credit_chart_data && @credit_chart_data.any? %>
     <div class="credits-trend">
       <canvas id="credit-sparkline" width="200" height="80"></canvas>
-      <div class="credits-stats">
-        <span class="credits-stat">
-          <strong><%= CreditSnapshot.average_daily_consumption.round(1) %></strong> credits/day
-        </span>
-        <% days = CreditSnapshot.days_remaining %>
-        <span class="credits-stat credits-stat--<%= days && days < 14 ? 'warn' : 'ok' %>">
-          <% if days %>
-            <%= days %> days left
-          <% else %>
-            balance steady
-          <% end %>
-        </span>
+      <div class="credits-meta">
+        <span class="credits-meta__time">Last 7 days</span>
+        <div class="credits-stats">
+          <span class="credits-stat">
+            <strong><%= CreditSnapshot.average_daily_consumption.round(1) %></strong> credits/day
+          </span>
+          <% days = CreditSnapshot.days_remaining %>
+          <span class="credits-stat credits-stat--<%= days && days < 14 ? 'warn' : 'ok' %>">
+            <% if days %>
+              <%= days %> days left
+            <% else %>
+              balance steady
+            <% end %>
+          </span>
+        </div>
       </div>
     </div>
   <% else %>
@@ -56,7 +59,7 @@
 
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
-    var pad = { top: 10, right: 10, bottom: 10, left: 10 };
+    var pad = { top: 10, right: 10, bottom: 16, left: 38 };
     var chartW = w - pad.left - pad.right;
     var chartH = h - pad.top - pad.bottom;
 
@@ -66,6 +69,13 @@
     var range = maxBal - minBal || 1;
 
     var stepX = chartW / (data.length - 1 || 1);
+
+    // Y-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(maxBal.toFixed(0), pad.left - 4, pad.top + 4);
+    ctx.fillText(minBal.toFixed(0), pad.left - 4, pad.top + chartH);
 
     // Line
     ctx.strokeStyle = '#2563eb';
