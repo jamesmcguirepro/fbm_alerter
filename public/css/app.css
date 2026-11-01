@@ -275,6 +275,14 @@ pre.run-log {
 .chart { overflow-x: auto; }
 .chart canvas { display: block; max-width: 100%; height: auto; }
 
+/* Compact credit trend widget */
+.credits-trend { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.credits-trend canvas { display: block; flex-shrink: 0; }
+.credits-stats { display: flex; gap: 1rem; font-size: 0.85rem; color: #374151; }
+.credits-stat strong { color: #111827; }
+.credits-stat--warn strong { color: #dc2626; }
+.credits-stat--ok strong { color: #16a34a; }
+
 /* Footer */
 .footer { border-top: 1px solid #e5e7eb; padding: 1rem 0; margin-top: 2rem; color: #6b7280; font-size: 0.85rem; }
 

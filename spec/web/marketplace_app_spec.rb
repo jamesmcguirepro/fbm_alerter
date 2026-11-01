@@ -998,8 +998,8 @@ RSpec.describe MarketplaceApp do
 
       get '/dashboard/credits'
 
-      expect(last_response.body).to include('Credits history')
-      expect(last_response.body).to include('credit-chart')
+      expect(last_response.body).to include('Credits trend')
+      expect(last_response.body).to include('credit-sparkline')
       # Data should be a valid JSON array of [timestamp, balance] pairs.
       expect(last_response.body).to match(/var data = \[\["\d{4}-\d{2}-\d{2}T[\d:.]+Z",\d/)
     end
@@ -1007,7 +1007,7 @@ RSpec.describe MarketplaceApp do
     it 'shows an empty message when no credit snapshots exist' do
       get '/dashboard/credits'
 
-      expect(last_response.body).to include('Credits history')
+      expect(last_response.body).to include('Credits trend')
       expect(last_response.body).to include('No balance history yet')
     end
 
@@ -1027,6 +1027,16 @@ RSpec.describe MarketplaceApp do
       # Ensure no escaped-quote artifact from iso8601.inspect leak through.
       expect(last_response.body).not_to include('\u0022')
       expect(last_response.body).not_to match(/\\["\']/)
+    end
+
+    it 'shows daily consumption and days-remaining stats' do
+      CreditSnapshot.create!(balance: 500, created_at: Time.current - 3.days)
+      CreditSnapshot.create!(balance: 470, created_at: Time.current - 1.day)
+
+      get '/dashboard/credits'
+
+      expect(last_response.body).to include('credits/day')
+      expect(last_response.body).to include('days left')
     end
   end
 

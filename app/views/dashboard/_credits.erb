@@ -23,62 +23,78 @@
 </a>
 
 <div id="credit-chart-card" class="card">
-  <h2>Credits history</h2>
+  <h2>Credits trend</h2>
   <% if @credit_chart_data && @credit_chart_data.any? %>
-    <div class="chart">
-      <canvas id="credit-chart" width="560" height="200"></canvas>
-      <script>
-        (function() {
-          var data = <%= @credit_chart_data.map { |ts, balance| [ts.iso8601, balance.to_f] }.to_json %>;
-          var canvas = document.getElementById('credit-chart');
-          if (!canvas || !data.length) return;
-          var ctx = canvas.getContext('2d');
-          var w = canvas.width, h = canvas.height;
-          var padding = { top: 20, right: 20, bottom: 30, left: 50 };
-          var chartW = w - padding.left - padding.right;
-          var chartH = h - padding.top - padding.bottom;
-          var balances = data.map(function(d) { return d[1]; });
-          var minBal = Math.min.apply(null, balances);
-          var maxBal = Math.max.apply(null, balances);
-          var range = maxBal - minBal || 1;
-          var stepX = chartW / (data.length - 1 || 1);
-          ctx.strokeStyle = '#007bff';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          data.forEach(function(d, i) {
-            var x = padding.left + i * stepX;
-            var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          });
-          ctx.stroke();
-          ctx.fillStyle = '#007bff';
-          data.forEach(function(d, i) {
-            var x = padding.left + i * stepX;
-            var y = padding.top + chartH - ((d[1] - minBal) / range) * chartH;
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, 2 * Math.PI);
-            ctx.fill();
-          });
-          ctx.fillStyle = '#6b7280';
-          ctx.font = '11px Arial';
-          ctx.textAlign = 'right';
-          [minBal, maxBal].forEach(function(val, idx) {
-            var actualY = padding.top + chartH - ((val - minBal) / range) * chartH;
-            ctx.fillText(val.toFixed(0), padding.left - 5, actualY + 4);
-          });
-          ctx.textAlign = 'center';
-          var firstDate = new Date(data[0][0]);
-          var lastDate = new Date(data[data.length - 1][0]);
-          ctx.fillText(formatDate(firstDate), padding.left, h - 8);
-          ctx.fillText(formatDate(lastDate), w - padding.right, h - 8);
-        })();
-        function formatDate(d) {
-          var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          return months[d.getMonth()] + ' ' + d.getDate();
-        }
-      </script>
+    <div class="credits-trend">
+      <canvas id="credit-sparkline" width="200" height="80"></canvas>
+      <div class="credits-stats">
+        <span class="credits-stat">
+          <strong><%= CreditSnapshot.average_daily_consumption.round(1) %></strong> credits/day
+        </span>
+        <% days = CreditSnapshot.days_remaining %>
+        <span class="credits-stat credits-stat--<%= days && days < 14 ? 'warn' : 'ok' %>">
+          <% if days %>
+            <%= days %> days left
+          <% else %>
+            balance steady
+          <% end %>
+        </span>
+      </div>
     </div>
   <% else %>
     <div class="card-note">No balance history yet. Run searches to start tracking.</div>
   <% end %>
 </div>
+
+<script>
+  (function() {
+    var data = <%= @credit_chart_data.map { |ts, balance| [ts.iso8601, balance.to_f] }.to_json %>;
+    if (!data.length) return;
+
+    var canvas = document.getElementById('credit-sparkline');
+    if (!canvas) return;
+
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width, h = canvas.height;
+    var pad = { top: 10, right: 10, bottom: 10, left: 10 };
+    var chartW = w - pad.left - pad.right;
+    var chartH = h - pad.top - pad.bottom;
+
+    var balances = data.map(function(d) { return d[1]; });
+    var minBal = Math.min.apply(null, balances);
+    var maxBal = Math.max.apply(null, balances);
+    var range = maxBal - minBal || 1;
+
+    var stepX = chartW / (data.length - 1 || 1);
+
+    // Line
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    data.forEach(function(d, i) {
+      var x = pad.left + i * stepX;
+      var y = pad.top + chartH - ((d[1] - minBal) / range) * chartH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Points
+    ctx.fillStyle = '#2563eb';
+    data.forEach(function(d, i) {
+      var x = pad.left + i * stepX;
+      var y = pad.top + chartH - ((d[1] - minBal) / range) * chartH;
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+
+    // End dot (latest)
+    var last = data[data.length - 1];
+    var lx = pad.left + (data.length - 1) * stepX;
+    var ly = pad.top + chartH - ((last[1] - minBal) / range) * chartH;
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath();
+    ctx.arc(lx, ly, 3, 0, 2 * Math.PI);
+    ctx.fill();
+  })();
+</script>
