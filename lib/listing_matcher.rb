@@ -18,7 +18,8 @@ class ListingMatcher < ListingFilter
   KEYWORD_ALIASES = {
     'husky' => 'husqvarna',
     'chevy' => 'chevrolet',
-    'vw' => 'volkswagen'
+    'vw' => 'volkswagen',
+    'ft' => 'foot'
   }.freeze
 
   # @param query [String] the saved search query
@@ -60,12 +61,23 @@ class ListingMatcher < ListingFilter
   # non-alphanumerics keeps punctuation ("Husqvarna-Berg", "chevy's") from
   # hiding a match.
   def normalize(text:)
-    text.to_s.downcase.gsub(/[a-z0-9]+/) { |word| KEYWORD_ALIASES.fetch(word, word) }
+    expand_measurements(text.to_s.downcase)
+                            .gsub(/[a-z0-9]+/) { |word| KEYWORD_ALIASES.fetch(word, word) }
   end
 
   # Split text into lowercase alphanumeric tokens for word-boundary matching.
   def split_tokens(text)
-    text.to_s.downcase.scan(/[a-z0-9]+/)
+    expand_measurements(text.to_s.downcase).scan(/[a-z0-9]+/)
+  end
+
+  # Expand measurement abbreviations so both spellings of the same thing match:
+  # a digit followed by an inch mark ("16\"") becomes "16 inch"; a digit
+  # followed by a foot mark ("6'") becomes "6 foot". Only a quote directly
+  # after a digit counts, so possessives/contractions like '"MacBook"' or
+  # "chevy's" are left alone.
+  def expand_measurements(text)
+    text.gsub(/(\d)\s*"/, '\1 inch')
+        .gsub(/(\d)\s*'/, '\1 foot')
   end
 
   # Match a keyword against a listing title using token matching for longer
