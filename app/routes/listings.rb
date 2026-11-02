@@ -7,10 +7,8 @@ class MarketplaceApp < Sinatra::Base
     @search_id = params[:search_id].to_s.strip.presence
     if @search_id
       @search = SavedSearch.find_by(id: @search_id)
-      # Alert rows double as the per-search result history for now: every
-      # listing newly returned by a saved search gets one.
       query = if @search
-                query.where(id: Alert.where(search_id: @search.id).select(:listing_id))
+                query.where(search_query: @search.query)
               else
                 query.none
               end

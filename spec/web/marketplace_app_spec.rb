@@ -707,10 +707,12 @@ RSpec.describe MarketplaceApp do
       car = SavedSearch.create!(
         query: 'car', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
       )
-      bike_listing = Listing.create!(listing_id: 'bike-result', title: 'Result Bike')
-      car_listing = Listing.create!(listing_id: 'car-result', title: 'Result Car')
-      Alert.record_alert(listing_id: bike_listing.id, search_id: bike.id)
-      Alert.record_alert(listing_id: car_listing.id, search_id: car.id)
+      Listing.create!(
+        listing_id: 'bike-result', title: 'Result Bike', search_query: 'bike'
+      )
+      Listing.create!(
+        listing_id: 'car-result', title: 'Result Car', search_query: 'car'
+      )
 
       get '/listings', { 'search_id' => bike.id.to_s }
 
@@ -725,8 +727,9 @@ RSpec.describe MarketplaceApp do
         query: 'bike', lat: 40.7128, long: -74.0060, email: 'owner@example.com'
       )
       26.times do |i|
-        listing = Listing.create!(listing_id: "search-page-#{i}", title: "Search Item #{i}")
-        Alert.record_alert(listing_id: listing.id, search_id: search.id)
+        Listing.create!(
+          listing_id: "search-page-#{i}", title: "Search Item #{i}", search_query: 'bike'
+        )
       end
 
       get '/listings', { 'search_id' => search.id.to_s }
