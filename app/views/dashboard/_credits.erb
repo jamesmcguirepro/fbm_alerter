@@ -59,7 +59,7 @@
 
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
-    var pad = { top: 10, right: 10, bottom: 16, left: 38 };
+    var pad = { top: 10, right: 16, bottom: 22, left: 38 };
     var chartW = w - pad.left - pad.right;
     var chartH = h - pad.top - pad.bottom;
 
@@ -76,6 +76,19 @@
     ctx.textAlign = 'right';
     ctx.fillText(maxBal.toFixed(0), pad.left - 4, pad.top + 4);
     ctx.fillText(minBal.toFixed(0), pad.left - 4, pad.top + chartH);
+
+    // X-axis date labels
+    ctx.textAlign = 'center';
+    var labelFormat = data.length <= 7 ? 'd' : 'MMM d';
+    data.forEach(function(d, i) {
+      var x = pad.left + i * stepX;
+      var date = new Date(d[0]);
+      var label = date.getDate().toString();
+      if (data.length > 7) {
+        label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      ctx.fillText(label, x, h - pad.bottom + 14);
+    });
 
     // Line
     ctx.strokeStyle = '#2563eb';
